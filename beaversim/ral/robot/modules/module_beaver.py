@@ -1,5 +1,5 @@
 import numpy as np
-import beaverbot.ral.algorithms.module_misc as module_misc
+import beaversim.ral.algorithms.module_misc as module_misc
 
 def exploration_gradient_DN(position, limits, local_map, N=4, home_base_store=None, eta=1, N_recovery=4, step=1):
     """Select next exploration position using gradient-based probabilistic selection (softmax with eta parameter)."""
