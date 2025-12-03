@@ -1,5 +1,5 @@
-from beaverbot.ral.backend.base_backend import BaseBackend
-from beaverbot.ral.environment.environment_beavers_backend import BeaversEnvironmentBackend
+from beaversim.ral.backend.base_backend import BaseBackend
+from beaversim.ral.environment.environment_beavers_backend import BeaversEnvironmentBackend
 from IPython.display import clear_output
 from tqdm import tqdm
 

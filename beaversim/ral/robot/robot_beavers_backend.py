@@ -1,10 +1,10 @@
 # Backend imports
-from beaverbot.ral.robot.robot_backend import BaseRobotBackend
+from beaversim.ral.robot.robot_backend import BaseRobotBackend
 
 # Module imports
-from beaverbot.ral.robot.modules.module_control import Controller, Dynamics
-import beaverbot.ral.algorithms.module_misc as module_misc
-import beaverbot.ral.robot.modules.module_beaver as module_beaver
+from beaversim.ral.robot.modules.module_control import Controller, Dynamics
+import beaversim.ral.algorithms.module_misc as module_misc
+import beaversim.ral.robot.modules.module_beaver as module_beaver
 
 
 class BeaversRobotBackend(BaseRobotBackend):

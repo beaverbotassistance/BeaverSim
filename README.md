@@ -1,10 +1,10 @@
-# BeaverBot 🦫
+# BeaverSim 🦫
 
-An agent-based simulation framework for modeling beaver behavior and ecological engineering in realistic terrains. BeaverBot simulates beaver colonies interacting with Digital Elevation Model (DEM) data, including vegetation dynamics, resource harvesting, and environmental modifications.
+An agent-based simulation framework for modeling beaver behavior and ecological engineering in realistic terrains. BeaverSim simulates beaver colonies interacting with Digital Elevation Model (DEM) data, including vegetation dynamics, resource harvesting, and environmental modifications.
 
 ## Overview
 
-BeaverBot provides a modular simulation environment where autonomous beaver agents:
+BeaverSim provides a modular simulation environment where autonomous beaver agents:
 - Navigate realistic terrain based on real-world elevation data
 - Harvest vegetation and manage resources
 - Reinforce canals and and modify their environment
@@ -24,22 +24,22 @@ The framework is built on a flexible backend architecture supporting visualizati
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/beaverbotassistance/beaverbot.git
-cd beaverbot
+git clone https://github.com/beaverbotassistance/BeaverSim.git
+cd BeaverSim
 ```
 
 2. Create and activate a Python virtual environment (recommended):
 
 **Using venv:**
 ```bash
-python -m venv beaverbot_env
-source beaverbot_env/bin/activate  # On Windows: beaverbot_env\Scripts\activate
+python -m venv beaversim_env
+source beaversim_env/bin/activate  # On Windows: beaversim_env\Scripts\activate
 ```
 
 **Using conda:**
 ```bash
-conda create -n beaverbot python=3.10
-conda activate beaverbot
+conda create -n beaversim python=3.10
+conda activate beaversim
 ```
 
 3. Install dependencies:
@@ -49,7 +49,7 @@ pip install -r requirements.txt
 
 4. Test the installation:
 ```bash
-python -c "import beaverbot; print('BeaverBot successfully installed!')"
+python -c "import beaversim; print('BeaverSim successfully installed!')"
 ```
 
 ## Quick Start
@@ -59,7 +59,7 @@ python -c "import beaverbot; print('BeaverBot successfully installed!')"
 Start by exploring how to process Digital Elevation Model data:
 
 ```bash
-jupyter notebook beaverbot/utils/dem_conversion_interactive.ipynb
+jupyter notebook beaversim/utils/dem_conversion_interactive.ipynb
 ```
 
 This interactive notebook teaches you how to:
@@ -109,7 +109,7 @@ Both demos include:
 After trying the demo notebooks, you can process your own DEM data using the interactive converter:
 
 ```bash
-jupyter notebook beaverbot/utils/dem_conversion_interactive.ipynb
+jupyter notebook beaversim/utils/dem_conversion_interactive.ipynb
 ```
 
 The notebook provides a step-by-step workflow:
@@ -142,8 +142,8 @@ Example regions:
 ## Project Structure
 
 ```
-beaverbot/
-├── beaverbot/
+BeaverSim/
+├── beaversim/
 │   ├── ral/                      # Robot Abstraction Layer
 │   │   ├── backend/              # Simulation backends
 │   │   │   ├── base_backend.py
@@ -242,13 +242,13 @@ Contributions are welcome! Areas for improvement:
 
 ## Citation
 
-If you use BeaverBot in your research, please cite:
+If you use BeaverSim in your research, please cite:
 
 ```bibtex
-@software{beaverbot2025,
-  title={BeaverBot: an Agent-Based Modeling tool to simulate beavers},
+@software{beaversim2025,
+  title={BeaverSim: A Multi-Agent Emulator for Beaver-Mediated Landscapes},
   year={2025},
-  url={https://github.com/beaverbotassistance/BeaverBot}
+  url={https://github.com/beaverbotassistance/BeaverSim}
 }
 ```
 

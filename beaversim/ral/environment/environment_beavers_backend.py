@@ -1,4 +1,4 @@
-from beaverbot.ral.environment.environment_backend import BaseEnvironmentBackend
+from beaversim.ral.environment.environment_backend import BaseEnvironmentBackend
 
 
 class BeaversEnvironmentBackend(BaseEnvironmentBackend):
