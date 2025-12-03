@@ -1,0 +1,13 @@
+ipykernel
+ipython
+ipywidgets
+jupyter
+jupyter_client
+jupyter_core
+jupyter_server
+jupyter_server_terminals
+matplotlib
+matplotlib-inline
+numpy
+scipy
+mesa==1.2.0
