@@ -1,0 +1,17 @@
+
+# folders
+docker/
+pyenv/
+.vscode/
+__pycache__/
+outputs/
+resources/images/
+resources/doc
+
+# files
+core.*
+*.pyc
+*.mp4
+*.csv
+*.env
+
