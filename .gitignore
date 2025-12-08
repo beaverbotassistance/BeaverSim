@@ -1,10 +1,10 @@
 
 # folders
-docker/
 pyenv/
 .vscode/
+.conda/
 __pycache__/
-outputs/
+output/
 resources/images/
 resources/doc
 
@@ -12,6 +12,5 @@ resources/doc
 core.*
 *.pyc
 *.mp4
-*.csv
 *.env
 

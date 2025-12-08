@@ -11,3 +11,4 @@ matplotlib-inline
 numpy
 scipy
 mesa==1.2.0
+pyproj
