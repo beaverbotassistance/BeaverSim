@@ -148,7 +148,7 @@ class ColorMaps():
                                    (0.7, tangreen),    # 0.4
                                    (0.8, darkgreen),          # 0.6
                                    (0.9, mediumbrown),       # 0.8
-                                   (1.0, darkbrown)]      # 1.0 (highest elevation)
+                                   (1.0, darkbrown)]      # 1.0 (highest elevation)                
         self._green_colormap = cc.LinearSegmentedColormap.from_list("green_colormap",self._green_colors_list)
         self._green_colormap_alpha = alpha_green
         
