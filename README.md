@@ -19,16 +19,61 @@ The framework is built on a flexible backend architecture supporting visualizati
 - Python 3.8+
 - pip package manager
 - (Recommended) Virtual environment manager (venv, conda, or virtualenv)
+- **Git LFS** (Large File Storage) - Required for downloading example datasets
+- (Optional but recommended) **Visual Studio Code** with Python and Jupyter extensions - for integrated notebook editing and visualization
+
+### Recommended IDE Setup (Optional)
+
+For the best development and visualization experience, we recommend using **Visual Studio Code**:
+
+1. **Install VS Code**: Download from [code.visualstudio.com](https://code.visualstudio.com/)
+
+2. **Install Required Extensions**:
+   - **Python** (by Microsoft) - for Python language support
+   - **Jupyter** (by Microsoft) - for notebook support with inline plots
+
+3. **Benefits**:
+   - Edit and run notebooks directly in the IDE
+   - Inline visualization of plots and simulation results
+   - Integrated terminal and debugging
+   - Better code navigation and IntelliSense
+
+**Alternative**: You can also use the classic Jupyter Notebook interface in your browser (instructions provided below).
 
 ### Setup
 
-1. Clone the repository:
+1. **Install Git LFS** (if not already installed):
+
+**On Ubuntu/Debian:**
+```bash
+sudo apt-get install git-lfs
+```
+
+**On macOS:**
+```bash
+brew install git-lfs
+```
+
+**On Windows:**
+Download and install from [git-lfs.github.com](https://git-lfs.github.com/)
+
+**Initialize Git LFS:**
+```bash
+git lfs install
+```
+
+2. Clone the repository:
 ```bash
 git clone https://github.com/beaverbotassistance/BeaverSim.git
 cd BeaverSim
 ```
 
-2. Create and activate a Python virtual environment (recommended):
+**Note**: The repository uses Git LFS for large CSV dataset files. After cloning, if you see pointer files instead of actual data in `beaversim/utils/example_datasets/`, run:
+```bash
+git lfs pull
+```
+
+3. Create and activate a Python virtual environment (recommended):
 
 **Using venv:**
 ```bash
@@ -42,22 +87,28 @@ conda create -n beaversim python=3.10
 conda activate beaversim
 ```
 
-3. Install dependencies:
+4. Install dependencies:
 ```bash
 pip install -r requirements.txt
 ```
 
-4. Test the installation:
+5. Test the installation:
 ```bash
-python -c "import beaversim; print('BeaverSim successfully installed!')"
+python -c "import beaversim; print('BeaverSim successfully installed')"
 ```
 
 ## Quick Start
 
 ### 1. Interactive DEM Processing
 
-Start by exploring how to process Digital Elevation Model data:
+Start by exploring how to process Digital Elevation Model data.
 
+**Using VS Code (Recommended):**
+- Open `beaversim/utils/dem_conversion_interactive.ipynb` in VS Code
+- Click "Run All" or execute cells individually
+- Plots will display inline within the editor
+
+**Using Jupyter Notebook (Browser):**
 ```bash
 jupyter notebook beaversim/utils/dem_conversion_interactive.ipynb
 ```
@@ -70,7 +121,13 @@ This interactive notebook teaches you how to:
 
 ### 2. Pre-configured Demo Simulations
 
-Run the example simulations with pre-processed data:
+Run the example simulations with pre-processed data.
+
+**Using VS Code (Recommended):**
+- Open the notebook file in VS Code
+- Run cells to see simulation results and visualizations inline
+
+**Using Jupyter Notebook (Browser):**
 
 #### Acadia National Park Demo (Recommended First)
 ```bash
