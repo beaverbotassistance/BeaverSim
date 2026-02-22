@@ -1,0 +1,13 @@
+source_path: beaversim/utils/example_datasets/RUMNEY_MARSH/A2
+output_path: beaversim/utils/output/Rumney_Marsh_Boston/RGB/A2
+pictures:
+  A2_06132018.PNG:
+    index: CWI
+    threshold: 0.03
+    opening_sizes: [10, 15]
+    closing_sizes: [10]
+  A2_06262018.PNG:
+    index: ExG
+    threshold: -0.01 
+    opening_sizes: [10, 15]
+    closing_sizes: [30, 30]
