@@ -18,11 +18,14 @@ import os
 import json
 from pathlib import Path
 from typing import Tuple, Optional, Dict, List
-import warnings
+from sklearn.preprocessing import MinMaxScaler
+from scipy.ndimage import median_filter, binary_opening, binary_closing
 
 # Constants
 INVALID_MARKER = -1.0  # Marker for invalid/no-data pixels
 WATER_MARKER = -0.5    # Marker for water pixels
+EPSILON = 1e-6         # Small value to avoid division by zero
+MEDIAN_SIZE = 10       # Kernel size for median filtering to remove outliers
 
 
 def load_rgb_image(image_path: str, target_size: Optional[Tuple[int, int]] = None) -> Tuple[np.ndarray, Dict]:
@@ -35,22 +38,19 @@ def load_rgb_image(image_path: str, target_size: Optional[Tuple[int, int]] = Non
     Returns:
         rgb_array: RGB image as numpy array (H, W, 3) with values [0, 255]
         metadata: Dictionary with image information
-    """
-    print(f"Loading RGB image: {image_path}")
+    """    
     
     # Load image
     img = Image.open(image_path)
     
     # Convert to RGB if needed
-    if img.mode != 'RGB':
-        print(f"  Converting from {img.mode} to RGB")
+    if img.mode != 'RGB':        
         img = img.convert('RGB')
     
     original_size = img.size  # (width, height)
     
     # Resize if requested
-    if target_size is not None:
-        print(f"  Resizing from {original_size} to {target_size}")
+    if target_size is not None:        
         img = img.resize(target_size, Image.Resampling.LANCZOS)
     
     # Convert to numpy array
@@ -64,10 +64,40 @@ def load_rgb_image(image_path: str, target_size: Optional[Tuple[int, int]] = Non
         'dtype': str(rgb_array.dtype)
     }
     
-    print(f"  Image loaded: {rgb_array.shape} (H x W x C)")
-    print(f"  Value range: [{rgb_array.min()}, {rgb_array.max()}]")
+    print(f"  Image loaded: {rgb_array.shape} (H x W x C)")    
     
     return rgb_array, metadata
+
+def apply_shadow_correction(rgb: np.ndarray, method: str = 'histogram') -> np.ndarray:
+    """Correct for shadows in RGB image.
+    
+    Args:
+        rgb: RGB image array (H, W, 3)
+        method: 'histogram' or 'clahe'
+        
+    Returns:
+        rgb_corrected: Shadow-corrected RGB image
+    """    
+    
+    if method == 'histogram':
+        # Simple histogram equalization per channel
+        rgb_corrected = np.zeros_like(rgb)
+        for i in range(3):
+            rgb_corrected[:, :, i] = cv2.equalizeHist(rgb[:, :, i])
+    
+    elif method == 'clahe':
+        # Contrast Limited Adaptive Histogram Equalization
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        rgb_corrected = np.zeros_like(rgb)
+        for i in range(3):
+            rgb_corrected[:, :, i] = clahe.apply(rgb[:, :, i])
+    
+    else:
+        raise ValueError(f"Unknown shadow correction method: {method}")
+    
+    print(f"  Shadow correction applied")
+    
+    return rgb_corrected
 
 
 def calculate_ndvi(rgb: np.ndarray, method: str = 'visible') -> np.ndarray:
@@ -89,8 +119,7 @@ def calculate_ndvi(rgb: np.ndarray, method: str = 'visible') -> np.ndarray:
               0.1-0.3: Sparse vegetation  
               < 0.1: Non-vegetated (water, soil, urban)
               < 0: Water, clouds, snow
-    """
-    print("Calculating NDVI (Normalized Difference Vegetation Index)...")
+    """    
     
     # Extract channels (convert to float to avoid overflow)
     R = rgb[:, :, 0].astype(np.float32)
@@ -104,34 +133,25 @@ def calculate_ndvi(rgb: np.ndarray, method: str = 'visible') -> np.ndarray:
     else:
         raise ValueError(f"Unknown NDVI method: {method}. Use 'visible'.")
     
-    # Avoid division by zero
-    epsilon = 1e-8
-    ndvi = np.divide(numerator, denominator + epsilon, 
+    # Avoid division by zero    
+    ndvi = np.divide(numerator, denominator + EPSILON, 
                      out=np.zeros_like(numerator), 
-                     where=(denominator + epsilon) != 0)
-    
-    # Clip to valid range [-1, 1]
-    ndvi = np.clip(ndvi, -1, 1)
-    
-    # Calculate statistics
-    valid_mask = np.isfinite(ndvi)
+                     where=(denominator + EPSILON) != 0)        
+
+    # Apply median filter to remove outliers    
+    ndvi_filtered = median_filter(ndvi, size=MEDIAN_SIZE)
+
+    # Rescale NDVI to [-1, 1] using MinMaxScaler from sklearn    
+    valid_mask = np.isfinite(ndvi_filtered)
+    ndvi_rescaled = np.full_like(ndvi_filtered, np.nan, dtype=np.float32)
     if np.any(valid_mask):
-        print(f"  NDVI range: [{ndvi[valid_mask].min():.3f}, {ndvi[valid_mask].max():.3f}]")
-        print(f"  NDVI mean: {ndvi[valid_mask].mean():.3f}")
-        
-        # Vegetation classification
-        dense_veg = np.sum(ndvi > 0.3)
-        sparse_veg = np.sum((ndvi > 0.1) & (ndvi <= 0.3))
-        non_veg = np.sum((ndvi > 0) & (ndvi <= 0.1))
-        water_like = np.sum(ndvi < 0)
-        total_pixels = ndvi.size
-        
-        print(f"  Dense vegetation (>0.3): {100*dense_veg/total_pixels:.1f}%")
-        print(f"  Sparse vegetation (0.1-0.3): {100*sparse_veg/total_pixels:.1f}%")
-        print(f"  Non-vegetated (0-0.1): {100*non_veg/total_pixels:.1f}%")
-        print(f"  Water-like (<0): {100*water_like/total_pixels:.1f}%")
-    
-    return ndvi
+        scaler = MinMaxScaler(feature_range=(-1, 1))
+        ndvi_valid = ndvi_filtered[valid_mask].reshape(-1, 1)
+        ndvi_scaled = scaler.fit_transform(ndvi_valid).flatten()
+        ndvi_rescaled[valid_mask] = ndvi_scaled
+        print(f"  NDVI rescaled range: [{ndvi_scaled.min():.3f}, {ndvi_scaled.max():.3f}]")
+        print(f"  NDVI rescaled mean: {ndvi_scaled.mean():.3f}")
+    return ndvi_rescaled
 
 
 def calculate_vari(rgb: np.ndarray) -> np.ndarray:
@@ -147,45 +167,35 @@ def calculate_vari(rgb: np.ndarray) -> np.ndarray:
         vari: VARI values typically in range [-1, 1] where:
               Higher values indicate more vegetation
               More resistant to shadows than NDVI
-    """
-    print("Calculating VARI (Visible Atmospherically Resistant Index)...")
+    """    
     
     # Extract channels
     R = rgb[:, :, 0].astype(np.float32)
     G = rgb[:, :, 1].astype(np.float32)
     B = rgb[:, :, 2].astype(np.float32)
-    
+
     numerator = G - R
     denominator = G + R - B
-    
-    # Avoid division by zero
-    epsilon = 1e-8
-    vari = np.divide(numerator, denominator + epsilon,
-                     out=np.zeros_like(numerator),
-                     where=(denominator + epsilon) != 0)
-    
-    # Clip to reasonable range
-    vari = np.clip(vari, -1, 1)
-    
-    # Calculate statistics
-    valid_mask = np.isfinite(vari)
+
+    # Mask out small denominators to avoid extreme values    
+    # vari = np.clip(numerator / denominator, -2, 2)
+    vari = numerator / (denominator + EPSILON)  # Add epsilon to avoid division by zero
+
+    # Apply median filter to remove outliers    
+    vari_filtered = median_filter(vari, size=MEDIAN_SIZE)
+
+    # Rescale VARI to [-1, 1] using MinMaxScaler from sklearn    
+    valid_mask = np.isfinite(vari_filtered)
+    vari_rescaled = np.full_like(vari_filtered, np.nan, dtype=np.float32)
     if np.any(valid_mask):
-        print(f"  VARI range: [{vari[valid_mask].min():.3f}, {vari[valid_mask].max():.3f}]")
-        print(f"  VARI mean: {vari[valid_mask].mean():.3f}")
-        
-        # Vegetation classification (similar thresholds as NDVI)
-        high_veg = np.sum(vari > 0.3)
-        moderate_veg = np.sum((vari > 0.1) & (vari <= 0.3))
-        low_veg = np.sum((vari > 0) & (vari <= 0.1))
-        non_veg = np.sum(vari < 0)
-        total_pixels = vari.size
-        
-        print(f"  High vegetation (>0.3): {100*high_veg/total_pixels:.1f}%")
-        print(f"  Moderate vegetation (0.1-0.3): {100*moderate_veg/total_pixels:.1f}%")
-        print(f"  Low vegetation (0-0.1): {100*low_veg/total_pixels:.1f}%")
-        print(f"  Non-vegetated (<0): {100*non_veg/total_pixels:.1f}%")
-    
-    return vari
+        scaler = MinMaxScaler(feature_range=(-1, 1))
+        # Reshape for scaler, scale only valid values
+        vari_valid = vari_filtered[valid_mask].reshape(-1, 1)
+        vari_scaled = scaler.fit_transform(vari_valid).flatten()
+        vari_rescaled[valid_mask] = vari_scaled
+        print(f"  VARI rescaled range: [{vari_scaled.min():.3f}, {vari_scaled.max():.3f}]")
+        print(f"  VARI rescaled mean: {vari_scaled.mean():.3f}")
+    return vari_rescaled
 
 
 def calculate_excess_green(rgb: np.ndarray) -> np.ndarray:
@@ -199,8 +209,7 @@ def calculate_excess_green(rgb: np.ndarray) -> np.ndarray:
         
     Returns:
         exg: Excess Green values (normalized to [0, 1])
-    """
-    print("Calculating ExG (Excess Green Index)...")
+    """    
     
     # Normalize RGB to [0, 1]
     rgb_norm = rgb.astype(np.float32) / 255.0
@@ -210,31 +219,21 @@ def calculate_excess_green(rgb: np.ndarray) -> np.ndarray:
     B = rgb_norm[:, :, 2]
     
     exg = 2 * G - R - B
-    
-    # Normalize to [-1, 1] range for consistency with NDVI and VARI
-    exg_min, exg_max = exg.min(), exg.max()
-    if exg_max > exg_min:
-        # Map [exg_min, exg_max] to [-1, 1]
-        exg = 2 * (exg - exg_min) / (exg_max - exg_min) - 1
-    else:
-        exg = np.full_like(exg, 0.0)
-    
-    print(f"  ExG range: [{exg.min():.3f}, {exg.max():.3f}]")
-    print(f"  ExG mean: {exg.mean():.3f}")
-    
-    # Vegetation classification for ExG (now in -1 to 1 scale like NDVI/VARI)
-    high_green = np.sum(exg > 0.3)
-    moderate_green = np.sum((exg > 0.1) & (exg <= 0.3))
-    low_green = np.sum((exg > 0) & (exg <= 0.1))
-    minimal_green = np.sum(exg <= 0)
-    total_pixels = exg.size
-    
-    print(f"  High green (>0.3): {100*high_green/total_pixels:.1f}%")
-    print(f"  Moderate green (0.1-0.3): {100*moderate_green/total_pixels:.1f}%")
-    print(f"  Low green (0-0.1): {100*low_green/total_pixels:.1f}%")
-    print(f"  Minimal green (<=0): {100*minimal_green/total_pixels:.1f}%")
-    
-    return exg
+
+    # Apply median filter to remove outliers    
+    exg_filtered = median_filter(exg, size=MEDIAN_SIZE)
+
+    # Rescale ExG to [-1, 1] using MinMaxScaler from sklearn    
+    valid_mask = np.isfinite(exg_filtered)
+    exg_rescaled = np.full_like(exg_filtered, np.nan, dtype=np.float32)
+    if np.any(valid_mask):
+        scaler = MinMaxScaler(feature_range=(-1, 1))
+        exg_valid = exg_filtered[valid_mask].reshape(-1, 1)
+        exg_scaled = scaler.fit_transform(exg_valid).flatten()
+        exg_rescaled[valid_mask] = exg_scaled
+        print(f"  ExG rescaled range: [{exg_scaled.min():.3f}, {exg_scaled.max():.3f}]")
+        print(f"  ExG rescaled mean: {exg_scaled.mean():.3f}")
+    return exg_rescaled
 
 
 def calculate_cwi(rgb: np.ndarray) -> np.ndarray:
@@ -254,78 +253,28 @@ def calculate_cwi(rgb: np.ndarray) -> np.ndarray:
         
     Returns:
         cwi: Color Water Index values (normalized to [-1, 1] range for consistency)
-    """
-    print("Calculating CWI (Color Water Index)...")
+    """    
     
-    R = rgb[:, :, 0].astype(np.float32) + 1e-6  # Add epsilon to avoid log(0)
-    B = rgb[:, :, 2].astype(np.float32) + 1e-6
+    R = rgb[:, :, 0].astype(np.float32) + EPSILON  # Add epsilon to avoid log(0)
+    B = rgb[:, :, 2].astype(np.float32) + EPSILON
     
     # Calculate CWI = log(Blue / Red)
     cwi = np.log(B / R)
-    
-    # Normalize to [-1, 1] range for consistency with other indices
-    cwi_min, cwi_max = cwi.min(), cwi.max()
-    if cwi_max > cwi_min:
-        cwi_normalized = 2 * (cwi - cwi_min) / (cwi_max - cwi_min) - 1
-    else:
-        cwi_normalized = np.full_like(cwi, 0.0)
-    
-    print(f"  CWI raw range: [{cwi.min():.3f}, {cwi.max():.3f}]")
-    print(f"  CWI normalized range: [{cwi_normalized.min():.3f}, {cwi_normalized.max():.3f}]")
-    print(f"  CWI normalized mean: {cwi_normalized.mean():.3f}")
-    
-    # Water classification (high CWI indicates water)
-    high_water = np.sum(cwi_normalized > 0.3)
-    moderate_water = np.sum((cwi_normalized > 0.1) & (cwi_normalized <= 0.3))
-    low_water = np.sum((cwi_normalized > 0) & (cwi_normalized <= 0.1))
-    non_water = np.sum(cwi_normalized <= 0)
-    total_pixels = cwi_normalized.size
-    
-    print(f"  Strong water signature (>0.3): {100*high_water/total_pixels:.1f}%")
-    print(f"  Moderate water signature (0.1-0.3): {100*moderate_water/total_pixels:.1f}%")
-    print(f"  Weak water signature (0-0.1): {100*low_water/total_pixels:.1f}%")
-    print(f"  Non-water (<=0): {100*non_water/total_pixels:.1f}%")
-    
-    return cwi_normalized
 
+    # Apply median filter to remove outliers    
+    cwi_filtered = median_filter(cwi, size=MEDIAN_SIZE)
 
-def calculate_automatic_water_thresholds(rgb: np.ndarray, 
-                                         vegetation_index: np.ndarray,
-                                         index_name: str = 'NDVI') -> Dict[str, float]:
-    """Automatically calculate water detection threshold using histogram analysis.
-    
-    Uses Otsu's method to determine optimal threshold for separating water from non-water
-    based on the vegetation index distribution.
-    
-    Args:
-        rgb: RGB image array (H, W, 3) - not used, kept for API compatibility
-        vegetation_index: Vegetation index array (NDVI, VARI, ExG, or CWI)
-        index_name: Name of the index for logging
-        
-    Returns:
-        Dictionary with key: 'index_threshold'
-    """
-    print(f"Calculating automatic water detection threshold using {index_name}...")
-    
-    # Index threshold: Use Otsu's method on the vegetation index
-    # This finds the optimal separation between vegetation and water
-    try:
-        from skimage.filters import threshold_otsu
-        # Normalize index to 0-255 range for Otsu
-        index_normalized = ((vegetation_index + 1) * 127.5).astype(np.uint8)
-        otsu_val = threshold_otsu(index_normalized)
-        # Convert back to original scale
-        index_threshold = float((otsu_val / 127.5) - 1)
-    except ImportError:
-        # Fallback: use mean - 0.5*std (captures lower tail of distribution)
-        index_threshold = float(np.mean(vegetation_index) - 0.5 * np.std(vegetation_index))
-    
-    print(f"  Calculated threshold:")
-    print(f"    {index_name} threshold: {index_threshold:.3f} (Otsu's method)")
-    
-    return {
-        'index_threshold': index_threshold
-    }
+    # Rescale CWI to [-1, 1] using MinMaxScaler from sklearn    
+    valid_mask = np.isfinite(cwi_filtered)
+    cwi_rescaled = np.full_like(cwi_filtered, np.nan, dtype=np.float32)
+    if np.any(valid_mask):
+        scaler = MinMaxScaler(feature_range=(-1, 1))
+        cwi_valid = cwi_filtered[valid_mask].reshape(-1, 1)
+        cwi_scaled = scaler.fit_transform(cwi_valid).flatten()
+        cwi_rescaled[valid_mask] = cwi_scaled
+        print(f"  CWI rescaled range: [{cwi_scaled.min():.3f}, {cwi_scaled.max():.3f}]")
+        print(f"  CWI rescaled mean: {cwi_scaled.mean():.3f}")
+    return cwi_rescaled
 
 
 def detect_water_simple(rgb: np.ndarray, 
@@ -346,8 +295,7 @@ def detect_water_simple(rgb: np.ndarray,
         
     Returns:
         water_mask: Binary mask where True indicates water
-    """
-    print(f"Detecting water using {index_name} threshold...")
+    """    
     
     # Water detection using only index criterion
     # CWI uses inverted logic (high = water), others use low = water
@@ -400,8 +348,7 @@ def postprocess_water_mask(water_mask: np.ndarray,
         
     Returns:
         Processed water mask
-    """
-    from scipy.ndimage import median_filter, binary_opening, binary_closing
+    """    
     
     processed_mask = water_mask.copy()
     pixels_before = np.sum(processed_mask)
@@ -459,128 +406,6 @@ def postprocess_water_mask(water_mask: np.ndarray,
     return processed_mask
 
 
-def detect_water_sam2(rgb: np.ndarray, 
-                      checkpoint: Optional[str] = None,
-                      model_cfg: str = "sam2_hiera_l.yaml",
-                      point_prompts: Optional[List[Tuple[int, int]]] = None,
-                      box_prompts: Optional[List[Tuple[int, int, int, int]]] = None,
-                      device: str = "cpu") -> np.ndarray:
-    """Detect water using SAM2 (Segment Anything Model 2).
-    
-    SAM2 is a powerful segmentation model that can identify water bodies
-    with optional user prompts for guidance.
-    
-    Args:
-        rgb: RGB image array (H, W, 3)
-        checkpoint: Path to SAM2 checkpoint file
-        model_cfg: SAM2 model configuration
-        point_prompts: List of (x, y) points indicating water locations
-        box_prompts: List of (x1, y1, x2, y2) boxes containing water
-        device: Device to run model on ('cpu' or 'cuda'). Default: 'cpu'
-        
-    Returns:
-        water_mask: Binary mask where True indicates water
-    """
-    print(f"Detecting water using SAM2 on {device.upper()}...")
-    
-    try:
-        from sam2.build_sam import build_sam2
-        from sam2.sam2_image_predictor import SAM2ImagePredictor
-    except ImportError:
-        print("  WARNING: SAM2 not installed. Falling back to simple water detection.")
-        print("  Install SAM2: pip install git+https://github.com/facebookresearch/sam2.git")
-        return np.zeros(rgb.shape[:2], dtype=bool)
-    
-    if checkpoint is None:
-        print("  WARNING: No SAM2 checkpoint provided. Please download from:")
-        print("  https://github.com/facebookresearch/sam2")
-        return np.zeros(rgb.shape[:2], dtype=bool)
-    
-    # Build SAM2 model on specified device
-    sam2_model = build_sam2(model_cfg, checkpoint, device=device)
-    predictor = SAM2ImagePredictor(sam2_model)
-    
-    # Set image
-    predictor.set_image(rgb)
-    
-    # Prepare prompts
-    input_points = None
-    input_labels = None
-    input_boxes = None
-    
-    if point_prompts is not None:
-        input_points = np.array(point_prompts)
-        input_labels = np.ones(len(point_prompts))  # 1 = foreground (water)
-        print(f"  Using {len(point_prompts)} point prompts")
-    
-    if box_prompts is not None:
-        input_boxes = np.array(box_prompts)
-        print(f"  Using {len(box_prompts)} box prompts")
-    
-    # Predict masks
-    masks, scores, logits = predictor.predict(
-        point_coords=input_points,
-        point_labels=input_labels,
-        box=input_boxes,
-        multimask_output=True
-    )
-    
-    # Select best mask based on score
-    best_mask_idx = np.argmax(scores)
-    water_mask = masks[best_mask_idx].astype(bool)
-    
-    water_pixels = np.sum(water_mask)
-    total_pixels = water_mask.size
-    
-    print(f"  Water pixels detected: {water_pixels:,} ({100*water_pixels/total_pixels:.2f}%)")
-    print(f"  Confidence score: {scores[best_mask_idx]:.3f}")
-    
-    return water_mask
-
-
-def combine_vegetation_indices(ndvi: np.ndarray, 
-                                vari: np.ndarray,
-                                exg: Optional[np.ndarray] = None,
-                                weights: Tuple[float, float, float] = (0.4, 0.3, 0.3)) -> np.ndarray:
-    """Combine multiple vegetation indices into a single quality metric.
-    
-    Args:
-        ndvi: NDVI array [-1, 1]
-        vari: VARI array [-1, 1]
-        exg: Excess Green array [0, 1] (optional)
-        weights: (ndvi_weight, vari_weight, exg_weight) - must sum to 1.0
-        
-    Returns:
-        vegetation_quality: Combined vegetation index [0, 1] where:
-                           1.0 = optimal vegetation
-                           0.0 = no vegetation
-    """
-    print("Combining vegetation indices...")
-    
-    # Normalize NDVI and VARI to [0, 1] range
-    ndvi_norm = (ndvi + 1) / 2.0  # [-1, 1] -> [0, 1]
-    vari_norm = (vari + 1) / 2.0  # [-1, 1] -> [0, 1]
-    
-    if exg is not None:
-        # Weighted combination of all three
-        vegetation_quality = (weights[0] * ndvi_norm + 
-                            weights[1] * vari_norm + 
-                            weights[2] * exg)
-    else:
-        # Only NDVI and VARI
-        w_ndvi = weights[0] / (weights[0] + weights[1])
-        w_vari = weights[1] / (weights[0] + weights[1])
-        vegetation_quality = w_ndvi * ndvi_norm + w_vari * vari_norm
-    
-    # Ensure [0, 1] range
-    vegetation_quality = np.clip(vegetation_quality, 0, 1)
-    
-    print(f"  Combined vegetation quality range: [{vegetation_quality.min():.3f}, {vegetation_quality.max():.3f}]")
-    print(f"  Mean quality: {vegetation_quality.mean():.3f}")
-    
-    return vegetation_quality
-
-
 def apply_water_mask(vegetation_quality: np.ndarray, 
                      water_mask: np.ndarray,
                      water_depth_estimate: Optional[np.ndarray] = None) -> np.ndarray:
@@ -595,8 +420,7 @@ def apply_water_mask(vegetation_quality: np.ndarray,
         combined_matrix: Combined matrix where:
                         [0, 1]: Land with vegetation quality
                         [-1, 0]: Water (optionally with depth info)
-    """
-    print("Applying water mask...")
+    """    
     
     combined_matrix = vegetation_quality.copy()
     
@@ -617,39 +441,6 @@ def apply_water_mask(vegetation_quality: np.ndarray,
     return combined_matrix
 
 
-def apply_shadow_correction(rgb: np.ndarray, method: str = 'histogram') -> np.ndarray:
-    """Correct for shadows in RGB image.
-    
-    Args:
-        rgb: RGB image array (H, W, 3)
-        method: 'histogram' or 'clahe'
-        
-    Returns:
-        rgb_corrected: Shadow-corrected RGB image
-    """
-    print(f"Applying shadow correction (method: {method})...")
-    
-    if method == 'histogram':
-        # Simple histogram equalization per channel
-        rgb_corrected = np.zeros_like(rgb)
-        for i in range(3):
-            rgb_corrected[:, :, i] = cv2.equalizeHist(rgb[:, :, i])
-    
-    elif method == 'clahe':
-        # Contrast Limited Adaptive Histogram Equalization
-        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-        rgb_corrected = np.zeros_like(rgb)
-        for i in range(3):
-            rgb_corrected[:, :, i] = clahe.apply(rgb[:, :, i])
-    
-    else:
-        raise ValueError(f"Unknown shadow correction method: {method}")
-    
-    print(f"  Shadow correction applied")
-    
-    return rgb_corrected
-
-
 def resize_to_target_resolution(matrix: np.ndarray, 
                                 target_shape: Tuple[int, int],
                                 method: str = 'bilinear') -> np.ndarray:
@@ -662,8 +453,7 @@ def resize_to_target_resolution(matrix: np.ndarray,
         
     Returns:
         resized_matrix: Resized matrix
-    """
-    print(f"Resizing from {matrix.shape} to {target_shape}...")
+    """    
     
     if method == 'bilinear':
         interpolation = cv2.INTER_LINEAR
@@ -730,160 +520,3 @@ def save_rgb_outputs(output_dir: str,
         json.dump(metadata, f, indent=2)
     
     print(f"\n✓ Saved to {output_dir}:")
-    print(f"  - vegetation_matrix.npy: {combined_matrix.shape}")
-    print(f"  - ndvi.npy: {ndvi.shape}")
-    print(f"  - vari.npy: {vari.shape}")
-    print(f"  - water_mask.npy: {water_mask.shape}")
-    print(f"  - processing_metadata.json")
-
-
-def visualize_results(rgb: np.ndarray,
-                     ndvi: np.ndarray,
-                     vari: np.ndarray,
-                     water_mask: np.ndarray,
-                     combined_matrix: np.ndarray,
-                     save_path: Optional[str] = None) -> None:
-    """Create comprehensive visualization of processing results.
-    
-    Args:
-        rgb: Original RGB image
-        ndvi: NDVI array
-        vari: VARI array
-        water_mask: Water mask
-        combined_matrix: Final combined matrix
-        save_path: Optional path to save figure
-    """
-    fig, axes = plt.subplots(2, 3, figsize=(18, 12))
-    
-    # Original RGB
-    axes[0, 0].imshow(rgb)
-    axes[0, 0].set_title('Original RGB Image', fontsize=14, fontweight='bold')
-    axes[0, 0].axis('off')
-    
-    # NDVI
-    im1 = axes[0, 1].imshow(ndvi, cmap='RdYlGn', vmin=-1, vmax=1)
-    axes[0, 1].set_title('NDVI (Vegetation Index)', fontsize=14, fontweight='bold')
-    axes[0, 1].axis('off')
-    plt.colorbar(im1, ax=axes[0, 1], fraction=0.046, pad=0.04)
-    
-    # VARI
-    im2 = axes[0, 2].imshow(vari, cmap='RdYlGn', vmin=-1, vmax=1)
-    axes[0, 2].set_title('VARI (Atmospheric Resistant)', fontsize=14, fontweight='bold')
-    axes[0, 2].axis('off')
-    plt.colorbar(im2, ax=axes[0, 2], fraction=0.046, pad=0.04)
-    
-    # Water mask
-    axes[1, 0].imshow(water_mask, cmap='Blues')
-    axes[1, 0].set_title('Water Detection Mask', fontsize=14, fontweight='bold')
-    axes[1, 0].axis('off')
-    
-    # RGB with water overlay
-    rgb_overlay = rgb.copy()
-    rgb_overlay[water_mask] = [0, 100, 255]  # Blue overlay for water
-    axes[1, 1].imshow(rgb_overlay)
-    axes[1, 1].set_title('RGB + Water Overlay', fontsize=14, fontweight='bold')
-    axes[1, 1].axis('off')
-    
-    # Final combined matrix
-    im3 = axes[1, 2].imshow(combined_matrix, cmap='BrBG', vmin=-1, vmax=1)
-    axes[1, 2].set_title('Final Vegetation/Water Matrix', fontsize=14, fontweight='bold')
-    axes[1, 2].axis('off')
-    cbar = plt.colorbar(im3, ax=axes[1, 2], fraction=0.046, pad=0.04)
-    cbar.set_label('Vegetation Quality (Land: 0-1, Water: -1-0)', fontsize=10)
-    
-    plt.tight_layout()
-    
-    if save_path:
-        plt.savefig(save_path, dpi=150, bbox_inches='tight')
-        print(f"  Visualization saved to: {save_path}")
-    
-    plt.show()
-
-
-def process_rgb_image_complete(image_path: str,
-                               output_dir: str,
-                               target_size: Optional[Tuple[int, int]] = None,
-                               shadow_correction: bool = True,
-                               use_sam2: bool = False,
-                               sam2_checkpoint: Optional[str] = None,
-                               vegetation_weights: Tuple[float, float, float] = (0.4, 0.4, 0.2),
-                               visualize: bool = True) -> Dict:
-    """Complete RGB image processing pipeline.
-    
-    Args:
-        image_path: Path to input RGB image
-        output_dir: Directory to save outputs
-        target_size: Optional (width, height) to resize
-        shadow_correction: Apply shadow correction
-        use_sam2: Use SAM2 for water detection
-        sam2_checkpoint: Path to SAM2 checkpoint
-        vegetation_weights: (ndvi, vari, exg) weights
-        visualize: Show visualization
-        
-    Returns:
-        results: Dictionary with all processing results
-    """
-    print("="*80)
-    print("RGB IMAGE PROCESSING PIPELINE")
-    print("="*80)
-    
-    # Step 1: Load image
-    rgb, metadata = load_rgb_image(image_path, target_size)
-    rgb_original = rgb.copy()
-    
-    # Step 2: Shadow correction (optional)
-    if shadow_correction:
-        rgb = apply_shadow_correction(rgb, method='clahe')
-    
-    # Step 3: Calculate vegetation indices
-    ndvi = calculate_ndvi(rgb, method='visible')
-    vari = calculate_vari(rgb)
-    exg = calculate_excess_green(rgb)
-    
-    # Step 4: Detect water
-    if use_sam2 and sam2_checkpoint:
-        water_mask = detect_water_sam2(rgb, checkpoint=sam2_checkpoint)
-    else:
-        water_mask = detect_water_simple(rgb, ndvi)
-    
-    # Step 5: Combine vegetation indices
-    vegetation_quality = combine_vegetation_indices(ndvi, vari, exg, 
-                                                   weights=vegetation_weights)
-    
-    # Step 6: Apply water mask
-    combined_matrix = apply_water_mask(vegetation_quality, water_mask)
-    
-    # Step 7: Save outputs
-    metadata['processing_parameters'] = {
-        'shadow_correction': shadow_correction,
-        'use_sam2': use_sam2,
-        'vegetation_weights': vegetation_weights,
-        'target_size': target_size
-    }
-    
-    save_rgb_outputs(output_dir, combined_matrix, ndvi, vari, water_mask, 
-                    metadata, rgb_original)
-    
-    # Step 8: Visualize (optional)
-    if visualize:
-        viz_path = f"{output_dir}/visualization.png"
-        visualize_results(rgb_original, ndvi, vari, water_mask, combined_matrix, 
-                         save_path=viz_path)
-    
-    # Prepare results
-    results = {
-        'combined_matrix': combined_matrix,
-        'ndvi': ndvi,
-        'vari': vari,
-        'exg': exg,
-        'water_mask': water_mask,
-        'vegetation_quality': vegetation_quality,
-        'metadata': metadata,
-        'output_dir': output_dir
-    }
-    
-    print("\n" + "="*80)
-    print("✓ PROCESSING COMPLETE")
-    print("="*80)
-    
-    return results

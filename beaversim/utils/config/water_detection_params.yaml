@@ -1,23 +1,34 @@
 source_path: beaversim/utils/example_datasets/RUMNEY_MARSH/A2
 output_path: beaversim/utils/output/RumneyMarsh_Boston/RGB/A2
 pictures:
-  A2_01:
-    image: A2_06132018.PNG
+  general:
     target_size: None
-    shadow_corrextion: True
     use_sam2: False
+    baseline: median
+    shadow_correction: True        
     vegetation_index: VARI
     water_index: ExG
-    threshold: -0.44     
-    opening_sizes: [10, 15]
-    closing_sizes: [10]
+    threshold: -0.28     
+    opening_sizes: [10, 20]
+    median_sizes: []
+    closing_sizes: [20, 10]
+  A2_01:    
+    image: A2_06052018.PNG
   A2_02:
+    image: A2_06132018.PNG
+  A2_03:
+    image: A2_06212018.PNG
+  A2_04:
+    image: A2_06282018.PNG
+  A2_05:
+    image: A2_07062018.PNG
+  A2_06:
     image: A2_07172018.PNG
-    target_size: None
-    shadow_corrextion: True
-    use_sam2: False
-    vegetation_index: VARI
-    water_index: ExG
-    threshold: -0.01 
-    opening_sizes: [10, 15]
-    closing_sizes: [10, 10]
+  A2_07:
+    image: A2_07262018.PNG
+  A2_08:
+    image: A2_08062018.PNG
+  A2_09:
+    image: A2_08142018.PNG
+  A2_10:
+    image: A2_08222018.PNG
