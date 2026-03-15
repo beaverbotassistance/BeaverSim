@@ -25,7 +25,7 @@ from scipy.ndimage import median_filter, binary_opening, binary_closing
 INVALID_MARKER = -1.0  # Marker for invalid/no-data pixels
 WATER_MARKER = -0.5    # Marker for water pixels
 EPSILON = 1e-6         # Small value to avoid division by zero
-MEDIAN_SIZE = 10       # Kernel size for median filtering to remove outliers
+MEDIAN_SIZE = 1        # Kernel size for median filtering to remove outliers
 
 
 def load_rgb_image(image_path: str, target_size: Optional[Tuple[int, int]] = None) -> Tuple[np.ndarray, Dict]:
@@ -100,7 +100,7 @@ def apply_shadow_correction(rgb: np.ndarray, method: str = 'histogram') -> np.nd
     return rgb_corrected
 
 
-def calculate_ndvi(rgb: np.ndarray, method: str = 'visible') -> np.ndarray:
+def calculate_ndvi(rgb: np.ndarray, method: str = 'visible', remove_mean: bool = False, mask: np.ndarray = None) -> np.ndarray:
     """Calculate Normalized Difference Vegetation Index from RGB image.
     
     NDVI traditionally uses Near-Infrared (NIR) and Red bands:
@@ -112,15 +112,22 @@ def calculate_ndvi(rgb: np.ndarray, method: str = 'visible') -> np.ndarray:
     Args:
         rgb: RGB image array (H, W, 3) with values [0, 255]
         method: 'visible' for RGB approximation, 'nir' for true NDVI (requires NIR band)
-        
+        remove_mean: Whether to remove the mean from the result
+        mask: Optional boolean mask to apply to the result
     Returns:
         ndvi: NDVI values in range [-1, 1] where:
               > 0.3: Dense vegetation
               0.1-0.3: Sparse vegetation  
               < 0.1: Non-vegetated (water, soil, urban)
               < 0: Water, clouds, snow
-    """    
+    """  
     
+    # remove masked pixels (if mask provided)
+    if mask is not None:
+        rgb = rgb.astype(np.float32)
+        rgb[mask] = np.nan
+    
+            
     # Extract channels (convert to float to avoid overflow)
     R = rgb[:, :, 0].astype(np.float32)
     G = rgb[:, :, 1].astype(np.float32)
@@ -133,72 +140,46 @@ def calculate_ndvi(rgb: np.ndarray, method: str = 'visible') -> np.ndarray:
     else:
         raise ValueError(f"Unknown NDVI method: {method}. Use 'visible'.")
     
-    # Avoid division by zero    
-    ndvi = np.divide(numerator, denominator + EPSILON, 
-                     out=np.zeros_like(numerator), 
-                     where=(denominator + EPSILON) != 0)        
+    # valid mask
+    valid_mask = np.isfinite(numerator) & ~np.isnan(numerator) \
+                & np.isfinite(denominator) & ~np.isnan(denominator)
+    
+    # Avoid division by zero  
+    ndvi = np.full_like(numerator, np.nan, dtype=np.float32)
+    ndvi[valid_mask] = np.divide(numerator[valid_mask], denominator[valid_mask] + EPSILON, 
+                        out=np.zeros_like(numerator[valid_mask]), 
+                        where=(denominator[valid_mask] + EPSILON) != 0)        
+    
+    if remove_mean:        
+        # Normalize NDVI to [0, 1]
+        ndvi_norm = np.full_like(ndvi, np.nan, dtype=np.float32)
+        ndvi_min = np.nanmin(ndvi[valid_mask]) if np.any(valid_mask) else 0.0
+        ndvi_max = np.nanmax(ndvi[valid_mask]) if np.any(valid_mask) else 1.0
+        if ndvi_max > ndvi_min:
+            ndvi_norm[valid_mask] = (ndvi[valid_mask] - ndvi_min) / (ndvi_max - ndvi_min)
+        else:
+            ndvi_norm[valid_mask] = ndvi[valid_mask]
 
-    # Apply median filter to remove outliers    
-    ndvi_filtered = median_filter(ndvi, size=MEDIAN_SIZE)
+        # Remove mean and shift to 0.5
+        mean_val = ndvi_norm[valid_mask].mean() if np.any(valid_mask) else 0.0
+        ndvi_rescaled = np.full_like(ndvi_norm, np.nan, dtype=np.float32)
+        ndvi_rescaled[valid_mask] = ndvi_norm[valid_mask] - mean_val + 0.5
 
-    # Rescale NDVI to [-1, 1] using MinMaxScaler from sklearn    
-    valid_mask = np.isfinite(ndvi_filtered)
-    ndvi_rescaled = np.full_like(ndvi_filtered, np.nan, dtype=np.float32)
-    if np.any(valid_mask):
-        scaler = MinMaxScaler(feature_range=(-1, 1))
-        ndvi_valid = ndvi_filtered[valid_mask].reshape(-1, 1)
-        ndvi_scaled = scaler.fit_transform(ndvi_valid).flatten()
-        ndvi_rescaled[valid_mask] = ndvi_scaled
-        print(f"  NDVI rescaled range: [{ndvi_scaled.min():.3f}, {ndvi_scaled.max():.3f}]")
-        print(f"  NDVI rescaled mean: {ndvi_scaled.mean():.3f}")
+        print(f"  NDVI rescaled range: [{ndvi_rescaled[valid_mask].min():.3f}, {ndvi_rescaled[valid_mask].max():.3f}]")
+        print(f"  NDVI rescaled mean: {ndvi_rescaled[valid_mask].mean():.3f}")
+    else:
+        # Rescale NDVI to [-1, 1] using MinMaxScaler from sklearn            
+        ndvi_rescaled = np.full_like(ndvi, np.nan, dtype=np.float32)
+        if np.any(valid_mask):
+            scaler = MinMaxScaler(feature_range=(0, 1))
+            ndvi_valid = ndvi[valid_mask].reshape(-1, 1)
+            ndvi_scaled = scaler.fit_transform(ndvi_valid).flatten()
+            ndvi_rescaled[valid_mask] = ndvi_scaled
+            print(f"  NDVI rescaled range: [{ndvi_scaled.min():.3f}, {ndvi_scaled.max():.3f}]")
+            print(f"  NDVI rescaled mean: {ndvi_scaled.mean():.3f}")
     return ndvi_rescaled
 
-
-def calculate_vari(rgb: np.ndarray) -> np.ndarray:
-    """Calculate Visible Atmospherically Resistant Index.
-    
-    VARI is designed to be more robust to atmospheric effects and lighting variations:
-        VARI = (Green - Red) / (Green + Red - Blue)
-    
-    Args:
-        rgb: RGB image array (H, W, 3) with values [0, 255]
-        
-    Returns:
-        vari: VARI values typically in range [-1, 1] where:
-              Higher values indicate more vegetation
-              More resistant to shadows than NDVI
-    """    
-    
-    # Extract channels
-    R = rgb[:, :, 0].astype(np.float32)
-    G = rgb[:, :, 1].astype(np.float32)
-    B = rgb[:, :, 2].astype(np.float32)
-
-    numerator = G - R
-    denominator = G + R - B
-
-    # Mask out small denominators to avoid extreme values    
-    # vari = np.clip(numerator / denominator, -2, 2)
-    vari = numerator / (denominator + EPSILON)  # Add epsilon to avoid division by zero
-
-    # Apply median filter to remove outliers    
-    vari_filtered = median_filter(vari, size=MEDIAN_SIZE)
-
-    # Rescale VARI to [-1, 1] using MinMaxScaler from sklearn    
-    valid_mask = np.isfinite(vari_filtered)
-    vari_rescaled = np.full_like(vari_filtered, np.nan, dtype=np.float32)
-    if np.any(valid_mask):
-        scaler = MinMaxScaler(feature_range=(-1, 1))
-        # Reshape for scaler, scale only valid values
-        vari_valid = vari_filtered[valid_mask].reshape(-1, 1)
-        vari_scaled = scaler.fit_transform(vari_valid).flatten()
-        vari_rescaled[valid_mask] = vari_scaled
-        print(f"  VARI rescaled range: [{vari_scaled.min():.3f}, {vari_scaled.max():.3f}]")
-        print(f"  VARI rescaled mean: {vari_scaled.mean():.3f}")
-    return vari_rescaled
-
-
-def calculate_excess_green(rgb: np.ndarray) -> np.ndarray:
+def calculate_excess_green(rgb: np.ndarray, remove_mean: bool = False, mask: np.ndarray = None) -> np.ndarray:
     """Calculate Excess Green Index (ExG) for vegetation detection.
     
     ExG emphasizes green vegetation and is useful for separating plants from soil:
@@ -206,10 +187,16 @@ def calculate_excess_green(rgb: np.ndarray) -> np.ndarray:
     
     Args:
         rgb: RGB image array (H, W, 3) with values [0, 255]
-        
+        remove_mean: Whether to remove the mean from the result
+        mask: Optional boolean mask to apply to the result
     Returns:
         exg: Excess Green values (normalized to [0, 1])
-    """    
+    """  
+    
+    # remove masked pixels (if mask provided)  
+    if mask is not None:
+        rgb = rgb.astype(np.float32)
+        rgb[mask] = np.nan
     
     # Normalize RGB to [0, 1]
     rgb_norm = rgb.astype(np.float32) / 255.0
@@ -218,25 +205,43 @@ def calculate_excess_green(rgb: np.ndarray) -> np.ndarray:
     G = rgb_norm[:, :, 1]
     B = rgb_norm[:, :, 2]
     
-    exg = 2 * G - R - B
+    index = 2 * G - R - B    
 
-    # Apply median filter to remove outliers    
-    exg_filtered = median_filter(exg, size=MEDIAN_SIZE)
+    valid_mask = np.isfinite(index) & ~np.isnan(index)
+    exg = np.full_like(index, np.nan, dtype=np.float32)
+    exg[valid_mask] = index[valid_mask]
 
-    # Rescale ExG to [-1, 1] using MinMaxScaler from sklearn    
-    valid_mask = np.isfinite(exg_filtered)
-    exg_rescaled = np.full_like(exg_filtered, np.nan, dtype=np.float32)
-    if np.any(valid_mask):
-        scaler = MinMaxScaler(feature_range=(-1, 1))
-        exg_valid = exg_filtered[valid_mask].reshape(-1, 1)
-        exg_scaled = scaler.fit_transform(exg_valid).flatten()
-        exg_rescaled[valid_mask] = exg_scaled
-        print(f"  ExG rescaled range: [{exg_scaled.min():.3f}, {exg_scaled.max():.3f}]")
-        print(f"  ExG rescaled mean: {exg_scaled.mean():.3f}")
-    return exg_rescaled
+    if remove_mean:        
+        # Normalize VARI to [0, 1]
+        exg_norm = np.full_like(index, np.nan, dtype=np.float32)
+        exg_min = np.nanmin(index[valid_mask]) if np.any(valid_mask) else 0.0
+        exg_max = np.nanmax(index[valid_mask]) if np.any(valid_mask) else 1.0
+        if exg_max > exg_min:
+            exg_norm[valid_mask] = (index[valid_mask] - exg_min) / (exg_max - exg_min)
+        else:
+            exg_norm[valid_mask] = exg[valid_mask]
+
+        # Remove mean and shift to 0.5
+        mean_val = exg_norm[valid_mask].mean() if np.any(valid_mask) else 0.0
+        exg = np.full_like(exg_norm, np.nan, dtype=np.float32)
+        exg[valid_mask] = exg_norm[valid_mask] - mean_val + 0.5
+
+        print(f"  ExG rescaled range: [{exg[valid_mask].min():.3f}, {exg[valid_mask].max():.3f}]")
+        print(f"  ExG rescaled mean: {exg[valid_mask].mean():.3f}")
+    else:
+        # Rescale ExG to [-1, 1] using MinMaxScaler from sklearn            
+        exg = np.full_like(index, np.nan, dtype=np.float32)
+        if np.any(valid_mask):
+            scaler = MinMaxScaler(feature_range=(0, 1))
+            exg_valid = index[valid_mask].reshape(-1, 1)
+            exg_scaled = scaler.fit_transform(exg_valid).flatten()
+            exg[valid_mask] = exg_scaled
+            print(f"  ExG rescaled range: [{exg_scaled.min():.3f}, {exg_scaled.max():.3f}]")
+            print(f"  ExG rescaled mean: {exg_scaled.mean():.3f}")
+    return exg
 
 
-def calculate_cwi(rgb: np.ndarray) -> np.ndarray:
+def calculate_cwi(rgb: np.ndarray, remove_mean: bool = False, mask: np.ndarray = None) -> np.ndarray:
     """Calculate Color Water Index (CWI) for direct water detection.
     
     CWI uses the log-ratio of blue to red channels to highlight water's spectral signature.
@@ -250,32 +255,55 @@ def calculate_cwi(rgb: np.ndarray) -> np.ndarray:
     
     Args:
         rgb: RGB image array (H, W, 3) with values [0, 255]
-        
+        remove_mean: Whether to remove the mean from the result
+        mask: Optional boolean mask to apply to the result
     Returns:
         cwi: Color Water Index values (normalized to [-1, 1] range for consistency)
     """    
     
+    # remove masked pixels (if mask provided)
+    if mask is not None:
+        rgb = rgb.astype(np.float32)
+        rgb[mask] = np.nan
+
     R = rgb[:, :, 0].astype(np.float32) + EPSILON  # Add epsilon to avoid log(0)
     B = rgb[:, :, 2].astype(np.float32) + EPSILON
     
     # Calculate CWI = log(Blue / Red)
-    cwi = np.log(B / R)
+    index = np.log(B / R)
+        
+    valid_mask = np.isfinite(index) & ~np.isnan(index)
+    cwi = np.full_like(index, np.nan, dtype=np.float32)
+    cwi[valid_mask] = index[valid_mask]
+        
+    if remove_mean:        
+        # Normalize CWI to [0, 1]
+        cwi_norm = np.full_like(index, np.nan, dtype=np.float32)
+        cwi_min = np.nanmin(index[valid_mask]) if np.any(valid_mask) else 0.0
+        cwi_max = np.nanmax(index[valid_mask]) if np.any(valid_mask) else 1.0
+        if cwi_max > cwi_min:
+            cwi_norm[valid_mask] = (index[valid_mask] - cwi_min) / (cwi_max - cwi_min)
+        else:
+            cwi_norm[valid_mask] = cwi[valid_mask]
 
-    # Apply median filter to remove outliers    
-    cwi_filtered = median_filter(cwi, size=MEDIAN_SIZE)
+        # Remove mean and shift to 0.5
+        mean_val = cwi_norm[valid_mask].mean() if np.any(valid_mask) else 0.0
+        cwi_rescaled = np.full_like(cwi_norm, np.nan, dtype=np.float32)
+        cwi_rescaled[valid_mask] = cwi_norm[valid_mask] - mean_val + 0.5
 
-    # Rescale CWI to [-1, 1] using MinMaxScaler from sklearn    
-    valid_mask = np.isfinite(cwi_filtered)
-    cwi_rescaled = np.full_like(cwi_filtered, np.nan, dtype=np.float32)
-    if np.any(valid_mask):
-        scaler = MinMaxScaler(feature_range=(-1, 1))
-        cwi_valid = cwi_filtered[valid_mask].reshape(-1, 1)
-        cwi_scaled = scaler.fit_transform(cwi_valid).flatten()
-        cwi_rescaled[valid_mask] = cwi_scaled
-        print(f"  CWI rescaled range: [{cwi_scaled.min():.3f}, {cwi_scaled.max():.3f}]")
-        print(f"  CWI rescaled mean: {cwi_scaled.mean():.3f}")
+        print(f"  CWI rescaled range: [{cwi_rescaled[valid_mask].min():.3f}, {cwi_rescaled[valid_mask].max():.3f}]")
+        print(f"  CWI rescaled mean: {cwi_rescaled[valid_mask].mean():.3f}")
+    else:
+        # Rescale CWI to [-1, 1] using MinMaxScaler from sklearn            
+        cwi_rescaled = np.full_like(index, np.nan, dtype=np.float32)
+        if np.any(valid_mask):
+            scaler = MinMaxScaler(feature_range=(0, 1))
+            cwi_valid = index[valid_mask].reshape(-1, 1)
+            cwi_scaled = scaler.fit_transform(cwi_valid).flatten()
+            cwi_rescaled[valid_mask] = cwi_scaled
+            print(f"  CWI rescaled range: [{cwi_scaled.min():.3f}, {cwi_scaled.max():.3f}]")
+            print(f"  CWI rescaled mean: {cwi_scaled.mean():.3f}")
     return cwi_rescaled
-
 
 def detect_water_simple(rgb: np.ndarray, 
                         vegetation_index: np.ndarray,
