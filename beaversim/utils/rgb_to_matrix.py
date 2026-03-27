@@ -100,7 +100,7 @@ def apply_shadow_correction(rgb: np.ndarray, method: str = 'histogram') -> np.nd
     return rgb_corrected
 
 
-def calculate_ndvi(rgb: np.ndarray, method: str = 'visible', remove_mean: bool = False, mask: np.ndarray = None) -> np.ndarray:
+def calculate_ndvi(rgb: np.ndarray, method: str = 'visible', remove_mean: bool = False, mask: np.ndarray = None, mean: float = 0.5) -> np.ndarray:
     """Calculate Normalized Difference Vegetation Index from RGB image.
     
     NDVI traditionally uses Near-Infrared (NIR) and Red bands:
@@ -114,6 +114,7 @@ def calculate_ndvi(rgb: np.ndarray, method: str = 'visible', remove_mean: bool =
         method: 'visible' for RGB approximation, 'nir' for true NDVI (requires NIR band)
         remove_mean: Whether to remove the mean from the result
         mask: Optional boolean mask to apply to the result
+        mean: The mean value to remove if remove_mean is True
     Returns:
         ndvi: NDVI values in range [-1, 1] where:
               > 0.3: Dense vegetation
@@ -160,10 +161,10 @@ def calculate_ndvi(rgb: np.ndarray, method: str = 'visible', remove_mean: bool =
         else:
             ndvi_norm[valid_mask] = ndvi[valid_mask]
 
-        # Remove mean and shift to 0.5
+        # Remove mean and shift to mean value (default 0.5)
         mean_val = ndvi_norm[valid_mask].mean() if np.any(valid_mask) else 0.0
         ndvi_rescaled = np.full_like(ndvi_norm, np.nan, dtype=np.float32)
-        ndvi_rescaled[valid_mask] = ndvi_norm[valid_mask] - mean_val + 0.5
+        ndvi_rescaled[valid_mask] = ndvi_norm[valid_mask] - mean_val + mean
 
         print(f"  NDVI rescaled range: [{ndvi_rescaled[valid_mask].min():.3f}, {ndvi_rescaled[valid_mask].max():.3f}]")
         print(f"  NDVI rescaled mean: {ndvi_rescaled[valid_mask].mean():.3f}")
@@ -179,7 +180,7 @@ def calculate_ndvi(rgb: np.ndarray, method: str = 'visible', remove_mean: bool =
             print(f"  NDVI rescaled mean: {ndvi_scaled.mean():.3f}")
     return ndvi_rescaled
 
-def calculate_excess_green(rgb: np.ndarray, remove_mean: bool = False, mask: np.ndarray = None) -> np.ndarray:
+def calculate_excess_green(rgb: np.ndarray, remove_mean: bool = False, mask: np.ndarray = None, mean: float = 0.5) -> np.ndarray:
     """Calculate Excess Green Index (ExG) for vegetation detection.
     
     ExG emphasizes green vegetation and is useful for separating plants from soil:
@@ -189,6 +190,7 @@ def calculate_excess_green(rgb: np.ndarray, remove_mean: bool = False, mask: np.
         rgb: RGB image array (H, W, 3) with values [0, 255]
         remove_mean: Whether to remove the mean from the result
         mask: Optional boolean mask to apply to the result
+        mean: The mean value to remove if remove_mean is True
     Returns:
         exg: Excess Green values (normalized to [0, 1])
     """  
@@ -221,10 +223,10 @@ def calculate_excess_green(rgb: np.ndarray, remove_mean: bool = False, mask: np.
         else:
             exg_norm[valid_mask] = exg[valid_mask]
 
-        # Remove mean and shift to 0.5
+        # Remove mean and shift to specified mean value
         mean_val = exg_norm[valid_mask].mean() if np.any(valid_mask) else 0.0
         exg = np.full_like(exg_norm, np.nan, dtype=np.float32)
-        exg[valid_mask] = exg_norm[valid_mask] - mean_val + 0.5
+        exg[valid_mask] = exg_norm[valid_mask] - mean_val + mean
 
         print(f"  ExG rescaled range: [{exg[valid_mask].min():.3f}, {exg[valid_mask].max():.3f}]")
         print(f"  ExG rescaled mean: {exg[valid_mask].mean():.3f}")
@@ -241,7 +243,7 @@ def calculate_excess_green(rgb: np.ndarray, remove_mean: bool = False, mask: np.
     return exg
 
 
-def calculate_cwi(rgb: np.ndarray, remove_mean: bool = False, mask: np.ndarray = None) -> np.ndarray:
+def calculate_cwi(rgb: np.ndarray, remove_mean: bool = False, mask: np.ndarray = None, mean: float = 0.5) -> np.ndarray:
     """Calculate Color Water Index (CWI) for direct water detection.
     
     CWI uses the log-ratio of blue to red channels to highlight water's spectral signature.
@@ -257,6 +259,7 @@ def calculate_cwi(rgb: np.ndarray, remove_mean: bool = False, mask: np.ndarray =
         rgb: RGB image array (H, W, 3) with values [0, 255]
         remove_mean: Whether to remove the mean from the result
         mask: Optional boolean mask to apply to the result
+        mean: The mean value to remove if remove_mean is True
     Returns:
         cwi: Color Water Index values (normalized to [-1, 1] range for consistency)
     """    
@@ -286,10 +289,10 @@ def calculate_cwi(rgb: np.ndarray, remove_mean: bool = False, mask: np.ndarray =
         else:
             cwi_norm[valid_mask] = cwi[valid_mask]
 
-        # Remove mean and shift to 0.5
+        # Remove mean and shift to specified mean value
         mean_val = cwi_norm[valid_mask].mean() if np.any(valid_mask) else 0.0
         cwi_rescaled = np.full_like(cwi_norm, np.nan, dtype=np.float32)
-        cwi_rescaled[valid_mask] = cwi_norm[valid_mask] - mean_val + 0.5
+        cwi_rescaled[valid_mask] = cwi_norm[valid_mask] - mean_val + mean
 
         print(f"  CWI rescaled range: [{cwi_rescaled[valid_mask].min():.3f}, {cwi_rescaled[valid_mask].max():.3f}]")
         print(f"  CWI rescaled mean: {cwi_rescaled[valid_mask].mean():.3f}")

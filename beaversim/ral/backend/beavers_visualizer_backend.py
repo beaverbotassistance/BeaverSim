@@ -18,9 +18,17 @@ class BeaversVisualizerBackend(BaseBackend, Model):
     """Visualization backend for Beavers earth-moving simulation."""
     
     def __init__(self, **kwargs) -> None:
+        
+        super().__init__(**kwargs)        
+        
         # Simulation parameters
         self._kwargs = kwargs
         simulation = self._kwargs.get('simulation')
+        
+        # set seed
+        self._seed = simulation.get('seed')        
+        self.rng = self.np.random.default_rng(self._seed)
+        
         self._timedelta = simulation.get('timedelta')
         self._schedule_policy = simulation.get('schedule_policy')
         self._gui = simulation.get('gui')
@@ -36,7 +44,8 @@ class BeaversVisualizerBackend(BaseBackend, Model):
     def generate_agents(self, **kwargs) -> None:
         """Generate environment and agent instances."""
         # Generate environment (not added to scheduler, always steps first)
-        self._environment = EnvironmentVisualizerAgent(self._N_agents, self, **kwargs)
+        self._environment = EnvironmentVisualizerAgent(self._N_agents, self, **kwargs)                
+        self._environment.rng = self.np.random.default_rng(self._seed)
         
         # Initialize grid
         self._width = self._environment._width
@@ -45,7 +54,8 @@ class BeaversVisualizerBackend(BaseBackend, Model):
         
         # Generate beaver agents
         for i in range(self._N_agents):
-            agent = BeaversVisualizerAgent(i, self, **kwargs)
+            agent = BeaversVisualizerAgent(i, self, **kwargs)                        
+            agent.rng = self.np.random.default_rng(self._seed + i + 1)
             self._grid.place_agent(agent, (agent._position[0], agent._position[1]))
             self._schedule.add(agent)
     
@@ -322,11 +332,11 @@ class BeaversVisualizerBackend(BaseBackend, Model):
         if self._print:
             print(f"Environment map saved to: {file_path}")
             print(f"Original map shape (environment format): {self._environment._map.shape}")
-            print(f"Saved map shape (DEM format): {map_to_save.shape}")
+            print(f"Saved map shape: {map_to_save.shape}")
             print(f"Original value range: [{self._environment._map.min():.3f}, {self._environment._map.max():.3f}]")
             print(f"Saved value range: [{map_to_save.min():.3f}, {map_to_save.max():.3f}]")
             print(f"{normalization_info}")
-            print(f"Applied inverse coordinate transformation for DEM compatibility")
+            print(f"Applied inverse coordinate transformation for simulator compatibility")
         
 
 class BeaversVisualizerAgent(BeaversRobotBackend, Agent):

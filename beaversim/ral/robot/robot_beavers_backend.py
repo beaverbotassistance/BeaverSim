@@ -204,13 +204,20 @@ class BeaversRobotBackend(BaseRobotBackend):
         
         # Atomic implementation of the tasks (default)
         cond_atomic = True
+        
+        # extract a random number from uniform between 0,1
+        rand = self.random.uniform(0, 1)
+        # set epsilon-greedy 
+        epsilon = 0.75
+        # if the random number is less than epsilon, set cond_rand to True, else False
+        cond_rand = rand < epsilon
 
         # Decide the task based on current state
         if cond_atomic and \
             (self._load >= self.np.floor(self._maximum_load) or \
                 self._maximum_load <= 0.1 * self._maximum_load_init):
             self._current_task = 'store'                
-        elif cond_atomic and \
+        elif cond_atomic and cond_rand and \
             self._map_quality_measure_position > 1 * self._harvest_threshold[0] and \
             self._map_quality_measure_position < self._harvest_threshold[1] and \
             (not any(self._position[0] == pos[0] and self._position[1] == pos[1] for pos in self._home_base_position_store)):

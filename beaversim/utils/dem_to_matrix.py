@@ -107,7 +107,7 @@ def resample_dem_to_target_resolution(df, target_resolution_m=1.0, interpolation
         original_y_res = np.mean(np.diff(y_unique))
         print(f"Original resolution: {original_x_res:.2f}m x {original_y_res:.2f}m")
         
-        Z = df.pivot(index='y', columns='x', values='elevation').values
+        Z = df.pivot(index='y', columns='x', values='elevation').values.copy()
         Z[Z < 0.0] = INVALID_MARKER
         
         # Check if resampling is needed (with small tolerance for floating point comparison)
@@ -135,7 +135,7 @@ def resample_dem_to_target_resolution(df, target_resolution_m=1.0, interpolation
     print(f"Using {len(df_valid)} valid points out of {len(df)} total points")
     
     points = df_valid[['x', 'y']].values
-    values = df_valid['elevation'].values
+    values = df_valid['elevation'].values.copy()
     values[values < 0] = INVALID_MARKER
     
     Z_new = griddata(points, values, (X_new, Y_new), method=interpolation_method, fill_value=np.nan)
