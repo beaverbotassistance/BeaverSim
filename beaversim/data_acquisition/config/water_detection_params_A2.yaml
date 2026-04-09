@@ -1,0 +1,28 @@
+source_path: beaversim/utils/example_datasets/RUMNEY_MARSH/A2
+output_path: beaversim/utils/output/RumneyMarsh_Boston/RGB/A2/annotated
+baseline:
+  method: median
+  remove_mean: True
+  shadow_correction: True
+  water_index: ExG
+  threshold: 0.33     
+  opening_sizes: [8]
+  median_sizes: []
+  closing_sizes: [30]
+  resolution: 1
+  downsample_factor: 8
+pictures:
+  general:        
+    shadow_correction: True 
+    remove_mean: True       
+    vegetation_index: ExG
+  A2_05:
+    image: annotated/A2_07062018_annotated.PNG  
+  A2_07:
+    image: annotated/A2_07262018_annotated.PNG
+  A2_08:
+    image: annotated/A2_08062018_annotated.PNG
+  A2_09:
+    image: annotated/A2_08142018_annotated.PNG
+  A2_10:
+    image: annotated/A2_08222018_annotated.PNG

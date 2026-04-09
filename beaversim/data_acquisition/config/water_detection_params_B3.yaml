@@ -1,0 +1,22 @@
+source_path: beaversim/utils/example_datasets/RUMNEY_MARSH/B3
+output_path: beaversim/utils/output/RumneyMarsh_Boston/RGB/B3/annotated
+baseline:
+  method: median
+  remove_mean: True
+  shadow_correction: True
+  water_index: ExG
+  threshold: 0.43     
+  opening_sizes: [15]
+  median_sizes: []
+  closing_sizes: [30]
+pictures:
+  general:        
+    shadow_correction: True 
+    remove_mean: True       
+    vegetation_index: NDVI 
+  B3_01:    
+    image: annotated/B3_07042018_annotated.PNG
+  B3_02:
+    image: annotated/B3_07252018_annotated.PNG
+  B3_03:
+    image: annotated/B3_08082018_annotated.PNG
