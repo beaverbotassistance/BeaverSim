@@ -22,40 +22,44 @@ from sklearn.preprocessing import MinMaxScaler
 from scipy.ndimage import median_filter, binary_opening, binary_closing
 
 # Constants
-INVALID_MARKER = -1.0  # Marker for invalid/no-data pixels
-WATER_MARKER = -0.5    # Marker for water pixels
-EPSILON = 1e-6         # Small value to avoid division by zero
-MEDIAN_SIZE = 1        # Kernel size for median filtering to remove outliers
+# Marker for invalid/no-data pixels (used for both water and missing data)
+INVALID_MARKER = -1.0
+# Marker for water pixels
+WATER_MARKER = -0.5
+# Small value to avoid division by zero
+EPSILON = 1e-6
+# Kernel size for median filtering to remove outliers
+MEDIAN_SIZE = 1
 
 
 def load_rgb_image(image_path: str, target_size: Optional[Tuple[int, int]] = None) -> Tuple[np.ndarray, Dict]:
-    """Load RGB image and extract metadata.
-    
+    """
+    Load RGB image and extract metadata.
+
     Args:
-        image_path: Path to RGB image file
-        target_size: Optional (width, height) to resize image
-        
+        image_path (str): Path to RGB image file
+        target_size (Optional[Tuple[int, int]]): Optional (width, height) to resize image
+
     Returns:
-        rgb_array: RGB image as numpy array (H, W, 3) with values [0, 255]
-        metadata: Dictionary with image information
-    """    
-    
-    # Load image
+        rgb_array (np.ndarray): RGB image as numpy array (H, W, 3) with values [0, 255]
+        metadata (dict): Dictionary with image information
+    """
+    # TODO: Add error handling for file not found, unreadable image
     img = Image.open(image_path)
-    
-    # Convert to RGB if needed
-    if img.mode != 'RGB':        
+
+    # --- Convert to RGB if needed ---
+    if img.mode != 'RGB':
         img = img.convert('RGB')
-    
+
     original_size = img.size  # (width, height)
-    
-    # Resize if requested
-    if target_size is not None:        
+
+    # --- Resize if requested ---
+    if target_size is not None:
         img = img.resize(target_size, Image.Resampling.LANCZOS)
-    
-    # Convert to numpy array
+
+    # --- Convert to numpy array ---
     rgb_array = np.array(img)
-    
+
     metadata = {
         'filename': os.path.basename(image_path),
         'original_size': original_size,
@@ -63,9 +67,9 @@ def load_rgb_image(image_path: str, target_size: Optional[Tuple[int, int]] = Non
         'shape': rgb_array.shape,
         'dtype': str(rgb_array.dtype)
     }
-    
-    print(f"  Image loaded: {rgb_array.shape} (H x W x C)")    
-    
+
+    print(f"  Image loaded: {rgb_array.shape} (H x W x C)")
+
     return rgb_array, metadata
 
 def apply_shadow_correction(rgb: np.ndarray, method: str = 'histogram') -> np.ndarray:
@@ -100,7 +104,13 @@ def apply_shadow_correction(rgb: np.ndarray, method: str = 'histogram') -> np.nd
     return rgb_corrected
 
 
-def calculate_ndvi(rgb: np.ndarray, method: str = 'visible', remove_mean: bool = False, mask: np.ndarray = None, mean: float = 0.5) -> np.ndarray:
+def calculate_ndvi(
+    rgb: np.ndarray,
+    method: str = 'visible',
+    remove_mean: bool = False,
+    mask: Optional[np.ndarray] = None,
+    mean: float = 0.5
+) -> np.ndarray:
     """Calculate Normalized Difference Vegetation Index from RGB image.
     
     NDVI traditionally uses Near-Infrared (NIR) and Red bands:
@@ -180,7 +190,12 @@ def calculate_ndvi(rgb: np.ndarray, method: str = 'visible', remove_mean: bool =
             print(f"  NDVI rescaled mean: {ndvi_scaled.mean():.3f}")
     return ndvi_rescaled
 
-def calculate_excess_green(rgb: np.ndarray, remove_mean: bool = False, mask: np.ndarray = None, mean: float = 0.5) -> np.ndarray:
+def calculate_excess_green(
+    rgb: np.ndarray,
+    remove_mean: bool = False,
+    mask: Optional[np.ndarray] = None,
+    mean: float = 0.5
+) -> np.ndarray:
     """Calculate Excess Green Index (ExG) for vegetation detection.
     
     ExG emphasizes green vegetation and is useful for separating plants from soil:
@@ -243,7 +258,12 @@ def calculate_excess_green(rgb: np.ndarray, remove_mean: bool = False, mask: np.
     return exg
 
 
-def calculate_cwi(rgb: np.ndarray, remove_mean: bool = False, mask: np.ndarray = None, mean: float = 0.5) -> np.ndarray:
+def calculate_cwi(
+    rgb: np.ndarray,
+    remove_mean: bool = False,
+    mask: Optional[np.ndarray] = None,
+    mean: float = 0.5
+) -> np.ndarray:
     """Calculate Color Water Index (CWI) for direct water detection.
     
     CWI uses the log-ratio of blue to red channels to highlight water's spectral signature.
@@ -308,10 +328,12 @@ def calculate_cwi(rgb: np.ndarray, remove_mean: bool = False, mask: np.ndarray =
             print(f"  CWI rescaled mean: {cwi_scaled.mean():.3f}")
     return cwi_rescaled
 
-def detect_water_simple(rgb: np.ndarray, 
-                        vegetation_index: np.ndarray,
-                        index_name: str = 'NDVI',
-                        index_threshold: float = 0.0) -> np.ndarray:
+def detect_water_simple(
+    rgb: np.ndarray,
+    vegetation_index: np.ndarray,
+    index_name: str = 'NDVI',
+    index_threshold: float = 0.0
+) -> np.ndarray:
     """Simple water detection using only the vegetation index threshold.
     
     Water is identified based solely on the index value:
@@ -345,13 +367,15 @@ def detect_water_simple(rgb: np.ndarray,
     return water_mask
 
 
-def postprocess_water_mask(water_mask: np.ndarray,
-                           opening_sizes: List[int] = [],
-                           median_sizes: List[int] = [],
-                           closing_sizes: List[int] = [],
-                           apply_opening: bool = True,
-                           apply_median: bool = True,
-                           apply_closing: bool = True) -> np.ndarray:
+def postprocess_water_mask(
+    water_mask: np.ndarray,
+    opening_sizes: List[int] = [],
+    median_sizes: List[int] = [],
+    closing_sizes: List[int] = [],
+    apply_opening: bool = True,
+    apply_median: bool = True,
+    apply_closing: bool = True
+) -> np.ndarray:
     """Post-process water mask to remove noise and connect water regions.
     
     Applies morphological operations in cascade to clean up water detection:
@@ -437,9 +461,11 @@ def postprocess_water_mask(water_mask: np.ndarray,
     return processed_mask
 
 
-def apply_water_mask(vegetation_quality: np.ndarray, 
-                     water_mask: np.ndarray,
-                     water_depth_estimate: Optional[np.ndarray] = None) -> np.ndarray:
+def apply_water_mask(
+    vegetation_quality: np.ndarray,
+    water_mask: np.ndarray,
+    water_depth_estimate: Optional[np.ndarray] = None
+) -> np.ndarray:
     """Apply water mask to vegetation quality matrix.
     
     Args:
@@ -472,9 +498,11 @@ def apply_water_mask(vegetation_quality: np.ndarray,
     return combined_matrix
 
 
-def resize_to_target_resolution(matrix: np.ndarray, 
-                                target_shape: Tuple[int, int],
-                                method: str = 'bilinear') -> np.ndarray:
+def resize_to_target_resolution(
+    matrix: np.ndarray,
+    target_shape: Tuple[int, int],
+    method: str = 'bilinear'
+) -> np.ndarray:
     """Resize matrix to target resolution.
     
     Args:
@@ -503,13 +531,15 @@ def resize_to_target_resolution(matrix: np.ndarray,
     return resized_matrix
 
 
-def save_rgb_outputs(output_dir: str,
-                     combined_matrix: np.ndarray,
-                     ndvi: np.ndarray,
-                     vari: np.ndarray,
-                     water_mask: np.ndarray,
-                     metadata: Dict,
-                     rgb_original: Optional[np.ndarray] = None) -> None:
+def save_rgb_outputs(
+    output_dir: str,
+    combined_matrix: np.ndarray,
+    ndvi: np.ndarray,
+    vari: np.ndarray,
+    water_mask: np.ndarray,
+    metadata: Dict,
+    rgb_original: Optional[np.ndarray] = None
+) -> None:
     """Save all RGB processing outputs and metadata.
     
     Args:

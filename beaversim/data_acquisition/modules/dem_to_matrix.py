@@ -11,14 +11,26 @@ import os
 import json
 
 # Constants
-INVALID_MARKER = -1.0 # Marker for invalid/no-data pixels
+# Marker for invalid/no-data pixels (used for both water and missing data)
+INVALID_MARKER = -1.0
 
 
-def load_csv_data(csv_path):
-    """Load DEM data from CSV file and standardize column names."""
-    # Read CSV with explicit decimal separator to avoid parsing issues
+def load_csv_data(csv_path: str) -> tuple[pd.DataFrame, bool]:
+    """
+    Load DEM data from a CSV file and standardize column names.
+    Handles both projected (X_m, Y_m) and geographic (lon, lat) coordinates.
+
+    Args:
+        csv_path (str): Path to the CSV file.
+
+    Returns:
+        df (pd.DataFrame): DataFrame with standardized columns ['x', 'y', 'elevation']
+        coordinates_are_projected (bool): True if coordinates are projected, False if geographic
+    """
+    # TODO: Add error handling for file not found, malformed CSV, missing columns
     df = pd.read_csv(csv_path, decimal='.')
-    
+
+    # --- Detect and standardize columns ---
     if 'X_m' in df.columns and 'Y_m' in df.columns:
         df = df[['X_m', 'Y_m', 'elevation']].copy()
         df.columns = ['x', 'y', 'elevation']
@@ -28,136 +40,166 @@ def load_csv_data(csv_path):
         if df.shape[1] > 3:
             df = df.iloc[:, :3]
         df.columns = ['x', 'y', 'elevation']
-        
-        # Auto-detect if coordinates are projected based on value ranges
-        # Geographic coordinates (lat/lon) should be in range [-180, 180] and [-90, 90]
+
+        # --- Auto-detect coordinate type ---
         x_range = df['x'].abs().max()
         y_range = df['y'].abs().max()
-        
         if x_range > 180 or y_range > 90:
             coordinates_are_projected = True
             print("Detected projected coordinates (x, y values > geographic range)")
         else:
             coordinates_are_projected = False
             print("Detected geographic coordinates (lon, lat)")
-    
+
+    # --- Print summary statistics ---
     print(f"\nData loaded: {len(df)} points")
     print(f"X/Lon range: [{df['x'].min():.6f}, {df['x'].max():.6f}]")
     print(f"Y/Lat range: [{df['y'].min():.6f}, {df['y'].max():.6f}]")
     print(f"Elevation range: [{df['elevation'].min():.2f}, {df['elevation'].max():.2f}] m")
-    
+
     return df, coordinates_are_projected
 
 
-def transform_coordinates_to_target_crs(df, X, Y, epsg_source, epsg_target):
-    """Transform coordinates from source CRS to target CRS (e.g., feet to meters).
-    
+def transform_coordinates_to_target_crs(
+    df: pd.DataFrame,
+    X: np.ndarray,
+    Y: np.ndarray,
+    epsg_source: str,
+    epsg_target: str
+) -> tuple[pd.DataFrame, np.ndarray, np.ndarray]:
+    """
+    Transform coordinates from source CRS to target CRS (e.g., feet to meters).
+
     Args:
-        df: DataFrame with 'x', 'y', 'elevation' columns in source CRS
-        X: Meshgrid X array in source CRS
-        Y: Meshgrid Y array in source CRS
-        epsg_source: Source EPSG code (e.g., 'EPSG:2249' for feet)
-        epsg_target: Target EPSG code (e.g., 'EPSG:6483' for meters)
-    
+        df (pd.DataFrame): DataFrame with 'x', 'y', 'elevation' columns in source CRS
+        X (np.ndarray): Meshgrid X array in source CRS
+        Y (np.ndarray): Meshgrid Y array in source CRS
+        epsg_source (str): Source EPSG code (e.g., 'EPSG:2249')
+        epsg_target (str): Target EPSG code (e.g., 'EPSG:6483')
+
     Returns:
-        df_transformed: DataFrame with coordinates in target CRS
-        X_transformed: Meshgrid X array in target CRS
-        Y_transformed: Meshgrid Y array in target CRS
+        df_transformed (pd.DataFrame): DataFrame with coordinates in target CRS
+        X_transformed (np.ndarray): Meshgrid X array in target CRS
+        Y_transformed (np.ndarray): Meshgrid Y array in target CRS
     """
     if epsg_source == epsg_target:
         print(f"Source and target CRS are the same ({epsg_source}), no transformation needed")
         return df.copy(), X, Y
-    
+
     print(f"Transforming coordinates from {epsg_source} to {epsg_target}...")
-    
-    # Create transformer
+
+    # --- Create transformer and apply to DataFrame and meshgrid ---
     tf = Transformer.from_crs(epsg_source, epsg_target, always_xy=True)
-    
-    # Transform dataframe coordinates
     df_transformed = df.copy()
     df_transformed['x'], df_transformed['y'] = tf.transform(df['x'].values, df['y'].values)
-    
-    # Transform meshgrid coordinates
     X_transformed, Y_transformed = tf.transform(X, Y)
-    
+
     print(f"  Coordinates transformed")
     print(f"  New X range: [{X_transformed.min():.2f}, {X_transformed.max():.2f}]")
     print(f"  New Y range: [{Y_transformed.min():.2f}, {Y_transformed.max():.2f}]")
-    
+
     return df_transformed, X_transformed, Y_transformed
 
 
-def resample_dem_to_target_resolution(df, target_resolution_m=1.0, interpolation_method='linear'):
-    """Resample DEM data to a target resolution using interpolation."""
+def resample_dem_to_target_resolution(
+    df: pd.DataFrame,
+    target_resolution_m: float = 1.0,
+    interpolation_method: str = 'linear'
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Resample DEM data to a target resolution using interpolation.
+
+    Args:
+        df (pd.DataFrame): DataFrame with 'x', 'y', 'elevation'
+        target_resolution_m (float): Desired grid resolution in meters
+        interpolation_method (str): Interpolation method for griddata
+
+    Returns:
+        X (np.ndarray): Meshgrid X coordinates
+        Y (np.ndarray): Meshgrid Y coordinates
+        Z (np.ndarray): Resampled elevation matrix
+    """
     print(f"Checking resolution...")
-    
+
+    # --- Compute bounds and unique coordinates ---
     x_min, x_max = df['x'].min(), df['x'].max()
     y_min, y_max = df['y'].min(), df['y'].max()
-    
     print(f"Original data bounds: x[{x_min:.2f}, {x_max:.2f}], y[{y_min:.2f}, {y_max:.2f}]")
-    
     x_unique = np.sort(df['x'].unique())
     y_unique = np.sort(df['y'].unique())
-    
+
     original_x_res = None
     original_y_res = None
-    
+
+    # --- Check if resampling is needed ---
     if len(x_unique) > 1 and len(y_unique) > 1:
         original_x_res = np.mean(np.diff(x_unique))
         original_y_res = np.mean(np.diff(y_unique))
         print(f"Original resolution: {original_x_res:.2f}m x {original_y_res:.2f}m")
-        
+
         Z = df.pivot(index='y', columns='x', values='elevation').values.copy()
         Z[Z < 0.0] = INVALID_MARKER
-        
-        # Check if resampling is needed (with small tolerance for floating point comparison)
+
+        # If already at target resolution, skip resampling
         if (abs(original_x_res - target_resolution_m) < 0.01 and 
             abs(original_y_res - target_resolution_m) < 0.01):
             print(f"  Target resolution ({target_resolution_m}m) matches original resolution - skipping resampling")
-            X, Y = np.meshgrid(x_unique, y_unique)            
+            X, Y = np.meshgrid(x_unique, y_unique)
             return X, Y, Z
-    
+
     print(f"Resampling DEM to {target_resolution_m}m resolution using {interpolation_method} interpolation...")
     
+    # --- Create new grid at target resolution ---
     x_new = np.arange(x_min, x_max + target_resolution_m, target_resolution_m)
     y_new = np.arange(y_min, y_max + target_resolution_m, target_resolution_m)
-    
     x_new = x_new[x_new <= x_max]
     y_new = y_new[y_new <= y_max]
-    
     X_new, Y_new = np.meshgrid(x_new, y_new)
-    
+
     print(f"Target grid shape: {X_new.shape} ({len(y_new)} x {len(x_new)})")
     print(f"Target resolution: {target_resolution_m:.2f}m x {target_resolution_m:.2f}m")
-        
+
+    # --- Interpolate elevation values onto new grid ---
     df_valid = df.copy()
-    
     print(f"Using {len(df_valid)} valid points out of {len(df)} total points")
-    
     points = df_valid[['x', 'y']].values
     values = df_valid['elevation'].values.copy()
     values[values < 0] = INVALID_MARKER
-    
     Z_new = griddata(points, values, (X_new, Y_new), method=interpolation_method, fill_value=np.nan)
-    
+
     nan_count = np.sum(np.isnan(Z_new))
     total_pixels = Z_new.size
     print(f"Interpolation complete. {nan_count}/{total_pixels} pixels have no data (NaN)")
-    
+
     return X_new, Y_new, Z_new
 
 
-def create_polygon_mask(X, Y, polygon_corners, coordinates_are_projected, epsg_geographic, epsg_projected, df=None):
-    """Create a boolean mask for the specified polygon region.
-    
-    Args:
-        X, Y: Meshgrid coordinate arrays
-        polygon_corners: List of (lon, lat) tuples defining the polygon
-        coordinates_are_projected: Whether input data is already projected
-        epsg_geographic: EPSG code for geographic CRS (e.g., 'EPSG:4326')
-        epsg_projected: EPSG code for projected CRS (e.g., 'EPSG:6483')
-        df: DataFrame with DEM data (optional, for coordinate transformation)
+def create_polygon_mask(
+    X: np.ndarray,
+    Y: np.ndarray,
+    polygon_corners: list,
+    coordinates_are_projected: bool,
+    epsg_geographic: str,
+    epsg_projected: str,
+    df: pd.DataFrame = None
+) -> tuple[np.ndarray, tuple, pd.DataFrame]:
     """
+    Create a boolean mask for the specified polygon region.
+
+    Args:
+        X, Y (np.ndarray): Meshgrid coordinate arrays
+        polygon_corners (list): List of (lon, lat) tuples defining the polygon
+        coordinates_are_projected (bool): Whether input data is already projected
+        epsg_geographic (str): EPSG code for geographic CRS (e.g., 'EPSG:4326')
+        epsg_projected (str): EPSG code for projected CRS (e.g., 'EPSG:6483')
+        df (pd.DataFrame, optional): DEM data for coordinate transformation
+
+    Returns:
+        inside_grid (np.ndarray): Boolean mask of points inside polygon
+        bounds (tuple): (xmin, xmax, ymin, ymax) of polygon
+        df (pd.DataFrame): Possibly transformed DataFrame
+    """
+    # --- Handle empty polygon (use full extent) ---
     if len(polygon_corners) == 0:
         print("No polygon defined, using entire map extent")
         inside_grid = np.ones(X.shape, dtype=bool)
@@ -167,13 +209,15 @@ def create_polygon_mask(X, Y, polygon_corners, coordinates_are_projected, epsg_g
     
     print(f"Using polygon with {len(polygon_corners)} corners")
     
+    # --- Transform polygon and DEM coordinates if needed ---
     tf = Transformer.from_crs(epsg_geographic, epsg_projected, always_xy=True)
     polygon_xy = [tf.transform(lon, lat) for lon, lat in polygon_corners]
-    
+
     if not coordinates_are_projected and df is not None:
         print("Transforming DEM coordinates to projected system")
         df['x'], df['y'] = tf.transform(df['x'].values, df['y'].values)
-    
+
+    # --- Create mask for points inside polygon ---
     poly = Path(polygon_xy)
     XY = np.c_[X.ravel(), Y.ravel()]
     inside_grid = poly.contains_points(XY).reshape(X.shape)
@@ -189,78 +233,73 @@ def create_polygon_mask(X, Y, polygon_corners, coordinates_are_projected, epsg_g
     return inside_grid, (xmin, xmax, ymin, ymax), df
 
 
-def normalize_elevation_data(Z):
-    """Normalize raw elevation data to standard ranges.
-    
+def normalize_elevation_data(Z: np.ndarray) -> np.ndarray:
+    """
+    Normalize raw elevation data to standard ranges.
+
     Maps elevation data to:
     - Land (positive elevations): [0, 1] normalized range
     - Water (NaN or negative): marked with INVALID_MARKER
-    
+
     This should be applied immediately after loading CSV data, before any
     polygon masking or stream removal.
-    
+
     Args:
-        Z: Raw elevation matrix (may contain NaN values)
-    
+        Z (np.ndarray): Raw elevation matrix (may contain NaN values)
+
     Returns:
-        Z_normalized: Elevation matrix with:
-                     - Land elevations normalized to [0, 1]
-                     - Water/NaN marked as INVALID_MARKER (-9999.0)
+        Z_normalized (np.ndarray):
+            - Land elevations normalized to [0, 1]
+            - Water/NaN marked as INVALID_MARKER (-1.0)
     """
-    # Step 1: Handle NaN and negative values (water) - replace with marker
+    # --- Step 1: Handle NaN and negative values (water) ---
     Z_processed = np.where(np.isnan(Z), INVALID_MARKER, Z)
-    
-    # Step 2: Identify valid land pixels (finite, positive values)
+
+    # --- Step 2: Identify valid land pixels (finite, positive values) ---
     valid_land_mask = (Z_processed >= 0) & np.isfinite(Z_processed)
-    
     if not np.any(valid_land_mask):
         print("Warning: No valid elevation points found in data")
         return np.full_like(Z, INVALID_MARKER)
-    
-    # Step 3: Normalize valid land elevations to [0, 1]
+
+    # --- Step 3: Normalize valid land elevations to [0, 1] ---
     valid_values = Z_processed[valid_land_mask]
     min_elevation = np.min(valid_values)
     max_elevation = np.max(valid_values)
-    
     print(f"Normalizing elevation data:")
     print(f"  Original elevation range: [{min_elevation:.2f}, {max_elevation:.2f}] m")
-    
     Z_normalized = Z_processed.copy()
-    
     if max_elevation > min_elevation:
         Z_normalized[valid_land_mask] = (valid_values - min_elevation) / (max_elevation - min_elevation)
     else:
         # All land at same elevation
         Z_normalized[valid_land_mask] = 0.5
         print(f"  Warning: Uniform elevation detected, setting to 0.5")
-        
-    # Step 4: Normalize valid water elevations to [-1, 0]
+
+    # --- Step 4: Normalize valid water elevations to [-1, 0] ---
     water_mask = ~valid_land_mask
     if np.any(water_mask):
         water_values = Z_processed[water_mask]
         min_water = np.min(water_values)
         max_water = np.max(water_values)
-        
         if max_water > min_water:
             # Linear mapping: [min_water, max_water] → [-1, 0]
             Z_normalized[water_mask] = -1 + (water_values - min_water) / (max_water - min_water)
         else:
             # All water at same elevation
             Z_normalized[water_mask] = -0.5
-    
-    # Summary statistics
+
+    # --- Summary statistics ---
     n_valid = np.sum(valid_land_mask)
     n_invalid = np.sum(~valid_land_mask)
     total = Z_normalized.size
-    
     print(f"  Valid land pixels: {n_valid:,} ({100*n_valid/total:.1f}%)")
     print(f"  Water/invalid pixels: {n_invalid:,} ({100*n_invalid/total:.1f}%)")
     print(f"  Normalized range: [0.00, 1.00]")
-    
+
     return Z_normalized
 
 
-def apply_global_stream_threshold(Z, threshold_percentile=9):
+def apply_global_stream_threshold(Z: np.ndarray, threshold_percentile: int = 9) -> np.ndarray:
     """Apply percentile-based stream removal globally (before polygon masking).
     
     Uses percentile thresholding to identify and mark low-elevation areas (streams)
@@ -316,7 +355,12 @@ def apply_global_stream_threshold(Z, threshold_percentile=9):
     return Z_processed
 
 
-def crop_to_bounds(Z, X, Y, bounds):
+def crop_to_bounds(
+    Z: np.ndarray,
+    X: np.ndarray,
+    Y: np.ndarray,
+    bounds: tuple
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Crop elevation matrix and coordinates to specified bounds."""
     xmin, xmax, ymin, ymax = bounds
     
@@ -337,7 +381,13 @@ def crop_to_bounds(Z, X, Y, bounds):
     return Z_cropped, X_clipped, Y_clipped, x_clipped, y_clipped
 
 
-def transform_food_cache_coordinates(food_cache_latlon, x_clipped, y_clipped, epsg_geographic, epsg_projected):
+def transform_food_cache_coordinates(
+    food_cache_latlon: tuple,
+    x_clipped: np.ndarray,
+    y_clipped: np.ndarray,
+    epsg_geographic: str,
+    epsg_projected: str
+) -> tuple[tuple[float, float], tuple[int, int], bool]:
     """Transform food cache coordinates and find matrix indices.
     
     Args:
@@ -364,10 +414,21 @@ def transform_food_cache_coordinates(food_cache_latlon, x_clipped, y_clipped, ep
     return (food_cache_x, food_cache_y), (food_cache_x_idx, food_cache_y_idx), food_cache_in_bounds
 
 
-def save_dem_outputs(output_dir, Z_cropped, X_clipped, Y_clipped, 
-                     x_clipped, y_clipped, target_resolution_m, interpolation_method,
-                     food_cache_latlon, food_cache_proj, food_cache_idx, food_cache_in_bounds,
-                     epsg_projected):
+def save_dem_outputs(
+    output_dir: str,
+    Z_cropped: np.ndarray,
+    X_clipped: np.ndarray,
+    Y_clipped: np.ndarray,
+    x_clipped: np.ndarray,
+    y_clipped: np.ndarray,
+    target_resolution_m: float,
+    interpolation_method: str,
+    food_cache_latlon: tuple,
+    food_cache_proj: tuple,
+    food_cache_idx: tuple,
+    food_cache_in_bounds: bool,
+    epsg_projected: str
+) -> None:
     """Save all DEM processing outputs and metadata.
     
     Args:
