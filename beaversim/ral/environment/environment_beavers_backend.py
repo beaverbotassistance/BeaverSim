@@ -1,6 +1,7 @@
+# Import parent class
 from beaversim.ral.environment.environment_backend import BaseEnvironmentBackend
 
-
+# The BeaversEnvironmentBackend class transforms raw geographic data into a standardized NxM matrix representing spatial vegetation quality.
 class BeaversEnvironmentBackend(BaseEnvironmentBackend):
     """Backend for Beavers environment simulation."""    
     
@@ -17,8 +18,8 @@ class BeaversEnvironmentBackend(BaseEnvironmentBackend):
         self._visits_reset = self._environment.get('visits_reset')
         
         # River parameters
-        flow_info = self._environment.get('flow_info', {'direction': [0, 0], 'strength': 0, 'streams_width': 10})
-        self._streams_width = flow_info.get('streams_width', 10)
+        flow_info = self._environment.get('flow_info', {'direction': [0, 0], 'strength': 0, 'streams_depth': 10})
+        self._streams_depth = flow_info.get('streams_depth', 10)
         self._flow_direction = flow_info.get('direction', [0, 0])
         self._flow_strength = flow_info.get('strength', 0)
         self._river_growth_velocity = flow_info.get('river_growth_velocity', 0.0)
@@ -28,6 +29,7 @@ class BeaversEnvironmentBackend(BaseEnvironmentBackend):
         self._grass_growth_rate = self._environment.get('grass_growth_rate', 1e-5)        
         self._grass_growth_interval = self._environment.get('grass_growth_interval')
         self._grass_growth_sigma = self._environment.get('grass_growth_sigma', 0.3)
+        self._mean_reversion_strength = self._environment.get('mean_reversion_strength', 0.0005)
         
         # Map file path
         self._elevation_file_path = self._environment.get('elevation_file_path', None)
@@ -117,7 +119,7 @@ class BeaversEnvironmentBackend(BaseEnvironmentBackend):
         # Linear rescaling to simulation range
         min_val = self.np.min(elevation_data)
         max_val = self.np.max(elevation_data)
-        target_min = -self._streams_width
+        target_min = -self._streams_depth
         target_max = self._vegetation_quality_range[1]
         
         if max_val > min_val:
@@ -173,8 +175,8 @@ class BeaversEnvironmentBackend(BaseEnvironmentBackend):
         mean_growth = baseline + 2.0 * base_rate * sn_norm
         
         # Allow for stronger negative growth in winter (simulate decay):
-        min_growth = -3 * base_rate
-        max_growth = 3 * base_rate
+        min_growth = -2 * base_rate
+        max_growth = 2 * base_rate
         mean_growth = self.np.clip(mean_growth, min_growth, max_growth)
         
         # Seasonal stable state: preserve the skewed seasonal structure while keeping
@@ -183,11 +185,11 @@ class BeaversEnvironmentBackend(BaseEnvironmentBackend):
         initial_mask_values = self._initial_map[growth_mask]
         initial_mean = float(self.np.mean(initial_mask_values)) if initial_mask_values.size > 0 else current_mean
         max_vegetation = float(self._vegetation_quality_range[1])
-        mean_reversion_strength = 0.0001       
+        
         target_mean_winter = self.np.clip(0.8 * initial_mean, 0.05, max_vegetation)
         target_mean_summer = self.np.clip(1.2 * initial_mean, 0.05, max_vegetation)
         target_mean = target_mean_winter + (target_mean_summer - target_mean_winter) * sn_norm
-        mean_feedback = mean_reversion_strength * (target_mean - current_mean)
+        mean_feedback = self._mean_reversion_strength * (target_mean - current_mean)
         effective_mean_growth = self.np.clip(mean_growth + mean_feedback, min_growth, max_growth)
         
         # Per-pixel randomization using the environment RNG stream.

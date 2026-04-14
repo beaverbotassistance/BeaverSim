@@ -10,7 +10,7 @@ baseline:
   median_sizes: []
   closing_sizes: [30]
   resolution: 1
-  downsample_factor: 8
+  downsample_factor: 4
 pictures:
   general:        
     shadow_correction: True 
