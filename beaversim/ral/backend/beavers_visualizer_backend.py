@@ -1,72 +1,98 @@
-# general imports
+
+# 1. General imports
 import matplotlib.pyplot as plt
 from mesa import Agent, Model
 from mesa.time import RandomActivation
 from mesa.space import MultiGrid
 
-# backend imports
+# 2. Backend imports
 from beaversim.ral.backend.base_backend import BaseBackend
 from beaversim.ral.robot.robot_beavers_backend import BeaversRobotBackend
 from beaversim.ral.environment.environment_beavers_backend import BeaversEnvironmentBackend
 
-# module imports
+# 3. Module imports
 from beaversim.ral.backend.modules.module_colors import ColorMaps
 import beaversim.ral.algorithms.module_misc as module_misc
+from beaversim.ral.backend.modules.beavers_plotting import plot_environment_heatmap, plot_simulation_recap
+from typing import Any, Dict, Optional, List, Tuple
+
 
 
 class BeaversVisualizerBackend(BaseBackend, Model):
-    """Visualization backend for Beavers earth-moving simulation."""
-    
-    def __init__(self, **kwargs) -> None:
-        
-        super().__init__(**kwargs)        
-        
-        # Simulation parameters
-        self._kwargs = kwargs
-        simulation = self._kwargs.get('simulation')
-        
-        # set seed
-        self._seed = simulation.get('seed')        
+    """
+    Visualization backend for Beavers earth-moving simulation.
+
+    Responsibilities:
+    1. Manage simulation parameters and agent/environment instantiation.
+    2. Step through simulation time, updating environment and agents.
+    3. Provide plotting and saving utilities for simulation state and results.
+    """
+
+    def __init__(self, **kwargs: Any) -> None:
+        """
+        1. Initialize the visualization backend with simulation parameters.
+        2. Set up random number generator, scheduler, and color maps.
+        3. Store configuration and prepare for agent/environment creation.
+        """
+        super().__init__(**kwargs)
+        self._kwargs: Dict[str, Any] = kwargs
+        simulation: Optional[Dict[str, Any]] = self._kwargs.get('simulation')
+        if simulation is None:
+            raise ValueError("Missing 'simulation' configuration in kwargs.")
+
+        # 1. Set simulation parameters from config
+        self._seed: int = simulation.get('seed', 0)
         self.rng = self.np.random.default_rng(self._seed)
-        
-        self._timedelta = simulation.get('timedelta')
-        self._schedule_policy = simulation.get('schedule_policy')
-        self._gui = simulation.get('gui')
-        self._N_agents = simulation.get('number_of_agents')
-        self._print = simulation.get('print')
-        self._fig = None
-        
-        # Mesa scheduler
-        self._schedule = RandomActivation(self)
-        self._current_time = 0
-        self._color_maps = ColorMaps()
-        
-    def generate_agents(self, **kwargs) -> None:
-        """Generate environment and agent instances."""
-        # Generate environment (not added to scheduler, always steps first)
-        self._environment = EnvironmentVisualizerAgent(self._N_agents, self, **kwargs)                
+        self._timedelta: float = simulation.get('timedelta', 1.0)
+        self._schedule_policy: str = simulation.get('schedule_policy', 'sequential')
+        self._gui: bool = simulation.get('gui', False)
+        self._N_agents: int = simulation.get('number_of_agents', 1)
+        self._print: bool = simulation.get('print', False)
+        self._fig: Optional[plt.Figure] = None
+
+        # 2. Mesa scheduler and state
+        self._schedule: RandomActivation = RandomActivation(self)
+        self._current_time: float = 0.0
+        self._color_maps: ColorMaps = ColorMaps()
+
+    def generate_agents(self, **kwargs: Any) -> None:
+        """
+        1. Generate environment and agent instances for the simulation.
+        2. Initialize the environment agent (not added to scheduler).
+        3. Initialize the grid and place beaver agents.
+        4. Add beaver agents to the scheduler.
+        """
+        # 1. Generate environment agent
+        self._environment: EnvironmentVisualizerAgent = EnvironmentVisualizerAgent(self._N_agents, self, **kwargs)
         self._environment.rng = self.np.random.default_rng(self._seed)
-        
-        # Initialize grid
-        self._width = self._environment._width
-        self._height = self._environment._height
-        self._grid = MultiGrid(self._width, self._height, torus=False)
-        
-        # Generate beaver agents
+
+        # 2. Initialize grid
+        self._width: int = self._environment._width
+        self._height: int = self._environment._height
+        self._grid: MultiGrid = MultiGrid(self._width, self._height, torus=False)
+
+        # 3. Generate and place beaver agents
         for i in range(self._N_agents):
-            agent = BeaversVisualizerAgent(i, self, **kwargs)                        
+            agent = BeaversVisualizerAgent(i, self, **kwargs)
             agent.rng = self.np.random.default_rng(self._seed + i + 1)
             self._grid.place_agent(agent, (agent._position[0], agent._position[1]))
             self._schedule.add(agent)
-    
+
     def step(self) -> None:
-        """Execute one simulation time step: update time, step environment, then agents."""
+        """
+        1. Advance the simulation by one time step.
+        2. Update current time.
+        3. Step the environment first, then all agents according to schedule policy.
+        4. Raise ValueError if schedule policy is invalid.
+        """
         self._current_time += self._timedelta
-        
-        # Step environment first
+
+        # 1. Step environment first
+        if not hasattr(self, '_environment') or self._environment is None:
+            raise RuntimeError("Environment not initialized. Call generate_agents() first.")
         self._environment.step()
-        
-        # Step agents according to schedule policy
+
+        # 2. Step agents according to schedule policy
         if self._schedule_policy == 'sequential':
             sorted_agents = sorted(self._schedule.agents, key=lambda agent: agent.unique_id)
             for agent in sorted_agents:
@@ -74,222 +100,35 @@ class BeaversVisualizerBackend(BaseBackend, Model):
         elif self._schedule_policy == 'random':
             self._schedule.step()
         else:
-            raise ValueError("Invalid schedule policy.")
+            raise ValueError(f"Invalid schedule policy: {self._schedule_policy}")
     
-    def plot_environment_with_heatmap(self, plot_agents=True) -> None:
-        """Plot environment heatmap with agent positions, home bases, and time info."""
-        # Get first agent
-        first_agent = next((a for a in self._schedule.agents if isinstance(a, BeaversVisualizerAgent)), None)
-        if not first_agent:
-            print("No agents found for local map visualization")
-            return
-        
-        # Map params
-        is_day = self._environment._time_of_day == 'day'
-        cm = self._color_maps
-        vmax = self._environment._vegetation_quality_range[1]
-        map_width = first_agent._local_map.shape[0] if first_agent._local_map is not None else self._width
-        map_height = first_agent._local_map.shape[1] if first_agent._local_map is not None else self._height
-        
-        # Create figure
-        fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(25, 8))
-        
-        # Add boxes
-        for ax in (ax1, ax2, ax3):
-            ax.add_patch(plt.Rectangle((0, 0), map_width, map_height, fill=False, edgecolor='black', linestyle='-', linewidth=2))
 
-        # Get and normalize maps
-        if first_agent._local_map is not None:
-            local_map_init = self._environment._initial_map[:map_width, :map_height] / vmax
-            local_map_norm = self._environment._map / vmax
-            local_map_visits_norm = self._environment._map_visits_roles / self.np.max(self.np.abs(self._environment._map_visits_roles) + 1e-5)
-            vmin = -self._environment._streams_width
-            
-            im1 = ax1.imshow(local_map_init.transpose(), origin='lower', cmap=cm._bluebrowngreen_colormap, 
-                           alpha=cm._whiteblack_colormap_alpha, vmin=vmin/vmax, vmax=1)
-            im2 = ax2.imshow(local_map_norm.transpose(), origin='lower', cmap=cm._bluebrowngreen_colormap, 
-                           alpha=cm._whiteblack_colormap_alpha, vmin=vmin/vmax, vmax=1)
-            im3 = ax3.imshow(local_map_visits_norm.transpose(), origin='lower', cmap=cm._visits_colormap, alpha=1, vmin=-1, vmax=1)
-            
-            # Overlay negative values
-            neg_mask = local_map_norm < 0
-            if self.np.any(neg_mask):
-                ax3.imshow(self.np.where(neg_mask, local_map_norm, self.np.nan).transpose(), origin='lower', 
-                         cmap='gray', alpha=0.1, vmin=vmin/vmax, vmax=0)
-        else:
-            # Fallback
-            vmin = -self._environment._streams_width
-            map_norm = self._environment._map_original / vmax
-            im1 = ax1.imshow(map_norm.transpose(), origin='lower', cmap=cm._bluebrowngreen_colormap, 
-                           alpha=cm._whiteblack_colormap_alpha, vmin=vmin/vmax, vmax=1)
-            im2 = ax2.imshow(map_norm.transpose(), origin='lower', cmap=cm._bluebrowngreen_colormap, 
-                           alpha=cm._whiteblack_colormap_alpha, vmin=vmin/vmax, vmax=1)
-            im3 = ax3.imshow(self.np.zeros_like(map_norm).transpose(), origin='lower', cmap=cm._visits_colormap, alpha=1, vmin=-1, vmax=1)
-            
-            neg_mask = map_norm < 0
-            if self.np.any(neg_mask):
-                ax3.imshow(self.np.where(neg_mask, map_norm, self.np.nan).transpose(), origin='lower', 
-                         cmap='gray', alpha=0.1, vmin=vmin/vmax, vmax=0)
-        
-        # Colorbars
-        plt.subplots_adjust(right=0.85)
-        cbar1 = plt.colorbar(im2, cax=fig.add_axes([0.86, 0.15, 0.02, 0.7]))
-        cbar1.set_label('Vegetation Quality / Elevation', rotation=270, labelpad=20)
-        tick_vals = self.np.linspace(vmin, vmax, 9)
-        cbar1.set_ticks(tick_vals / vmax)
-        cbar1.set_ticklabels([f'{v:.1f}' for v in tick_vals])
-        cbar2 = plt.colorbar(im3, cax=fig.add_axes([0.92, 0.15, 0.02, 0.7]))
-        cbar2.set_label('Visit Frequency', rotation=270, labelpad=20)
-
-        # Plot agents
-        if plot_agents:
-            if is_day:
-                marker, msize, medge, mwidth, malpha = cm._agent_marker, cm._agent_markersize_small, cm._agent_markeredgecolor, cm._agent_markeredgewidth, cm._agent_markeralpha
-            else:
-                marker, msize, medge, mwidth, malpha = cm._agent_marker_night, cm._agent_markersize_small_night, cm._agent_markeredgecolor_night, cm._agent_markeredgewidth_night, cm._agent_markeralpha_night
-            
-            for agent in self._schedule.agents:
-                if isinstance(agent, BeaversVisualizerAgent):
-                    x, y = agent._position
-                    if 0 <= x < map_width and 0 <= y < map_height:
-                        color = 'red' if agent._role == 'explorer' else 'black'
-                        ax2.plot(x, y, marker, markersize=msize, markeredgecolor=medge, markerfacecolor=color, markeredgewidth=mwidth, alpha=malpha)
-        
-        # Plot home bases
-        for agent in self._schedule.agents:
-            if agent._home_base_position_store:
-                for hx, hy in agent._home_base_position_store:
-                    if 0 <= hx < map_width and 0 <= hy < map_height:
-                        ax2.add_patch(plt.Rectangle((hx-2, hy-2), 3, 3, fill=True, edgecolor=cm._black, facecolor=cm._gray, linestyle='-', linewidth=2))
-        
-        # Configure axes
-        titles = ["Vegetation Quality (Initial)", "Vegetation Quality (Current)", "Visits (Current)"]
-        for ax, title in zip((ax1, ax2, ax3), titles):
-            ax.set_aspect('equal')
-            ax.grid(False)
-            ax.set_xlabel('X [pixels]', fontsize=12)
-            ax.set_ylabel('Y [pixels]', fontsize=12)
-            ax.set_xlim(-0.5, map_width+0.5)
-            ax.set_ylim(-0.5, map_height+0.5)
-            ax.set_title(title)
-        
-        ax3.text(0.5, 1, f"DAY: {self._environment._current_day} HOUR: {self._environment._current_hour}h", 
-                fontsize=14, color=cm._black, font='monospace')
-        
+    def plot_environment_with_heatmap(self, plot_agents: bool = True) -> None:
+        """
+        Plot environment heatmap with agent positions, home bases, and time info using modular plotting utility.
+        """
+        fig = plot_environment_heatmap(
+            environment=self._environment,
+            agents=[a for a in self._schedule.agents if isinstance(a, BeaversVisualizerAgent)],
+            color_maps=self._color_maps,
+            width=self._width,
+            height=self._height,
+            gui=self._gui,
+            plot_agents=plot_agents
+        )
         self._fig = fig
-        if self._gui:
-            plt.show()    
     
-    
+
     def plot_simulation_recap(self) -> None:
-        """Plot N×4 subplots: distance, load, error norm, and exploration eta for each agent."""
-        # Get and organize agents
-        agents = [a for a in self._schedule.agents if isinstance(a, BeaversVisualizerAgent)]
-        explorers = [a for a in agents if hasattr(a, '_role') and a._role == 'explorer']
-        expanders = [a for a in agents if hasattr(a, '_role') and a._role == 'expander']
-        agent_list = (explorers + expanders) if (explorers or expanders) else agents
-        
-        if not agent_list:
-            print("No agents found for plotting")
-            return
-        
-        # Create figure
-        n = len(agent_list)
-        fig, axes = plt.subplots(n, 4, figsize=(25, 4 * n))
-        if n == 1:
-            axes = axes.reshape(1, -1)
-        
-        # Process each agent
-        for i, agent in enumerate(agent_list):
-            role = getattr(agent, '_role', 'unknown')
-            positions, loads, errors, etas = agent._position_store, agent._load_store, agent._error_store, agent._exploration_eta_store
-            
-            if positions:
-                init_pos = positions[0]
-                time_steps = list(range(len(positions)))
-                
-                # Calculate distances and find river positions
-                distances, river_times, river_dists = [], [], []
-                for t, pos in enumerate(positions):
-                    dist = self.np.sqrt((pos[0] - init_pos[0])**2 + (pos[1] - init_pos[1])**2)
-                    distances.append(dist)
-                    if hasattr(self, '_environment') and self._environment._map is not None:
-                        x, y = int(pos[0]), int(pos[1])
-                        if 0 <= x < self._environment._map.shape[0] and 0 <= y < self._environment._map.shape[1]:
-                            if self._environment._map[x, y] < -2:
-                                river_times.append(t)
-                                river_dists.append(dist)
-                
-                # Distance plot
-                axes[i, 0].plot(time_steps, distances, color='black', linewidth=2, alpha=0.8)
-                if river_times:
-                    axes[i, 0].scatter(river_times, river_dists, color='blue', marker='o', s=50, alpha=0.8, 
-                                     edgecolors='darkblue', linewidth=1, label='In River')
-                    axes[i, 0].legend()
-                axes[i, 0].axhline(y=0, color='gray', linestyle='--', alpha=0.5)
-                axes[i, 0].set_xlabel('Time Steps')
-                axes[i, 0].set_ylabel('Distance from Start')
-                axes[i, 0].set_title(f'Agent {agent.unique_id}: Distance from Initial Position')
-                axes[i, 0].grid(True, alpha=0.3)
-                axes[i, 0].text(0.95, 0.95, f'Role: {role.capitalize()}', transform=axes[i, 0].transAxes, fontsize=10,
-                              va='top', ha='right', bbox=dict(boxstyle='round,pad=0.3', facecolor='lightgray', alpha=0.8, edgecolor='black'))
-                
-                # Load plot
-                axes[i, 1].plot(time_steps, loads, color='black', linewidth=2, alpha=0.8, label='Current Load')
-                if hasattr(agent, '_maximum_load_store') and agent._maximum_load_store:
-                    axes[i, 1].plot(time_steps[:len(agent._maximum_load_store)], agent._maximum_load_store, 
-                                  color='red', linewidth=1.5, alpha=0.7, linestyle='--', label='Maximum Load Capacity')
-                axes[i, 1].set_xlabel('Time Steps')
-                axes[i, 1].set_ylabel('Load Amount')
-                axes[i, 1].set_title(f'Agent {agent.unique_id}: Load Variation')
-                axes[i, 1].grid(True, alpha=0.3)
-                axes[i, 1].set_ylim(0, agent._maximum_load_init + 1)
-                axes[i, 1].legend()
-                
-                # Error plot
-                error_norms = [self.np.linalg.norm(e) if hasattr(e, '__len__') and len(e) > 0 else abs(e) if e is not None else 0.0 for e in errors]
-                if error_norms:
-                    axes[i, 2].plot(time_steps[:len(error_norms)], error_norms, color='black', linewidth=2, alpha=0.8)
-                    axes[i, 2].set_xlabel('Time Steps')
-                    axes[i, 2].set_ylabel('Error Norm')
-                    axes[i, 2].set_title(f'Agent {agent.unique_id}: Control Error Norm')
-                    axes[i, 2].grid(True, alpha=0.3)
-                else:
-                    axes[i, 2].text(0.5, 0.5, 'No error data available', ha='center', va='center', transform=axes[i, 2].transAxes)
-                    axes[i, 2].set_title(f'Agent {agent.unique_id}: Control Error Norm')
-                
-                # Exploration eta plot
-                if etas:
-                    axes[i, 3].plot(time_steps[:len(etas)], etas, color='black', linewidth=2, alpha=0.8, label='Exploration Eta')
-                    if hasattr(agent, '_harvest_threshold_store') and agent._harvest_threshold_store:
-                        lower = [th[0] for th in agent._harvest_threshold_store if len(th) >= 2]
-                        upper = [th[1] for th in agent._harvest_threshold_store if len(th) >= 2]
-                        if lower and upper:
-                            axes[i, 3].plot(time_steps[:len(lower)], lower, color='red', linewidth=1.5, alpha=0.7, linestyle='--', label='Harvest Threshold Min')
-                            axes[i, 3].plot(time_steps[:len(upper)], upper, color='orange', linewidth=1.5, alpha=0.7, linestyle='--', label='Harvest Threshold Max')
-                    axes[i, 3].set_xlabel('Time Steps')
-                    axes[i, 3].set_ylabel('Values')
-                    axes[i, 3].set_title(f'Agent {agent.unique_id}: Exploration Eta & Harvest Thresholds')
-                    axes[i, 3].grid(True, alpha=0.3)
-                    axes[i, 3].legend()
-                    axes[i, 3].set_ylim(0, agent._vegetation_quality_range[1] + 0.5)
-                else:
-                    axes[i, 3].text(0.5, 0.5, 'No exploration eta data available', ha='center', va='center', transform=axes[i, 3].transAxes)
-                    axes[i, 3].set_title(f'Agent {agent.unique_id}: Exploration Eta & Harvest Thresholds')
-            else:
-                # No data
-                for j, title in enumerate([f'Agent {agent.unique_id}: Distance from Initial Position', 
-                                          f'Agent {agent.unique_id}: Load Variation',
-                                          f'Agent {agent.unique_id}: Control Error Norm', 
-                                          f'Agent {agent.unique_id}: Exploration Eta & Harvest Thresholds']):
-                    axes[i, j].text(0.5, 0.5, 'No data available', ha='center', va='center', transform=axes[i, j].transAxes)
-                    axes[i, j].set_title(title)
-                axes[i, 0].text(0.95, 0.95, f'Role: {role.capitalize()}', transform=axes[i, 0].transAxes, fontsize=10,
-                              va='top', ha='right', bbox=dict(boxstyle='round,pad=0.3', facecolor='lightgray', alpha=0.8, edgecolor='black'))
-        
-        plt.tight_layout()
-        if self._gui:
-            plt.show()
+        """
+        Plot N×4 subplots: distance, load, error norm, and exploration eta for each agent using modular plotting utility.
+        """
+        fig = plot_simulation_recap(
+            agents=[a for a in self._schedule.agents if isinstance(a, BeaversVisualizerAgent)],
+            environment=self._environment,
+            gui=self._gui
+        )
+        self._fig = fig
 
     
     def save_environment_map(self, file_path: str) -> None:
@@ -339,85 +178,126 @@ class BeaversVisualizerBackend(BaseBackend, Model):
             print(f"Applied inverse coordinate transformation for simulator compatibility")
         
 
+
 class BeaversVisualizerAgent(BeaversRobotBackend, Agent):
-    """Beaver agent for visualization-based simulations."""
-    
-    def __init__(self, unique_id, model, **kwargs) -> None:
+    """
+    Beaver agent for visualization-based simulations.
+
+    1. Inherits robot logic and agent interface.
+    2. Steps through simulation, measuring environment and updating state.
+    3. Links environment data and flow information for agent logic.
+    """
+
+    def __init__(self, unique_id: int, model: BeaversVisualizerBackend, **kwargs: Any) -> None:
+        """
+        1. Initialize the beaver agent with unique ID and model reference.
+        2. Set up robot backend and agent state.
+        3. Store simulation time delta.
+        """
         BeaversRobotBackend.__init__(self, **kwargs)
         Agent.__init__(self, unique_id, model)
         self.initiate_robot(**kwargs)
-        self._timedelta = model._timedelta
-                    
+        self._timedelta: float = model._timedelta
+
     def step(self) -> None:
-        """Execute one simulation step: get environment data, measure map, step beaver behavior."""
-        # Get data from environment
-        dt = self._timedelta
-        time_of_day = self.model._environment._time_of_day
+        """
+        1. Execute one simulation step for the beaver agent.
+        2. Measure environment at current position.
+        3. Link environment and flow data to agent.
+        4. Step beaver logic and update environment map.
+        """
+        # 1. Get data from environment
+        dt: float = self._timedelta
+        time_of_day: str = self.model._environment._time_of_day
         measure_positions, measure_values = module_misc.measure(self.model._environment._map, self._position, self._measurement_mode, self._measure_step)
         map_quality = [measure_positions, measure_values]
-        
-        # Get map limits
-        if self._measurement_mode is 'full_map':
+
+        # 2. Get map limits
+        if self._measurement_mode == 'full_map':
             limits = module_misc.get_map_limits(self.model._environment._map)
         else:
             if self._local_map is not None:
                 limits = module_misc.get_map_limits(self._local_map)
             else:
                 limits = [[0, self._position[0] - 1], [0, self._position[1] - 1]]
-        
-        # Link environment data to agent
+
+        # 3. Link environment data to agent
         self._vegetation_quality_range = self.model._environment._vegetation_quality_range
         self._range_x = self.model._environment._width
         self._range_y = self.model._environment._height
         self._home_base_position_store = self.model._environment._home_base_position_store
-        
-        # Link flow information
+
+        # 4. Link flow information
         misc = {
             'direction': self.model._environment._flow_direction,
             'strength': self.model._environment._flow_strength,
             'visits': self.model._environment._map_visits
         }
-        
-        # Step the agent
+
+        # 5. Step the agent
         self.step_beaver(dt, time_of_day, map_quality, limits, misc)
-        
-        # Update environment at current position
-        self.model._environment._map_original[self._position[0], self._position[1]] = self._map_quality_measure_position
+
+        # 6. Update environment at current position
+        try:
+            self.model._environment._map_original[self._position[0], self._position[1]] = self._map_quality_measure_position
+        except Exception as e:
+            print(f"Error updating environment map at agent position: {e}")
+
 
 class EnvironmentVisualizerAgent(BeaversEnvironmentBackend, Agent):
-    """Environment agent for visualization-based simulations."""
-    
-    def __init__(self, unique_id, model, **kwargs) -> None:
+    """
+    Environment agent for visualization-based simulations.
+
+    1. Aggregates agent activities and updates environmental state.
+    2. Inherits environment backend and agent interface.
+    3. Steps through simulation, updating maps and home base positions.
+    """
+
+    def __init__(self, unique_id: int, model: BeaversVisualizerBackend, **kwargs: Any) -> None:
+        """
+        1. Initialize the environment agent with unique ID and model reference.
+        2. Set up environment backend and agent state.
+        3. Store simulation time delta.
+        """
         BeaversEnvironmentBackend.__init__(self, **kwargs)
         Agent.__init__(self, unique_id, model)
         self.initiate_environment(**kwargs)
-        self._timedelta = model._timedelta
-                    
+        self._timedelta: float = model._timedelta
+
     def step(self) -> None:
-        """Aggregate agent activities and update environmental state."""
-        # Aggregate visit maps from all agents
+        """
+        1. Aggregate agent activities and update environmental state.
+        2. Collect visit maps and home base positions from all agents.
+        3. Update map and visits for explorer/expander roles.
+        4. Step the environment backend with updated data.
+        5. Handles errors gracefully if agent data is missing.
+        """
+        # 1. Aggregate visit maps from all agents
         map_visits = self._map_visits.copy()
         map_visits_roles = self._map_visits_roles.copy()
         map = self._map.copy()
-        home_base_position_store = []
-        
-        for agents in self.model._schedule.agents:
-            if isinstance(agents, BeaversVisualizerAgent):
-                if agents._local_map_visits is not None:
-                    map_visits[agents._position[0], agents._position[1]] = agents._local_map_visits[agents._position[0], agents._position[1]]
-                    map[agents._position[0], agents._position[1]] = agents._map_quality_measure_position
-                    if agents._role == 'explorer':
-                        map_visits_roles[agents._position[0], agents._position[1]] = -map_visits[agents._position[0], agents._position[1]]
-                    else:
-                        map_visits_roles[agents._position[0], agents._position[1]] = map_visits[agents._position[0], agents._position[1]]
-                if agents._home_base_position_store is not None:
-                    for pos in agents._home_base_position_store:
+        home_base_position_store: List[Tuple[int, int]] = []
+
+        for agent in self.model._schedule.agents:
+            if isinstance(agent, BeaversVisualizerAgent):
+                if getattr(agent, '_local_map_visits', None) is not None:
+                    try:
+                        map_visits[agent._position[0], agent._position[1]] = agent._local_map_visits[agent._position[0], agent._position[1]]
+                        map[agent._position[0], agent._position[1]] = agent._map_quality_measure_position
+                        if getattr(agent, '_role', None) == 'explorer':
+                            map_visits_roles[agent._position[0], agent._position[1]] = -map_visits[agent._position[0], agent._position[1]]
+                        else:
+                            map_visits_roles[agent._position[0], agent._position[1]] = map_visits[agent._position[0], agent._position[1]]
+                    except Exception as e:
+                        print(f"Error updating map visits for agent {agent}: {e}")
+                if getattr(agent, '_home_base_position_store', None) is not None:
+                    for pos in agent._home_base_position_store:
                         home_base_position_store.append(pos)
-        
+
         map_visits = map_visits * self._visits_reset
         map_visits_roles = map_visits_roles * self._visits_reset
         misc = {'map_visits_roles': map_visits_roles}
         home_base_position_store = list(set(tuple(pos) for pos in self.np.array(home_base_position_store)))
 
-        # Step the environment
+        # 2. Step the environment
         self.step_environment(self._timedelta, map, map_visits, home_base_position_store, self._grass_growth_interval, misc)
