@@ -69,7 +69,7 @@ def plot_environment_heatmap(
             local_map_init = environment._initial_map[:map_width, :map_height] / vmax
             local_map_norm = environment._map / vmax
             local_map_visits_norm = environment._map_visits_roles / (environment.np.max(environment.np.abs(environment._map_visits_roles) + 1e-5))
-            vmin = -environment._streams_width
+            vmin = -environment._streams_depth
 
             im1 = ax1.imshow(local_map_init.transpose(), origin='lower', cmap=cm._bluebrowngreen_colormap,
                              alpha=cm._whiteblack_colormap_alpha, vmin=vmin/vmax, vmax=1)
@@ -83,7 +83,7 @@ def plot_environment_heatmap(
                 ax3.imshow(environment.np.where(neg_mask, local_map_norm, environment.np.nan).transpose(), origin='lower',
                            cmap='gray', alpha=0.1, vmin=vmin/vmax, vmax=0)
         else:
-            vmin = -environment._streams_width
+            vmin = -environment._streams_depth
             map_norm = environment._map_original / vmax
             im1 = ax1.imshow(map_norm.transpose(), origin='lower', cmap=cm._bluebrowngreen_colormap,
                              alpha=cm._whiteblack_colormap_alpha, vmin=vmin/vmax, vmax=1)

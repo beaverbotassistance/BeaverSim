@@ -1,5 +1,5 @@
-source_path: beaversim/data_acquisition/example_datasets/RUMNEY_RANCH_RGB/A2
-output_path: beaversim/data_acquisition/output/RumneyRanch_Montana/RGB/A2/annotated
+source_path: data_acquisition/example_datasets/RUMNEY_RANCH_RGB/A2
+output_path: output/RumneyRanch_Montana/RGB/A2/annotated
 baseline:
   method: median
   remove_mean: True
