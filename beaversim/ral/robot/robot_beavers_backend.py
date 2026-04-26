@@ -24,32 +24,77 @@ class BeaversRobotBackend(BaseRobotBackend):
             BeaversRobotBackend: self
         """
         super().initiate_robot(**kwargs)
+        
+        # get resolution from environment config
+        resolution_m = 1.0
+        if getattr(self, 'model', None) is not None:
+            try:
+                resolution_m = float(getattr(self.model._environment, '_resolution_m', 1.0))
+            except (TypeError, ValueError):
+                resolution_m = 1.0
+        if resolution_m <= 0:
+            resolution_m = 1.0
+        self._resolution_m = resolution_m
 
         # Parameters loaded from external config
-        self._home_base_position = list(self._robot.get('home_base_position'))[0]
-        self._home_base_position_store = list(self._robot.get('home_base_position'))
-        self._maximum_load = self._robot.get('maximum_load')
-        if self._maximum_load is None:
-            self._maximum_load = self.np.inf
-        self._maximum_load_init = self._maximum_load
+        home_base_position = self._robot.get('home_base_position')
+        if home_base_position is None:
+            raise ValueError('home_base_position must be defined')
+
+        home_base_position_list = list(home_base_position)
+        if home_base_position_list and isinstance(home_base_position_list[0], (list, tuple, self.np.ndarray)):
+            self._home_base_position_store = [[int(coord / resolution_m) for coord in pos] for pos in home_base_position_list]
+            self._home_base_position = [self._home_base_position_store[0]]
+        else:
+            self._home_base_position_store = [[int(coord / resolution_m) for coord in home_base_position_list]]
+            self._home_base_position = [self._home_base_position_store[0]]
+        self._maximum_load = self._robot.get('maximum_load')                        
         self._harvest_interval = self._robot.get('harvest_interval')
-        self._epsilon_greedy = self._robot.get('epsilon_greedy')
-        self._exploration_eta = self._robot.get('exploration_eta')
-        self._decay_values = self._robot.get('decay_values')
-        self._role = self._robot.get('role')
+        self._epsilon_greedy = self._robot.get('epsilon_greedy')        
+        self._decay_values = self._robot.get('decay_values')        
         self._vegetation_removal = self._robot.get('vegetation_removal')
         self._visit_increase = self._robot.get('visit_increase')
-        self._exploration_map = self._robot.get('exploration_map')
+        self._exploration_map = self._robot.get('exploration_map')        
         self._print = self._robot.get('print')
+        
+        # I would like to random pick the role.
+        role_list = self._robot.get('role')
+        n_roles = len(role_list) if isinstance(role_list, list) else 1
+        if n_roles > 1:
+            selected_role = self.random.choice(role_list)
+            self._role = selected_role
+        
+        # get the values depending on the role
+        if self._role == 'explorer':            
+            self._harvest_interval = self._harvest_interval[0]
+            self._exploration_map = self._exploration_map[0]
+            self._epsilon_greedy = self._epsilon_greedy[0]  
+            self._maximum_load = self._maximum_load[0]
+            self._vegetation_removal = self._vegetation_removal[0]      
+        elif self._role == 'builder':                        
+            self._harvest_interval = self._harvest_interval[1]
+            self._exploration_map = self._exploration_map[1]
+            self._epsilon_greedy = self._epsilon_greedy[1]
+            self._maximum_load = self._maximum_load[1]
+            self._vegetation_removal = self._vegetation_removal[1]
+        else:
+            raise ValueError(f'Invalid role: {self._role}')
+        
+        self._maximum_load_init = self._maximum_load
 
         # Hardcoded parameters (not from config)
-        self._exploration_N_recovery = 8
-        self._range_x = [-3, 3]
-        self._range_y = [-3, 3]
-        self._exploration_mode = 'gradient_D010'
+        self._exploration_N_recovery = int(8 / resolution_m)
+        self._range_x = [int(-5 / resolution_m), int(5 / resolution_m)]
+        self._range_y = [int(-5 / resolution_m), int(5 / resolution_m)]       
+        
+
+        self._exploration_distance_m = 10.0
+        exploration_cells = max(1, int(round(float(self._exploration_distance_m) / resolution_m)))
+        self._exploration_mode = f'gradient_D{exploration_cells:03d}'
         self._measurement_mode = 'full_map'
         self._measure_step = 1
         self._n_traces = 0
+        self._exploration_eta = 1.0
 
         self._current_time = 0
         self._map_quality_measure = None
@@ -65,6 +110,7 @@ class BeaversRobotBackend(BaseRobotBackend):
         self._in_water_counter = 0
         self._reset_integral = 50
         self._min_home_distance = 500
+        self._last_explored_position = None
 
         self._vegetation_quality_range = None
 
@@ -74,7 +120,7 @@ class BeaversRobotBackend(BaseRobotBackend):
             self._position = [self.random.randint(self._range_x[0], self._range_x[1] - 1),
                               self.random.randint(self._range_y[0], self._range_y[1] - 1)]
         elif position == 'home':
-            self._position = self._home_base_position
+            self._position = self._home_base_position[0]
         elif position == 'random_home':
             # Choose a random home base from the list
             if isinstance(self._home_base_position_store, list) and len(self._home_base_position_store) > 0:
@@ -97,6 +143,7 @@ class BeaversRobotBackend(BaseRobotBackend):
 
         self._load = 0
         self._controller = Controller(**self._robot)
+        self._controller._max = self._exploration_distance_m / 2
         initial_state = self.np.array([self._position, self.np.zeros(self._controller._dimension)])
         self._dynamics = Dynamics(initial_state, **self._robot)
         self._local_map_control = None
@@ -120,11 +167,11 @@ class BeaversRobotBackend(BaseRobotBackend):
 
         self._exploration_eta_init = self._exploration_eta
         self._harvest_interval_init = self._harvest_interval.copy()
-        self._wait_b4_explore_init = 1 * 24
-        self._wait_b4_explore = 0
+        self._wait_b4_explore_init = 24.0
+        self._wait_b4_explore = 0.0
         return self
     
-    def step_beaver(self, dt: int, time_of_day: str, map_quality: list, limits: list, misc: dict = None) -> None:
+    def step_beaver(self, dt: float, time_of_day: str, map_quality: list, limits: list, misc: dict = None) -> None:
         """
         Main step function for the beaver agent. Updates state, decides and executes tasks, and manages adaptation.
 
@@ -140,6 +187,7 @@ class BeaversRobotBackend(BaseRobotBackend):
         self._current_time += dt
         self._controller._dt = dt
         self._dynamics._dt = dt
+        self._dt_init = dt
 
         # --- 2. Gather and update environmental observations ---
         self._map_quality_measure = map_quality
@@ -232,8 +280,7 @@ class BeaversRobotBackend(BaseRobotBackend):
             ))
         ):
             self._current_task = 'harvest'
-        else:
-            self._harvesting_actions_counter = 0
+        else:            
             self._current_task = 'explore'
 
         # --- 4. Set the task status to STARTING for the new cycle ---
@@ -381,14 +428,19 @@ class BeaversRobotBackend(BaseRobotBackend):
             # Reset controller errors for next move
             self._controller._error_integral = 0.0
             self._controller._error_old = 0.0
+            self._controller._dt = self._dt_init
+            self._dynamics._dt = self._dt_init
             self._current_action = 'move'
             self._status_task = 'FINISHED'
 
         else:
             # Unexpected motion status
             raise ValueError(f'Invalid status_motion: {self._status_motion}')
+        
+        ####### DEBUG - HARD CODED DESTINATION (REMOVE THIS) #######
+        # self._motion_destination = [int(90*self._resolution_m), int(450*self._resolution_m)]
 
-        # Execute the decided action (move or idle)
+        # Execute the decided action (move or idle)        
         self.do_action(time_of_day, limits, misc)
         
     def store(self, time_of_day: str = None, limits: list = None, misc: dict = None) -> None:
@@ -402,11 +454,7 @@ class BeaversRobotBackend(BaseRobotBackend):
         """
         # --- 1. Set up for storing: move towards home base ---
         self._current_action = 'move'
-
-        # Temporarily reduce control gains for smoother approach to home base
-        self._controller._Kp = 0.5 * self._controller._Kp_init
-        self._controller._Kd = 0.5 * self._controller._Kd_init
-        self._controller._Ki = 0.5 * self._controller._Ki_init
+        self._last_explored_position = self._position.copy() 
 
         # Attempt to move to home base
         success = self.do_action(time_of_day, limits, misc)
@@ -439,73 +487,68 @@ class BeaversRobotBackend(BaseRobotBackend):
             time_of_day (str, optional): Current time of day.
             limits (list, optional): Movement boundaries.
             misc (dict, optional): Additional info (e.g., flow direction/strength).
-        """
-        # --- 1. Select and execute the appropriate controller for movement ---
+        """                
+                
+        setpoint = self._motion_destination
+        
+        # --- 1. Pre-calculate static elements for P_repulsive (Optimization) ---
+        # The local map doesn't change during micro-steps, so we evaluate this ONCE outside the loop.        
+        if self._controller._name == 'P_repulsive':
+            if self._controller._map_repulsive == 'vegetation_quality':                
+                self._local_map_control = self._local_map.copy()**2            
+            elif self._controller._map_repulsive == 'vegetation_visits':
+                self._local_map_control = self._local_map.copy()**2 / (1 + self._local_map_visits.copy()**2)
+            else:
+                raise ValueError(f'Invalid map_repulsive value: {self._controller._map_repulsive}')
+                
+            flow_direction = self.np.array(misc.get('direction', [1, 0]))
+            flow_strength = misc.get('strength', 1.0)
+            
+            # Apply harvest interval mask to local map control to create repulsion from non-harvestable areas
+            harvest_mask = (self._local_map >= self._harvest_interval[0]) & (self._local_map <= self._harvest_interval[1])
+            self._local_map_control[harvest_mask] = 0
+
+        # --- 2. Use the current simulation dt directly (no micro-stepping) ---
+        dt_total = self._controller._dt if self._controller._dt is not None else self._dt_init
+        self._controller._dt = dt_total
+        self._dynamics._dt = dt_total
+
+        # A. Evaluate Controller
         if self._controller._name == 'P':
-            # Simple proportional controller: move directly to setpoint
-            setpoint = self._motion_destination
             self._controller.step(setpoint, self._position)
 
         elif self._controller._name == 'P_repulsive':
-            # Proportional controller with repulsive field (e.g., for obstacle avoidance)
-            setpoint = self._motion_destination
             _neighbourhood = module_misc.DN_neighbourhood(
                 self._position, limits, N=self._controller._neighbourhood_size, step=self._measure_step
             )
 
-            # Select which map to use for repulsion
-            if self._controller._map_repulsive == 'vegetation_quality':
-                map_repulsive = self._local_map.copy()
-            elif self._controller._map_repulsive == 'vegetation_visits':
-                map_repulsive = self._local_map.copy() / (1 + self._local_map_visits.copy())
-            else:
-                raise ValueError(f'Invalid map_repulsive value: {self._controller._map_repulsive}')
-
-            self._local_map_control = map_repulsive
-
-            # Gather neighborhood values for control
             _neighbourhood_values = [
                 self._local_map_control[int(pos[0]), int(pos[1])] for pos in _neighbourhood
-            ]
-
-            # --- 2. Apply flow dynamics to water cells in the neighborhood ---
-            flow_direction = self.np.array(misc.get('direction', [1, 0]))
-            flow_strength = misc.get('strength', 1.0)
-
-            for i, pos in enumerate(_neighbourhood):
-                cell_x, cell_y = int(pos[0]), int(pos[1])
-                # If this neighborhood cell is water, adjust value based on flow
-                if self._local_map[cell_x, cell_y] < 0:
-                    direction_to_cell = self.np.array([
-                        cell_x - self._position[0],
-                        cell_y - self._position[1]
-                    ])
-                    if self.np.linalg.norm(direction_to_cell) > 0:
-                        # Normalize direction vector
-                        direction_to_cell = direction_to_cell / self.np.linalg.norm(direction_to_cell)
-                        # Calculate alignment with flow direction (-1 to 1)
-                        flow_alignment = self.np.dot(direction_to_cell, flow_direction) / self.np.linalg.norm(flow_direction)
-                        # Apply flow bias: reduce cost for downstream, increase for upstream
-                        flow_modifier = -flow_strength * flow_alignment
-                        if self.np.isnan(flow_modifier):
-                            flow_modifier = 0
-                        _neighbourhood_values[i] += flow_modifier
-
-            # Step the controller with repulsive field and flow-modified values
-            self._controller.step(setpoint, self._position, [_neighbourhood, _neighbourhood_values])
-
+            ]                                    
+            
+            if self._local_map[self._position[0], self._position[1]] < 0.0:
+                self._controller.step(setpoint, self._position, [_neighbourhood, _neighbourhood_values, flow_direction, flow_strength])
+            else:
+                self._controller.step(setpoint, self._position, [_neighbourhood, _neighbourhood_values, flow_direction, 0.0])
         else:
             raise ValueError(f'Invalid controller name: {self._controller._name}')
 
-        # --- 3. Update agent dynamics and position ---
-        self._dynamics.step(self._controller._output)
-        self._position = [int(coord) for coord in self._dynamics._output[0]]
+        # B. Integrate the dynamics using the calculated force
+        force = self._controller._output
+        self._dynamics.step(force)
 
-        # Ensure the new position is within allowed limits
+        # C. Update the agent's continuous position
+        self._position = self._dynamics._output[0].copy()
+
+        # Apply boundaries
         self._position[0] = self.np.clip(self._position[0], limits[0][0], limits[0][1])
         self._position[1] = self.np.clip(self._position[1], limits[1][0], limits[1][1])
-
-        # --- 4. Update motion status for the FSM ---
+                 
+        # --- 4. Final state updates and constraints ---                            
+        # integer position for map indexing and consistency
+        self._position = [int(coord) for coord in self._position]
+        
+        # Update motion status for the FSM
         self._status_motion = self._controller._status
         
     def remove_vegetation(self, time_of_day: str = None, limits: list = None, misc: dict = None) -> None:
@@ -551,7 +594,7 @@ class BeaversRobotBackend(BaseRobotBackend):
                 # Only allow digging to negative values if river is nearby
                 if not river_nearby:
                     # Limit removal to prevent going below 0
-                    max_allowed_removal = max(0, self._map_quality_measure_position)
+                    max_allowed_removal = max(0, 0.99 * self._map_quality_measure_position)
                     if max_allowed_removal > 0:
                         actual_removal = min(self._vegetation_removal, max_allowed_removal)
                         self._harvesting_actions_counter += 1
@@ -599,7 +642,7 @@ class BeaversRobotBackend(BaseRobotBackend):
             return True
         else:
             return False
-        
+        s
     ############################################################
     # UTILITIES
     ############################################################
@@ -651,9 +694,9 @@ class BeaversRobotBackend(BaseRobotBackend):
         elif self._exploration_map == 'vegetation_visits':
             local_map[~threshold_mask] = self.np.nan
             if self._role == 'explorer':
-                local_map[threshold_mask] = (eps + local_visits_map[threshold_mask]) ** 2 * (eps + local_map[threshold_mask]) ** 2
+                local_map[threshold_mask] = (eps + local_visits_map[threshold_mask]) ** 1 * (eps + local_map[threshold_mask]) ** 1
             elif self._role == 'builder':
-                local_map[threshold_mask] = (eps + local_visits_map[threshold_mask]) ** 2 / ((eps + local_map[threshold_mask]) ** 2)
+                local_map[threshold_mask] = (eps + local_visits_map[threshold_mask]) ** 1 / ((eps + local_map[threshold_mask]) ** 1)
         else:
             raise ValueError(f'Invalid exploration_map value: {self._exploration_map}')
 
@@ -683,7 +726,7 @@ class BeaversRobotBackend(BaseRobotBackend):
         # Assign results to class attributes
         self._neighbourhood = neighbourhood_cells
         self._neighbourhood_reached_flag = reached_flags
-        self._neighbourhood_current_index = current_index
+        self._neighbourhood_current_index = current_index                
         
         
     def update_local_map(self, map_quality: list, misc: dict = None) -> None:
@@ -709,10 +752,12 @@ class BeaversRobotBackend(BaseRobotBackend):
         if measure_positions == 'all':
             # Replace local map with full observed map
             self._local_map = measure_values[0]
-            global_visits_map = misc.get('visits', None) if misc else None
-            self._local_map_visits = global_visits_map
+            global_visits_map = misc.get('visits', None).copy() if misc else None
+                        
+            
+            self._local_map_visits = self.np.abs(global_visits_map) if global_visits_map is not None else None
             # Increment visits at current position
-            if self._local_map_visits is not None:
+            if self._local_map_visits is not None:                
                 self._local_map_visits[self._position[0], self._position[1]] += visit_increase
             return
 
@@ -760,34 +805,38 @@ class BeaversRobotBackend(BaseRobotBackend):
             )
         )
 
-    def select_exploration_eta(self, dt: int, dt_percentage: float, decay: list) -> None:
+    def select_exploration_eta(self, dt: float, dt_percentage: float, decay: list) -> None:
         """
         Adaptively adjust exploration parameters (eta, harvest interval, max load)
         based on recent agent performance (load accumulation).
 
         Args:
-            dt (int): Time window (steps) for adaptation.
+            dt (float): Time window in simulation hours for adaptation.
             dt_percentage (float): Fraction of steps with positive load change required to avoid decay.
             decay (list): Decay rates [eta_decay, harvest_decay, load_decay].
         """
         # --- 1. Unpack decay rates ---
-        eta_decay = decay[0]
-        harvest_decay = decay[1]
-        load_decay = decay[2]
+        eta_decay = 0.0
+        load_decay = decay[0]
+        harvest_decay = decay[1]        
 
-        # --- 2. Compute load derivative over the recent window ---
+        # --- 2. Compute load derivative over the recent time window ---
+        # Convert the requested time window (hours) to a number of stored samples.
+        current_dt = self._dt_init if getattr(self, '_dt_init', None) not in (None, 0) else 1.0
+        window_steps = max(2, int(round(dt / current_dt)))
+
         # Only proceed if enough history is available
-        if len(self._load_store) < dt + 1:
+        if len(self._load_store) < window_steps + 1:
             return
-        load_derivative = self.np.diff(self._load_store[-(dt + 1):-1])
-        self._wait_b4_explore += 1
+        load_derivative = self.np.diff(self._load_store[-(window_steps + 1):])
+        self._wait_b4_explore += current_dt
 
         # --- 3. Adapt parameters if window is complete and enough time has passed ---
-        if len(load_derivative) >= dt - 1 and self._wait_b4_explore >= dt:
-            self._wait_b4_explore = 0
+        if len(load_derivative) >= window_steps - 1 and self._wait_b4_explore >= dt:
+            self._wait_b4_explore = 0.0
             # If not enough positive load changes, decay parameters
             positive_steps = (load_derivative > 0).sum()
-            if positive_steps < dt_percentage * dt and self._load < self._maximum_load:
+            if positive_steps < dt_percentage * window_steps and self._load < self._maximum_load and self._maximum_load > 0.1 * self._maximum_load_init:
                 # Decay exploration eta, max load, and widen harvest interval
                 self._exploration_eta *= (1 - eta_decay)
                 self._maximum_load *= (1 - load_decay)

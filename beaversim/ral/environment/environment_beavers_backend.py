@@ -1,6 +1,8 @@
 # Import parent class
 from beaversim.ral.environment.environment_backend import BaseEnvironmentBackend
 from typing import Any, Dict, Optional
+import json
+from scipy import ndimage
 
 class BeaversEnvironmentBackend(BaseEnvironmentBackend):
     """Backend for Beavers environment simulation."""
@@ -35,6 +37,12 @@ class BeaversEnvironmentBackend(BaseEnvironmentBackend):
         
         # Map file path
         self._elevation_file_path = env.get('elevation_file_path', None)
+        self._metadata_file_path = env.get('metadata_file_path', None)        
+        self._resolution_m = None
+        if self._metadata_file_path:
+            with open(self._metadata_file_path, "r", encoding="utf-8") as f:
+                metadata = json.load(f)
+            self._resolution_m = metadata.get("target_resolution_m")
         
         # Load map (sets self._width, self._height, self._map_original)
         self.load_map_from_file()
@@ -65,6 +73,7 @@ class BeaversEnvironmentBackend(BaseEnvironmentBackend):
             'growth_factor_mean': [],
             'growth_factor_std': [],
             'veg_mean': [],
+            'veg_quantiles': [],
             'veg_std': [],
             'random_growth_mean': [],
             'random_growth_std': []
@@ -160,15 +169,18 @@ class BeaversEnvironmentBackend(BaseEnvironmentBackend):
         # --- 1. Compute growth and vegetation masks ---
         # 1.1. growth_mask: Where grass is allowed to grow (elevation in allowed interval)
         # 1.2. vegetation_mask: Where there is any vegetation (for stats)
-        growth_mask = (self._map >= grass_growth_interval[0]) & (self._map <= grass_growth_interval[1])
-        vegetation_mask = (self._map > 0.05)
+        growth_mask = (self._map > grass_growth_interval[0]) & (self._map < grass_growth_interval[1])
+        vegetation_mask = (self._map >= 0.05)
         if not self.np.any(growth_mask):
             # 1.3. If no growth possible, propagate previous stats and exit
             self._growth_stats['day'].append(int(self._current_day))
             self._growth_stats['growth_factor_mean'].append(float(self._growth_stats['growth_factor_mean'][-1]) if self._growth_stats['growth_factor_mean'] else 0.0)
             self._growth_stats['growth_factor_std'].append(float(self._growth_stats['growth_factor_std'][-1]) if self._growth_stats['growth_factor_std'] else 0.0)
             self._growth_stats['veg_mean'].append(float(self._growth_stats['veg_mean'][-1]) if self._growth_stats['veg_mean'] else 0.0)
+            self._growth_stats['veg_quantiles'].append(self._growth_stats['veg_quantiles'][-1] if self._growth_stats['veg_quantiles'] else [0.0, 0.0, 0.0])
             self._growth_stats['veg_std'].append(float(self._growth_stats['veg_std'][-1]) if self._growth_stats['veg_std'] else 0.0)
+            self._growth_stats['random_growth_mean'].append(float(self._growth_stats['random_growth_mean'][-1]) if self._growth_stats['random_growth_mean'] else 0.0)
+            self._growth_stats['random_growth_std'].append(float(self._growth_stats['random_growth_std'][-1]) if self._growth_stats['random_growth_std'] else 0.0)
             return
 
         # --- 2. Compute seasonal growth curve ---
@@ -190,7 +202,7 @@ class BeaversEnvironmentBackend(BaseEnvironmentBackend):
         # 3.2. Mean growth for this day (seasonal)
         mean_growth = baseline + 2.0 * base_rate * sn_norm
         # 3.3. Clamp mean growth to allowed range
-        min_growth = -2 * base_rate
+        min_growth = -1 * base_rate
         max_growth = 2 * base_rate
         mean_growth = self.np.clip(mean_growth, min_growth, max_growth)
         # 3.4. Compute current and initial mean vegetation in growth_mask
@@ -207,27 +219,45 @@ class BeaversEnvironmentBackend(BaseEnvironmentBackend):
         # 3.7. Effective mean growth (seasonal + feedback, clamped)
         effective_mean_growth = self.np.clip(mean_growth + mean_feedback, min_growth, max_growth)
 
-        # --- 4. Per-pixel randomization using the environment RNG stream ---
-        # 4.1. Each cell gets a random growth value centered at effective_mean_growth
-        random_growth = self.rng.normal(
-            loc=effective_mean_growth,
-            scale=self._grass_growth_sigma * abs(base_rate),
-            size=self._map.shape
-        )
-        # 4.2. Clamp random growth to allowed range
-        random_growth = self.np.clip(random_growth, min_growth, max_growth)
-        # 4.3. Only apply growth to valid cells
+        # --- 4. Per-pixel randomization with global drift and spatially modulated variance ---
+        min_vegetation = 0.05
+
+        # Use local contrast against a smoothed map to modulate noise amplitude.
+        smoothed_map = ndimage.median_filter(self._map.copy(), size=3)
+        value_span = max(max_vegetation - min_vegetation, 1e-12)
+        contrast_norm = self.np.clip(self.np.abs(smoothed_map - self._map) / value_span, 0.0, 1.0)
+
+        base_sigma = self._grass_growth_sigma * abs(base_rate)
+        variance_boost = 1.0 + 0.75 * contrast_norm
+        local_sigma = base_sigma * variance_boost
+
+        # Stochastic term has zero mean (over growth cells) to avoid long-term drift.
+        noise = self.rng.normal(loc=0.0, scale=local_sigma, size=self._map.shape)
+        noise[~growth_mask] = 0.0
+        growth_noise = noise[growth_mask]
+        noise[growth_mask] = growth_noise - float(self.np.mean(growth_noise))
+
+        # Mean growth is controlled only by seasonal term + mean-feedback.
+        random_growth = effective_mean_growth + noise
+        
+        # Respect global and per-cell growth limits
+        local_values = self._map
+        lower_delta = self.np.maximum(min_growth, min_vegetation - local_values)
+        upper_delta = self.np.minimum(max_growth, max_vegetation - local_values)
+        random_growth = self.np.clip(random_growth, lower_delta, upper_delta)
+
+        # Only apply growth to valid cells.
         random_growth[~growth_mask] = 0.0
 
         # --- 5. Apply growth and enforce bounds ---
-        # 5.1. Add random growth to map
-        self._map = self._map + random_growth
-        # 5.2. Clamp vegetation to allowed range in growth_mask
-        self._map[growth_mask] = self.np.clip(self._map[growth_mask], 0.05, self._vegetation_quality_range[1])
+        updated_growth_cells = self._map[growth_mask] + random_growth[growth_mask]
+        self._map[growth_mask] = self.np.clip(updated_growth_cells, min_vegetation, max_vegetation)
 
         # --- 6. Store stats for visualization ---
         # 6.1. Compute stats for current vegetation
+        vegetation_mask = (self._map >= 0.05)
         veg_values = self._map[vegetation_mask]
+        veg_quantiles = self.np.percentile(veg_values, [10, 50, 90]) if veg_values.size > 0 else [0.0, 0.0, 0.0]
         veg_mean = float(self.np.mean(veg_values)) if veg_values.size > 0 else 0.0
         veg_std = float(self.np.std(veg_values)) if veg_values.size > 0 else 0.0
         # 6.2. Store all relevant stats for this day
@@ -235,6 +265,7 @@ class BeaversEnvironmentBackend(BaseEnvironmentBackend):
         self._growth_stats['growth_factor_mean'].append(float(effective_mean_growth))
         self._growth_stats['growth_factor_std'].append(float(self.np.std(random_growth[growth_mask])))
         self._growth_stats['veg_mean'].append(veg_mean)
+        self._growth_stats['veg_quantiles'].append(veg_quantiles)
         self._growth_stats['veg_std'].append(veg_std)
         self._growth_stats['random_growth_mean'].append(float(self.np.mean(random_growth[growth_mask])))
         self._growth_stats['random_growth_std'].append(float(self.np.std(random_growth[growth_mask])))

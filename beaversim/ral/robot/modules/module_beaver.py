@@ -80,6 +80,7 @@ def exploration_gradient_DN(
             scaled = finite_values * eta - np.max(finite_values * eta)
             probs = np.exp(scaled) / np.sum(np.exp(scaled))
             neighbourhood = [finite_positions[np.random.choice(len(finite_positions), p=probs)]]
+                        
 
         except (ValueError, IndexError):
             # Fallback: select nearby position
@@ -87,7 +88,7 @@ def exploration_gradient_DN(
             zero_idx = [i for i, d in enumerate(distances) if d == 0.0]
             if zero_idx:
                 distances[zero_idx[0]] = np.inf  # Exclude current position
-            max_dist = 2 * np.min(distances) if distances else 1.0
+            max_dist = np.max(distances) if distances else 4.0
             valid_idx = [i for i, d in enumerate(distances) if 0 < d <= max_dist]
             neighbourhood = [neighbourhood[np.random.choice(valid_idx) if valid_idx else 0]]
 

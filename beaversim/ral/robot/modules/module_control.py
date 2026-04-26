@@ -1,3 +1,5 @@
+from curses import error
+
 import numpy as np
 from typing import Any, Optional, List
 
@@ -6,24 +8,20 @@ class Controller:
     
     def __init__(self, **kwargs) -> None:
         controller = kwargs.get('controller')
-        self._name: str = controller.get('name')
-        self._max: float = controller.get('max')
-        self._accuracy: float = controller.get('accuracy')
-        self._dimension: int = controller.get('dimension')
+        self._name: str = controller.get('name')        
+        self._max: float = controller.get('max', np.inf)
+        self._accuracy: float = controller.get('accuracy', 1e0)
+        self._dimension: int = controller.get('dimension', 2)
         
-        self._Kp: float = controller.get('Kp')
-        self._Kd: float = controller.get('Kd')
-        self._Ki: float = controller.get('Ki')
+        self._Kp: float = controller.get('Kp', None)
+        self._Kd: float = controller.get('Kd', None)
+        self._Ki: float = controller.get('Ki', None)
         
         if self._name == 'P_repulsive':
-            self._map_repulsive = controller.get('map_repulsive')
-            self._neighbourhood_size = controller.get('neighbourhood_size')
-            self._beta_repulsive: float = controller.get('beta_repulsive')
-            self._alpha_memory = controller.get('alpha_memory')
-            self._vegetation_barrier = controller.get('vegetation_barrier')
-            self._river_barrier = controller.get('river_barrier')
-            self._variance = 0
-            self._previous_control = np.zeros((1, self._dimension))
+            self._map_repulsive = controller.get('map_repulsive', None)
+            self._neighbourhood_size = controller.get('neighbourhood_size', None)
+            self._beta_repulsive: float = controller.get('beta_repulsive', None)            
+            
         
         self._Kp_init, self._Kd_init, self._Ki_init = self._Kp, self._Kd, self._Ki
         self._status: str = 'IDLE'
@@ -45,6 +43,11 @@ class Controller:
         self._error = error
         self._error_integral += self._error
         self._max_scaled = self._max
+        
+        # anti windup for integral term
+        if self._Ki != 0:
+            integral_limit = self._max_scaled / self._Ki
+            self._error_integral = np.clip(self._error_integral, -integral_limit, integral_limit)
         return error
     
     def compute_output(self, error: float, neighbourhood: Optional[Any] = None) -> np.ndarray:
@@ -54,35 +57,56 @@ class Controller:
             control = self._Kp * error + self._Kd * error_d + self._Ki * self._error_integral
         
         elif self._name == 'P_repulsive':
-            # Normalize neighbourhood values
-            neighbourhood_pos, neighbourhood_values = neighbourhood[0], neighbourhood[1]
+            # 1. Normalize neighbourhood values (Consider increasing neighbourhood_size if obstacles are large)
+            neighbourhood_pos, neighbourhood_values, flow_direction, flow_strength = neighbourhood[0], neighbourhood[1], neighbourhood[2], neighbourhood[3]
+            
+            # 1. Normalize terrain FIRST
             min_val, max_val = np.min(neighbourhood_values), np.max(neighbourhood_values)
             if max_val > min_val:
-                neighbourhood_values = (neighbourhood_values - min_val) / (max_val - min_val) * np.linalg.norm(error)
+                neighbourhood_values = (neighbourhood_values - min_val) / (max_val - min_val)
             else:
                 neighbourhood_values = np.zeros_like(neighbourhood_values)
+                
+            # 4. Extract the agent's precise center value safely
+            agent_val = 0.0
+            agent_pos_arr = np.array(self._current_value[-1])
+            for pos, val in zip(neighbourhood_pos, neighbourhood_values):
+                if pos[0] == agent_pos_arr[0] and pos[1] == agent_pos_arr[1]:
+                    agent_val = val
+                    break
             
-            # Compute repulsive potential when far from setpoint
+            # 5. Compute repulsive potential properly aligned to the agent
             potential_array = []
             if np.linalg.norm(error) > 4.0:
-                value_list = []
                 for pos, val in zip(neighbourhood_pos, neighbourhood_values):
-                    is_current = (pos[0] == self._current_value[-1][0] and pos[1] == self._current_value[-1][1])
-                    value_list.append([pos[0], pos[1], np.inf if is_current else val])
-                value_array = np.array(value_list)
-                finite_mask = np.isfinite(value_array[:, 2])
-                finite_array = value_array[finite_mask]
-                value_pos = value_array[finite_mask][0, 2] if (finite_mask).any() else 0
-                for i in range(finite_array.shape[0]):
-                    potential = (value_pos - finite_array[i, 2]) * (self._current_value[-1] - finite_array[i, :2])
+                    pos_arr = np.array(pos)
+                    
+                    # Skip self-comparison
+                    if pos_arr[0] == agent_pos_arr[0] and pos_arr[1] == agent_pos_arr[1]:
+                        continue
+                        
+                    # Vector pointing FROM the neighbor TO the agent
+                    direction = agent_pos_arr - pos_arr
+                    
+                    # If neighbor is higher (val > agent_val), difference is negative.
+                    # Negative difference * direction (which points away from neighbor) 
+                    # yields a force pushing the agent down the slope, away from the obstacle.
+                    potential = (agent_val - val) * direction
                     potential_array.append(potential)
             else:
                 potential_array = [np.array((0.0, 0.0))]
+                                
             # PID control
             error_d = error - self._error_old
             control_attractive = self._Kp * error + self._Kd * error_d + self._Ki * self._error_integral
-            control_repulsive = self._Kp * np.sum(potential_array, axis=0)
+            repulsive_error = np.sum(potential_array, axis=0) if potential_array else np.zeros_like(control_attractive)
+            repulsive_error_normalized = repulsive_error / (np.linalg.norm(repulsive_error) + 1e-6) * np.linalg.norm(error)            
+            control_repulsive = self._Kp * repulsive_error_normalized
             control = self._beta_repulsive * control_repulsive + (1 - self._beta_repulsive) * control_attractive
+            
+            # account for flow influence                         
+            flow_influence = flow_direction * flow_strength * (np.linalg.norm(error) / (np.linalg.norm(error) + 1e-6))
+            control += flow_influence
         else:
             raise NotImplementedError()
         return np.clip(control, -self._max_scaled, self._max_scaled).reshape((1, self._dimension))
@@ -123,14 +147,13 @@ class Dynamics:
         self._force: Any = []
         self._output: Any = []
     
-    def SS_dynamics(self) -> None:
+    def SS_dynamics(self, dt: float, input: Any) -> None:
         """State-space dynamics: x[k+1] = A*x[k] + B*u[k], y[k] = C*x[k]. Hybrid system stops velocity on zero input."""
-        dt = self._dt
         A = np.array([[1, dt], [0, 1 - self._friction / self._mass]])
         B = np.array([[0], [dt / self._mass]])
         C = np.array([[1, 0]])
         D = np.array([[0]])
-        u = np.array(self._force)
+        u = np.array(input).reshape((1, self._state.shape[0]))
         # Hybrid system: zero control stops velocity
         for i, control in enumerate(u[0]):
             if control == 0:
@@ -142,6 +165,6 @@ class Dynamics:
         """Execute one dynamics step with given force input."""
         if self._name == 'integrator':
             self._force = input
-            self.SS_dynamics()
+            self.SS_dynamics(self._dt, input)
         else:
             raise NotImplementedError()

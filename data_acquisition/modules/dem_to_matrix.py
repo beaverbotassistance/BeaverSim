@@ -396,6 +396,9 @@ def transform_food_cache_coordinates(
         epsg_geographic: EPSG code for geographic CRS (e.g., 'EPSG:4326')
         epsg_projected: EPSG code for projected CRS (e.g., 'EPSG:6483')
     """
+    if food_cache_latlon is None:
+        return None, None, False
+
     tf = Transformer.from_crs(epsg_geographic, epsg_projected, always_xy=True)
     food_cache_x, food_cache_y = tf.transform(food_cache_latlon[1], food_cache_latlon[0])
     
@@ -466,16 +469,16 @@ def save_dem_outputs(
         'elevation_normalization': 'Values normalized 0-1, invalid areas marked as -1.0',
         'food_cache': {
             'original_coordinates': {
-                'latitude': float(food_cache_latlon[0]),
-                'longitude': float(food_cache_latlon[1])
+                'latitude': float(food_cache_latlon[0]) if food_cache_latlon is not None else None,
+                'longitude': float(food_cache_latlon[1]) if food_cache_latlon is not None else None
             },
             'projected_coordinates': {
-                'x': float(food_cache_proj[0]),
-                'y': float(food_cache_proj[1])
+                'x': float(food_cache_proj[0]) if food_cache_proj is not None else None,
+                'y': float(food_cache_proj[1]) if food_cache_proj is not None else None
             },
             'matrix_indices': {
-                'x_index': int(food_cache_idx[0]),
-                'y_index': int(food_cache_idx[1])
+                'x_index': int(food_cache_idx[0]) if food_cache_idx is not None else None,
+                'y_index': int(food_cache_idx[1]) if food_cache_idx is not None else None
             },
             'within_bounds': bool(food_cache_in_bounds)
         },
