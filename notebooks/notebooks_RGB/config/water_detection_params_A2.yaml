@@ -1,0 +1,28 @@
+source_path: data_acquisition/example_datasets/RUMNEY_RANCH_RGB/A2
+output_path: output/RumneyRanch_Montana/RGB/A2/raw
+baseline:
+  method: median
+  remove_mean: True
+  shadow_correction: True
+  water_index: ExG
+  threshold: 0.33     
+  opening_sizes: [8]
+  median_sizes: []
+  closing_sizes: [30]
+  resolution: 1
+  downsample_factor: 4
+pictures:
+  general:        
+    shadow_correction: True 
+    remove_mean: True       
+    vegetation_index: ExG
+  A2_05:
+    image: A2_07062018.PNG  
+  A2_07:
+    image: A2_07262018.PNG
+  A2_08:
+    image: A2_08062018.PNG
+  A2_09:
+    image: A2_08142018.PNG
+  A2_10:
+    image: A2_08222018.PNG

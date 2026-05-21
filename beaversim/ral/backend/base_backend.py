@@ -11,10 +11,6 @@ class BaseBackend():
         self._kwargs = kwargs        
         _simulation = self._kwargs.get('simulation')
         
-        # set seed
-        self._seed = _simulation.get('seed')
-        self.random.seed(self._seed)
-        
         # set backend
         self._backend_type = self._kwargs.get('backend_type')
         if self._backend_type == 'pybullet':

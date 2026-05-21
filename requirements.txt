@@ -12,3 +12,9 @@ numpy
 scipy
 mesa==1.2.0
 pyproj
+pandas
+opencv-python
+Pillow
+# Optional: For advanced water detection with SAM2
+# Uncomment and install manually if needed:
+# git+https://github.com/facebookresearch/sam2.git
