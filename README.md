@@ -22,9 +22,12 @@ This repository provides:
 - An open-source simulation suite that couples DEM inputs and RGB imagery with multi-agent beaver teams.
 - Biologically plausible behavioral rules that reproduce qualitative patterns such as ponds, trails, and persistent visit networks.
 - Interactive notebooks and demo scenarios that support both data preparation and simulation analysis.
+- Each notebook includes explanatory narrative covering the modeling assumptions and design decisions used in that workflow.
 - A post-processing workflow for comparing simulated outputs with real-world imagery and terrain-derived baselines.
 
 The codebase is designed as a research testbed to be extended with new behaviors, metrics, and validation experiments.
+
+The paper that guides the simulator is currently submitted to Biomimetics, so the documentation is still evolving. Bear with us in the meantime; more detailed explanations will hopefully appear soon.
 
 ## Installation
 
@@ -112,6 +115,17 @@ pip install -r requirements.txt
 python -c "import beaversim; print('BeaverSim successfully installed')"
 ```
 
+## Methodology at a Glance
+
+BeaverSim is organized around two coupled parts: an Environment backend that turns real-world DEM or RGB inputs into a simulation grid, and an Agent layer that explores, forages, and modifies that grid through local rules.
+
+- **Environment:** DEM workflows capture terrain and hydrology, while RGB workflows capture finer vegetation patterns; both are converted into simulation-ready vegetation-quality matrices.
+- **Preprocessing:** DEM notebooks resample elevation data and identify water bodies, while RGB notebooks build a baseline from multiple images, correct shadows, and compute vegetation indices.
+- **Agents:** Mesa-based beaver-like agents move locally, harvest resources, and reinforce emergent trails or canals through feedback from the environment.
+- **Outputs:** The notebooks and analysis tools visualize vegetation change, visit patterns, growth statistics, and snapshot comparisons.
+
+The example notebooks use sites such as Acadia, Rumney Marsh, and Rumney Ranch to show the workflow end to end.
+
 ## Quick Start
 
 ### 1. Start With Data-Preparation Notebooks
@@ -127,6 +141,8 @@ If you want to understand how terrain and imagery become simulation inputs, begi
 - Open any notebook in VS Code and select the `beaversim_env` virtual environment
 - Run cells individually or choose "Run All"
 - Plots and intermediate results will render inline
+
+Each notebook contains a step-by-step explanation of the modeling and design decisions behind that preprocessing workflow.
 
 These notebooks walk through loading raw elevation or imagery data, configuring coordinate systems, masking water bodies, and exporting simulation-ready outputs.
 
@@ -149,7 +165,7 @@ Start with Acadia if you want the quickest introduction, then move to Boston or 
 
 ### Processing DEM Inputs
 
-Use the DEM notebooks to prepare your own elevation data (e.g., ```notebooks/notebooks_DEM/dem_conversion_RumneyMarsh_interactive.ipynb```):
+Use the DEM notebooks to prepare your own elevation data (e.g., `notebooks/notebooks_DEM/dem_conversion_RumneyMarsh_interactive.ipynb`):
 
 The DEM workflow provides a step-by-step pipeline:
 1. **Loading CSV data** with elevation coordinates
@@ -162,7 +178,7 @@ The DEM workflow provides a step-by-step pipeline:
 
 ### Processing RGB Inputs
 
-Use the RGB notebooks to derive vegetation-quality maps from aerial imagery (e.g., ```notebooks/notebooks_RGB/rgb_conversion_RumneyRanch_A2_interactive.ipynb```):
+Use the RGB notebooks to derive vegetation-quality maps from aerial imagery (e.g., `notebooks/notebooks_RGB/rgb_conversion_RumneyRanch_A2_interactive.ipynb`):
 
 The RGB workflow provides:
 1. **Baseline aggregation** from multiple images of the same site
