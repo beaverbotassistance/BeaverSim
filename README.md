@@ -198,7 +198,6 @@ BeaverSim/
 │   ├── environment/              # Environment simulation logic
 │   ├── robot/                    # Beaver agent behavior modules
 │   ├── scenarios/                # Pre-defined simulation scenarios
-│   └── utils/                    # Shared utilities
 ├── data_acquisition/             # DEM/RGB conversion helpers and source data
 │   ├── modules/
 │   │   ├── dem_to_matrix.py
