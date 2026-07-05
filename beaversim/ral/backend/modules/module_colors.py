@@ -141,6 +141,12 @@ class ColorMaps:
         self._battery_markeredgecolor = self._light_gray # light grey
         self._battery_markeredgewidth = 1
         self._battery_markeralpha = 1.0   
+
+        self._water_color_list = [
+            (0.00, self._black),
+            (1.0, lightblue)
+        ]
+        self._water_colormap = cc.LinearSegmentedColormap.from_list("water_colormap", self._water_color_list)
         
         # 11. Visits colormap
         self._visits_color_list = [

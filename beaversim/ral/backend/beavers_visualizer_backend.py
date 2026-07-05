@@ -342,6 +342,95 @@ class EnvironmentVisualizerAgent(BeaversEnvironmentBackend, Agent):
         Agent.__init__(self, unique_id, model)
         self.initiate_environment(**kwargs)
         self._timedelta: float = model._timedelta
+        self._init_plotting_stats()
+
+    def _init_plotting_stats(self) -> None:
+        self._plotting_stats = {
+            'water_pixel_density': [],
+            'land_pixel_density': [],
+            'explorer_spatial_footprint': [],
+            'explorer_canalization_ratio': [],
+            'builder_spatial_footprint': [],
+            'builder_canalization_ratio': []
+        }
+
+    def store_plotting_stats(self, canalization_method="percentile") -> None:
+        """
+        Store pixel densities for water/land, and track the absolute spatial footprint 
+        and active canalization ratios.
+        
+        Args:
+            canalization_method (str): 'percentile' (volume-based) or 'mean' (cell-count based).
+        """
+        total_pixels = self._width * self._height
+
+        # --- WATER & LAND STATS ---
+        water_pixel_density = float(self.np.sum(self._map < 0.0) / total_pixels)
+        land_pixel_density = float(self.np.sum(self._map >= 0.0) / total_pixels)
+
+        # =====================================================================
+        # --- EXPLORER TRAIL STATS (Negative values) ---
+        # =====================================================================
+        # 1. ABSOLUTE SPATIAL FOOTPRINT (Using an independent permanent explorer footprint)
+        explorer_footprint_mask = (self._map_visits_roles_explorer != 0)
+        explorer_footprint = int(self.np.sum(explorer_footprint_mask))
+        explorer_canalization = 0.0
+        
+        # 2. Extract ONLY the active traffic from the decaying map for canalization
+        active_mask_e = (self._map_visits_roles < -1e-3)
+        active_values_e = self.np.abs(self._map_visits_roles[active_mask_e])
+        
+        if explorer_footprint > 0 and len(active_values_e) > 0:
+            if canalization_method == "percentile":
+                # PERCENTILE METHOD: Volume of traffic on top 5% of active cells
+                total_traffic_e = float(self.np.sum(active_values_e))
+                if total_traffic_e > 0:
+                    top_5_threshold_e = float(self.np.percentile(active_values_e, 95))
+                    heavy_traffic_vol_e = float(self.np.sum(active_values_e[active_values_e >= top_5_threshold_e]))
+                    explorer_canalization = heavy_traffic_vol_e / total_traffic_e
+                    
+            elif canalization_method == "mean":
+                # MEAN METHOD: Ratio of heavily trafficked cells to absolute footprint
+                mean_visits_e = float(self.np.mean(active_values_e))
+                heavy_cells_e = int(self.np.sum(active_values_e > mean_visits_e))
+                explorer_canalization = heavy_cells_e / explorer_footprint
+
+        # =====================================================================
+        # --- BUILDER TRAIL STATS (Positive values) ---
+        # =====================================================================
+        # 1. ABSOLUTE SPATIAL FOOTPRINT (Using an independent permanent builder footprint)
+        builder_footprint_mask = (self._map_visits_roles_builder != 0)
+        builder_footprint = int(self.np.sum(builder_footprint_mask))
+        builder_canalization = 0.0
+        
+        # 2. Extract ONLY the active traffic from the decaying map for canalization
+        active_mask_b = (self._map_visits_roles > 1e-3)
+        active_values_b = self._map_visits_roles[active_mask_b]
+        
+        if builder_footprint > 0 and len(active_values_b) > 0:
+            if canalization_method == "percentile":
+                # PERCENTILE METHOD: Volume of traffic on top 5% of active cells
+                total_traffic_b = float(self.np.sum(active_values_b))
+                if total_traffic_b > 0:
+                    top_5_threshold_b = float(self.np.percentile(active_values_b, 95))
+                    heavy_traffic_vol_b = float(self.np.sum(active_values_b[active_values_b >= top_5_threshold_b]))
+                    builder_canalization = heavy_traffic_vol_b / total_traffic_b
+                    
+            elif canalization_method == "mean":
+                # MEAN METHOD: Ratio of heavily trafficked cells to absolute footprint
+                mean_visits_b = float(self.np.mean(active_values_b))
+                heavy_cells_b = int(self.np.sum(active_values_b > mean_visits_b))
+                builder_canalization = heavy_cells_b / builder_footprint
+
+        # --- STORE STATS ---
+        self._plotting_stats['water_pixel_density'].append(water_pixel_density)
+        self._plotting_stats['land_pixel_density'].append(land_pixel_density)
+        
+        self._plotting_stats['explorer_spatial_footprint'].append(explorer_footprint)
+        self._plotting_stats['explorer_canalization_ratio'].append(explorer_canalization)
+        
+        self._plotting_stats['builder_spatial_footprint'].append(builder_footprint)
+        self._plotting_stats['builder_canalization_ratio'].append(builder_canalization)
 
     def step(self) -> None:
         """
@@ -380,3 +469,6 @@ class EnvironmentVisualizerAgent(BeaversEnvironmentBackend, Agent):
 
         # 2. Step the environment
         self.step_environment(self._timedelta, map, map_visits, home_base_position_store, self._grass_growth_interval, misc)
+
+        # 3. Collect stats for plotting AFTER environment has been updated
+        self.store_plotting_stats(canalization_method="percentile")

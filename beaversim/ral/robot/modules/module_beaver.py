@@ -78,8 +78,11 @@ def exploration_gradient_DN(
 
             # Softmax selection: higher gradient = higher probability
             scaled = finite_values * eta - np.max(finite_values * eta)
-            probs = np.exp(scaled) / np.sum(np.exp(scaled))
+            probs = np.exp(scaled) / np.sum(np.exp(scaled))            
+            best_idx = int(np.argmax(probs))
+
             neighbourhood = [finite_positions[np.random.choice(len(finite_positions), p=probs)]]
+            # neighbourhood = [finite_positions[best_idx]]
                         
 
         except (ValueError, IndexError):

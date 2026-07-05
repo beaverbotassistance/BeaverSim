@@ -7,6 +7,7 @@ __pycache__/
 output/
 resources/images/
 resources/doc
+beaversim_env/
 
 # files
 core.*
