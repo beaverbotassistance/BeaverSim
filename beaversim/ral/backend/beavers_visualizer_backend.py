@@ -348,6 +348,7 @@ class EnvironmentVisualizerAgent(BeaversEnvironmentBackend, Agent):
         self._plotting_stats = {
             'water_pixel_density': [],
             'land_pixel_density': [],
+            'land_pixel_mean': [],
             'explorer_spatial_footprint': [],
             'explorer_canalization_ratio': [],
             'builder_spatial_footprint': [],
@@ -367,6 +368,7 @@ class EnvironmentVisualizerAgent(BeaversEnvironmentBackend, Agent):
         # --- WATER & LAND STATS ---
         water_pixel_density = float(self.np.sum(self._map < 0.0) / total_pixels)
         land_pixel_density = float(self.np.sum(self._map >= 0.0) / total_pixels)
+        land_pixel_mean = float(self.np.mean(self._map >= 0.0))
 
         # =====================================================================
         # --- EXPLORER TRAIL STATS (Negative values) ---
@@ -425,6 +427,7 @@ class EnvironmentVisualizerAgent(BeaversEnvironmentBackend, Agent):
         # --- STORE STATS ---
         self._plotting_stats['water_pixel_density'].append(water_pixel_density)
         self._plotting_stats['land_pixel_density'].append(land_pixel_density)
+        self._plotting_stats['land_pixel_mean'].append(land_pixel_mean)
         
         self._plotting_stats['explorer_spatial_footprint'].append(explorer_footprint)
         self._plotting_stats['explorer_canalization_ratio'].append(explorer_canalization)
