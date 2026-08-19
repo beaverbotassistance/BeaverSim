@@ -89,7 +89,12 @@ class BeaversRobotBackend(BaseRobotBackend):
         
 
         self._exploration_distance_m = 10.0
-        exploration_cells = max(1, int(round(float(self._exploration_distance_m) / resolution_m)))
+        raw_exploration_cells = float(self._exploration_distance_m) / resolution_m
+        lower_even_cells = int(raw_exploration_cells // 2) * 2
+        upper_even_cells = lower_even_cells + 2
+        # ties (e.g. raw=7 -> 6 vs 8) resolve to the smaller even value
+        nearest_even_cells = lower_even_cells if raw_exploration_cells - lower_even_cells <= upper_even_cells - raw_exploration_cells else upper_even_cells
+        exploration_cells = max(2, nearest_even_cells)
         self._exploration_mode = f'gradient_D{exploration_cells:03d}'
         self._measurement_mode = 'full_map'
         self._measure_step = 1
