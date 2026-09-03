@@ -8,6 +8,7 @@ output/
 resources/images/
 resources/doc
 beaversim_env/
+beaversim_venv/
 
 # files
 core.*
