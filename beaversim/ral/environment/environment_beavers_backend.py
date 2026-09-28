@@ -52,6 +52,9 @@ class BeaversEnvironmentBackend(BaseEnvironmentBackend):
         self._map = self._map_original.copy()
         self._map_visits = self.np.zeros(self._map_original.shape)
         self._map_visits_roles = self.np.zeros(self._map_original.shape)
+        self._map_visits_boolean = self.np.zeros(self._map_original.shape, dtype=bool)        
+        self._map_visits_roles_explorer = self.np.zeros(self._map_original.shape, dtype=bool)
+        self._map_visits_roles_builder = self.np.zeros(self._map_original.shape, dtype=bool)
         
         # Time tracking
         self._current_time = 0
@@ -109,8 +112,19 @@ class BeaversEnvironmentBackend(BaseEnvironmentBackend):
         # --- 2. Update maps from agent observations ---
         self._map = map.copy()
         self._map_visits = map_visits.copy()
+        
+        # 1. Update the generic boolean visit map (bitwise OR is a permanent latch)
+        self._map_visits_boolean = self._map_visits_boolean | (self._map_visits > 0)
+
+        # 2. Get the decaying roles map
         map_visits_roles = misc.get('map_visits_roles', self.np.zeros(self._map_original.shape))
         self._map_visits_roles = map_visits_roles.copy()
+
+        # 3. Update the permanent roles boolean map   
+        eps = 1e-4  # Small epsilon to avoid floating-point issues     
+        self._map_visits_roles_explorer = self._map_visits_roles_explorer | (map_visits_roles < -eps)
+        self._map_visits_roles_builder = self._map_visits_roles_builder | (map_visits_roles > eps)
+
         self._home_base_position_store = home_base_position_store
 
         # --- 3. Grow grass and deepen rivers ---

@@ -60,7 +60,7 @@ class BeaversRobotBackend(BaseRobotBackend):
         # I would like to random pick the role.
         role_list = self._robot.get('role')
         n_roles = len(role_list) if isinstance(role_list, list) else 1
-        if n_roles > 1:
+        if n_roles >= 1:
             selected_role = self.random.choice(role_list)
             self._role = selected_role
         
@@ -659,7 +659,7 @@ class BeaversRobotBackend(BaseRobotBackend):
                 return
 
         # Edge case: ensure local maps are initialized
-        if self._local_map is None or self._local_map_visits is None or self._vegetation_quality_range is None:
+        if self._local_map is None or self._vegetation_quality_range is None:
             self._neighbourhood = []
             self._neighbourhood_reached_flag = []
             self._neighbourhood_current_index = None

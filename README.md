@@ -1,33 +1,16 @@
-# BeaverSim - Biomimicry at the landscape scale
+# BeaverSim 🦫
 
-BeaverSim is an open-source research platform that models how small, autonomous agents inspired by North American beavers interact with real terrain to produce adaptive, landscape-scale change. Rather than prescribing final forms, BeaverSim focuses on process-driven emergence: how simple local behaviors and environmental feedbacks combine to produce ponds, channels, trails, and vegetation dynamics using Digital Elevation Model (DEM) and RGB aerial imagery data.
+An agent-based simulation framework for modeling beaver behavior and ecological engineering in realistic terrains. BeaverSim simulates beaver colonies interacting with Digital Elevation Model (DEM) data, including vegetation dynamics, resource harvesting, and environmental modifications.
 
 ## Overview
 
-- **Goal:** Provide a modular, extensible ABM testbed to explore how biologically inspired behaviors produce landscape-scale features and networks.
-- **Approach:** Multi-Agent Simulation that integrates DEMs and aerial imagery with biologically plausible beaver-like behavioral policies and environmental feedbacks.
-- **Key features:**
-   - DEM/RGB import, processing, and water-masking tools
-   - Modular backends for visualization and simulation control
-   - Pre-configured demo scenarios and notebooks for quick experimentation
-   - Per-agent analytics and visualization tools for tracking emergent patterns
+BeaverSim provides a modular simulation environment where autonomous beaver agents:
+- Navigate realistic terrain based on real-world elevation data
+- Harvest vegetation and manage resources
+- Reinforce canals and and modify their environment
+- Exhibit exploration and foraging behaviors
 
-## Background & Motivation
-
-Landscapes are Complex Adaptive Systems shaped by geology, hydrology, and continuous reciprocal interactions with living agents. BeaverSim brings biomimicry to the landscape scale by using Agent-Based Modeling (ABM) to study how individual behaviors aggregate into persistent landscape structures. The North American beaver is a compelling case study because its dam-building, canal-digging, and foraging behaviors exemplify emergent, process-driven landscape engineering.
-
-## Scope and Contributions
-
-This repository provides:
-- An open-source simulation suite that couples DEM inputs and RGB imagery with multi-agent beaver teams.
-- Biologically plausible behavioral rules that reproduce qualitative patterns such as ponds, trails, and persistent visit networks.
-- Interactive notebooks and demo scenarios that support both data preparation and simulation analysis.
-- Each notebook includes explanatory narrative covering the modeling assumptions and design decisions used in that workflow.
-- A post-processing workflow for comparing simulated outputs with real-world imagery and terrain-derived baselines.
-
-The codebase is designed as a research testbed to be extended with new behaviors, metrics, and validation experiments.
-
-The paper that guides the simulator is currently submitted to Biomimetics, so the documentation is still evolving. Bear with us in the meantime; more detailed explanations will hopefully appear soon.
+The framework is built on a flexible backend architecture supporting visualization, multi-agent coordination, and environmental dynamics.
 
 ## Installation
 
@@ -48,6 +31,14 @@ For the best development and visualization experience, we recommend using **Visu
 2. **Install Required Extensions**:
    - **Python** (by Microsoft) - for Python language support
    - **Jupyter** (by Microsoft) - for notebook support with inline plots
+
+3. **Benefits**:
+   - Edit and run notebooks directly in the IDE
+   - Inline visualization of plots and simulation results
+   - Integrated terminal and debugging
+   - Better code navigation and IntelliSense
+
+**Alternative**: You can also use the classic Jupyter Notebook interface in your browser (instructions provided below).
 
 ### Setup
 
@@ -77,7 +68,7 @@ git clone https://github.com/beaverbotassistance/BeaverSim.git
 cd BeaverSim
 ```
 
-**Note**: The repository uses Git LFS for large CSV dataset files. After cloning, if you see pointer files instead of actual data in `data_acquisition/example_datasets/`, run:
+**Note**: The repository uses Git LFS for large CSV dataset files. After cloning, if you see pointer files instead of actual data in `beaversim/utils/example_datasets/`, run:
 ```bash
 git lfs pull
 ```
@@ -87,22 +78,13 @@ git lfs pull
 **Using venv:**
 ```bash
 python -m venv beaversim_env
+source beaversim_env/bin/activate  # On Windows: beaversim_env\Scripts\activate
 ```
 
-**PowerShell:**
-```powershell
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-.\beaversim_env\Scripts\Activate.ps1
-```
-
-**Command Prompt:**
-```bat
-.\beaversim_env\Scripts\activate.bat
-```
-
-**macOS/Linux:**
+**Using conda:**
 ```bash
-source beaversim_env/bin/activate
+conda create -n beaversim python=3.10
+conda activate beaversim
 ```
 
 4. Install dependencies:
@@ -115,59 +97,79 @@ pip install -r requirements.txt
 python -c "import beaversim; print('BeaverSim successfully installed')"
 ```
 
-## Methodology at a Glance
-
-BeaverSim is organized around two coupled parts: an Environment backend that turns real-world DEM or RGB inputs into a simulation grid, and an Agent layer that explores, forages, and modifies that grid through local rules.
-
-- **Environment:** DEM workflows capture terrain and hydrology, while RGB workflows capture finer vegetation patterns; both are converted into simulation-ready vegetation-quality matrices.
-- **Preprocessing:** DEM notebooks resample elevation data and identify water bodies, while RGB notebooks build a baseline from multiple images, correct shadows, and compute vegetation indices.
-- **Agents:** Mesa-based beaver-like agents move locally, harvest resources, and reinforce emergent trails or canals through feedback from the environment.
-- **Outputs:** The notebooks and analysis tools visualize vegetation change, visit patterns, growth statistics, and snapshot comparisons.
-
-The example notebooks use sites such as Acadia, Rumney Marsh, and Rumney Ranch to show the workflow end to end.
-
 ## Quick Start
 
-### 1. Start With Data-Preparation Notebooks
+### 1. Interactive DEM Processing
 
-If you want to understand how terrain and imagery become simulation inputs, begin here:
-
-- `notebooks/notebooks_DEM/dem_conversion_Acadia_interactive.ipynb` - Acadia DEM workflow for loading CSV elevation data, resampling, masking water, and exporting simulation-ready arrays
-- `notebooks/notebooks_DEM/dem_conversion_RumneyMarsh_interactive.ipynb` - Rumney Marsh DEM workflow on a larger site with the same processing pipeline
-- `notebooks/notebooks_RGB/rgb_conversion_RumneyRanch_A2_interactive.ipynb` - RGB workflow that converts aerial imagery into a vegetation-quality matrix
-- `notebooks/notebooks_RGB/rgb_conversion_RumneyRanch_A2_iterative.ipynb` - iterative RGB workflow for revisiting the same site with alternative preprocessing choices
+Start by exploring how to process Digital Elevation Model data.
 
 **Using VS Code (Recommended):**
-- Open any notebook in VS Code and select the `beaversim_env` virtual environment
-- Run cells individually or choose "Run All"
-- Plots and intermediate results will render inline
+- Open `beaversim/utils/dem_conversion_interactive.ipynb` in VS Code
+- Click "Run All" or execute cells individually
+- Plots will display inline within the editor
 
-Each notebook contains a step-by-step explanation of the modeling and design decisions behind that preprocessing workflow.
+**Using Jupyter Notebook (Browser):**
+```bash
+jupyter notebook beaversim/utils/dem_conversion_interactive.ipynb
+```
 
-These notebooks walk through loading raw elevation or imagery data, configuring coordinate systems, masking water bodies, and exporting simulation-ready outputs.
+This interactive notebook teaches you how to:
+- Load and process raw elevation data
+- Configure coordinate systems
+- Remove water bodies using stream thresholding
+- Export data ready for simulation
 
-### 2. Run The Simulation Demos
+### 2. Pre-configured Demo Simulations
 
-The simulation notebooks live under `notebooks/simulations/` and show how processed inputs are used in the agent model:
-
-- `notebooks/simulations/demo_csv_acadia.ipynb` - small DEM-based demo on Acadia data; best first run
-- `notebooks/simulations/demo_csv_boston.ipynb` - larger DEM-based demo with heavier computation
-- `notebooks/simulations/demo_rgb_montana.ipynb` - RGB-based simulation example derived from aerial imagery
-- `notebooks/simulations/data_analysis.ipynb` - post-processing notebook for environment heatmaps, growth statistics, snapshots, and agent diagnostics
+Run the example simulations with pre-processed data.
 
 **Using VS Code (Recommended):**
-- Open the notebook you want to explore
-- Run cells to inspect simulation outputs and visualizations inline
+- Open the notebook file in VS Code
+- Run cells to see simulation results and visualizations inline
 
-Start with Acadia if you want the quickest introduction, then move to Boston or RGB Montana once you are comfortable with the workflow.
+**Using Jupyter Notebook (Browser):**
 
-## DEM and RGB Data Processing
+#### Acadia National Park Demo (Recommended First)
+```bash
+jupyter notebook notebooks/demo_csv_acadia.ipynb
+```
 
-### Processing DEM Inputs
+**Features:**
+- Smaller area (~150m × 150m)
+- Faster computation
+- High resolution (0.5m per pixel)
+- Ideal for learning and testing
 
-Use the DEM notebooks to prepare your own elevation data (e.g., `notebooks/notebooks_DEM/dem_conversion_RumneyMarsh_interactive.ipynb`):
+#### Boston Rumney Marsh Demo (Advanced)
+```bash
+jupyter notebook notebooks/demo_csv_boston.ipynb
+```
 
-The DEM workflow provides a step-by-step pipeline:
+**Features:**
+- Larger area (~400m × 400m)
+- More computationally intensive
+- 1m resolution
+- Realistic large-scale simulation
+
+⚠️ **Note**: The Boston demo requires more memory and processing time. Start with Acadia to familiarize yourself with the framework.
+
+Both demos include:
+- Pre-loaded elevation data
+- Configured beaver agents
+- Optimized simulation parameters
+- Visualization examples
+
+## DEM Data Processing
+
+### Processing Your Own Elevation Data
+
+After trying the demo notebooks, you can process your own DEM data using the interactive converter:
+
+```bash
+jupyter notebook beaversim/utils/dem_conversion_interactive.ipynb
+```
+
+The notebook provides a step-by-step workflow:
 1. **Loading CSV data** with elevation coordinates
 2. **Setting resolution** and resampling
 3. **Normalizing elevation** to simulation ranges
@@ -176,22 +178,11 @@ The DEM workflow provides a step-by-step pipeline:
 6. **Polygon masking** to select regions of interest
 7. **Exporting processed data** ready for simulation
 
-### Processing RGB Inputs
-
-Use the RGB notebooks to derive vegetation-quality maps from aerial imagery (e.g., `notebooks/notebooks_RGB/rgb_conversion_RumneyRanch_A2_interactive.ipynb`):
-
-The RGB workflow provides:
-1. **Baseline aggregation** from multiple images of the same site
-2. **Shadow correction** to stabilize illumination differences
-3. **Vegetation indices** such as NDVI, VARI, ExG, and CWI
-4. **Water detection** and mask post-processing
-5. **Quality matrix export** for simulation initialization and later comparison with outputs
-
 ### Supported Data Formats
 
-- **DEM inputs**: CSV with `x` (longitude), `y` (latitude), `elevation` or projected `X_m`, `Y_m`, `elevation`
-- **RGB inputs**: Folders of aerial imagery for baseline aggregation and vegetation scoring
-- **Output format**: NumPy arrays (.npy) and metadata JSON for DEM; vegetation-quality matrices and masks for RGB
+- **Geographic coordinates**: CSV with `x` (longitude), `y` (latitude), `elevation`
+- **Projected coordinates**: CSV with `X_m`, `Y_m`, `elevation`
+- **Output format**: NumPy arrays (.npy) with metadata JSON
 
 ### EPSG Coordinate Systems
 
@@ -209,59 +200,66 @@ Example regions:
 
 ```
 BeaverSim/
-├── beaversim/                    # Core simulation package
-│   ├── ral/                      # Robot abstraction layer and backend utilities
-│   ├── environment/              # Environment simulation logic
-│   ├── robot/                    # Beaver agent behavior modules
+├── beaversim/
+│   ├── ral/                      # Robot Abstraction Layer
+│   │   ├── backend/              # Simulation backends
+│   │   │   ├── base_backend.py
+│   │   │   ├── beavers_visualizer_backend.py
+│   │   │   └── modules/          # Color maps and utilities
+│   │   ├── environment/          # Environment simulation
+│   │   │   ├── environment_backend.py
+│   │   │   └── environment_beavers_backend.py
+│   │   ├── robot/                # Agent behaviors
+│   │   │   ├── robot_backend.py
+│   │   │   ├── robot_beavers_backend.py
+│   │   │   └── modules/          # Beaver-specific modules
+│   │   └── algorithms/           # Utility algorithms
 │   ├── scenarios/                # Pre-defined simulation scenarios
-├── data_acquisition/             # DEM/RGB conversion helpers and source data
-│   ├── modules/
+│   │   └── standard_beavers_scenario.py
+│   ├── utils/                    # DEM processing utilities
 │   │   ├── dem_to_matrix.py
-│   │   └── rgb_to_matrix.py
-│   └── example_datasets/
-│       ├── ACADIA_DEM/
-│       ├── RUMNEY_MARSH_DEM/
-│       └── RUMNEY_RANCH_RGB/
-├── notebooks/                    # Interactive notebooks and demos
-│   ├── notebooks_DEM/
-│   ├── notebooks_RGB/
-│   └── simulations/
+│   │   └── dem_conversion_interactive.ipynb
+│   └── constants.py              # Global constants
+├── notebooks/                    # Example notebooks
+│   ├── demo_csv_boston.ipynb
+│   └── demo_csv_acadia.ipynb
 ├── requirements.txt
 └── README.md
 ```
 
 ## Visualization
 
-The framework provides comprehensive visualization through the same plotting helpers used in `notebooks/simulations/data_analysis.ipynb`.
+The framework provides comprehensive real-time visualization of the simulation through two main plotting functions:
 
 ### Environment Heatmaps
 
-Three-panel visualizations showing:
+Three-panel visualization showing:
 
 1. **Initial Vegetation Quality**
-   - Starting state of the environment or terrain input
-   - Elevation / vegetation quality with a blue-brown-green colormap
-   - Water bodies and other negative-value cells shown as muted overlays
+   - Starting state of the environment
+   - Elevation with blue-brown-green colormap
+   - Water bodies (streams/rivers) shown in blue/negative values
 
 2. **Current Vegetation Quality**
    - Real-time vegetation state during simulation
-   - Shows vegetation depletion from harvesting and regrowth dynamics over time
+   - Shows vegetation depletion from harvesting
+   - Regrowth dynamics over time
    - Agent positions marked (red = explorers, black = expanders)
    - Home base locations (gray rectangles)
-   - Optional agent trajectories and motion destination markers
 
 3. **Agent Visit Frequency**
-   - Heatmap showing exploration patterns and territorial behavior
-   - Color-coded by visit intensity and role
+   - Heatmap showing exploration patterns
+   - Color-coded by visit intensity
+   - Reveals agent movement strategies and territorial behavior
    - Overlay shows water bodies for reference
 
 ### Simulation Analytics
 
-The analysis notebook also tracks per-agent and landscape-level statistics:
+Per-agent statistics tracking:
 
 1. **Distance from Initial Position**
    - Movement range over simulation
-   - River crossing events marked in blue
+   - River crossing events (blue markers)
    - Territory exploration patterns
 
 2. **Load Variation**
@@ -279,15 +277,6 @@ The analysis notebook also tracks per-agent and landscape-level statistics:
    - Harvest threshold boundaries (min/max)
    - Adaptive behavior indicators
 
-### Analysis Notebook Plots
-
-`notebooks/simulations/data_analysis.ipynb` combines these with post-processing plots that compare stored simulation artifacts:
-
-- **Growth statistics**: vegetation mean/median or mean ± standard deviation, plus seasonal growth and stochastic components
-- **Spatial snapshots**: selected `maps/` and `visits/` `.npy` snapshots from a run
-- **Real vs simulated vegetation**: side-by-side comparison of RGB-derived vegetation matrices and simulation maps
-- **Motion diagnostics**: per-agent control error norm and speed over time, with destination changes highlighted
-
 ## Dependencies
 
 Core dependencies:
@@ -302,11 +291,10 @@ See `requirements.txt` for complete list.
 ## Contributing
 
 Contributions are welcome! Areas for improvement:
-- Formal comparison metrics between different emergent landscapes
 - Additional agent behaviors
 - Enhanced environmental dynamics
 - Performance optimizations
-- New visualization tools and analysis notebooks
+- New visualization tools
 - Documentation and examples
 
 ## Citation
