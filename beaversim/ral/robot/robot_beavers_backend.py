@@ -642,7 +642,7 @@ class BeaversRobotBackend(BaseRobotBackend):
             return True
         else:
             return False
-        s
+
     ############################################################
     # UTILITIES
     ############################################################

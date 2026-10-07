@@ -1,5 +1,3 @@
-from curses import error
-
 import numpy as np
 from typing import Any, Optional, List
 
