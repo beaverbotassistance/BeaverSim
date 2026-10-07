@@ -94,29 +94,44 @@ def trail_traffic(run: Run, source: str = "trajectories", snapshot: int = -1, ga
     ``source='trajectories'``: cumulative visits over the whole run (default).
     ``source='ledger'``: the decaying stigmergic visit ledger at ``snapshot`` (what agents sense).
     """
+    snaps = run.snapshots
+    fig, axes, cbars = P.map_row(1, tuple(run.meta["grid"]["shape"]), width="half", panel_titles=False)
+    draw_traffic(axes[0], run, source, snapshot, gamma)
+    pal, _ = current()
+    P.colorbar_strip(fig, cbars[0], pal.traffic_cmap(), Normalize(-1, 1), "visit frequency",
+                     ticks=[-1, 0, 1], ticklabels=["explorers", "", "builders"])
+    if subtitle is None:
+        k = -1 if source == "trajectories" else snapshot
+        kind = "cumulative" if source == "trajectories" else "visit ledger"
+        subtitle = f"{kind} · {_snapshot_label(snaps['time_h'][k])}"
+    P.figure_header(fig, title, subtitle)
+    return fig
+
+
+# ============================================================
+# AXES-LEVEL DRAWING (shared by report figures and the live dashboard)
+# ============================================================
+
+def draw_landscape(ax: plt.Axes, run: Run, snapshot: int = -1) -> None:
+    """Landscape layer at ``snapshot`` with home bases."""
+    pal, _ = current()
+    P.map_panel(ax, run.snapshots["landscape"][snapshot], run.resolution_m, pal.landscape_cmap(), _landscape_norm(run))
+    P.home_markers(ax, run.meta["home_bases"], run.resolution_m)
+
+
+def draw_traffic(ax: plt.Axes, run: Run, source: str = "trajectories", snapshot: int = -1, gamma: float = 0.35) -> None:
+    """Role traffic (see ``trail_traffic``) over a faint water outline, with home bases."""
     pal, _ = current()
     snaps = run.snapshots
     land = snaps["landscape"][snapshot if source == "ledger" else -1]
-    if source == "trajectories":
-        visits = cumulative_traffic(run)
-        subtitle = subtitle or f"cumulative · {_snapshot_label(snaps['time_h'][-1])}"
-    else:
-        visits = snaps["visits_roles"][snapshot]
-        subtitle = subtitle or f"visit ledger · {_snapshot_label(snaps['time_h'][snapshot])}"
+    visits = cumulative_traffic(run) if source == "trajectories" else snaps["visits_roles"][snapshot]
     vmax = max(float(np.abs(visits).max()), 1e-9)
     shown = np.sign(visits) * (np.abs(visits) / vmax) ** gamma          # compress the long tail
     shown = np.where(np.abs(visits) > 1e-6, shown, np.nan)
-
-    fig, axes, cbars = P.map_row(1, visits.shape, width="half", panel_titles=False)
-    ax = axes[0]
     water = np.where(land < 0, 1.0, np.nan)
     P.map_panel(ax, water, run.resolution_m, plt.matplotlib.colors.ListedColormap([pal.faint]), Normalize(0, 1))
     P.map_panel(ax, shown, run.resolution_m, pal.traffic_cmap(), Normalize(-1, 1))
     P.home_markers(ax, run.meta["home_bases"], run.resolution_m)
-    P.colorbar_strip(fig, cbars[0], pal.traffic_cmap(), Normalize(-1, 1), "visit frequency",
-                     ticks=[-1, 0, 1], ticklabels=["explorers", "", "builders"])
-    P.figure_header(fig, title, subtitle)
-    return fig
 
 
 def snapshot_strip(run: Run, n: int = 5, layer: str = "landscape", title: str = "landscape over time") -> plt.Figure:

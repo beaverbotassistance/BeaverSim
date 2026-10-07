@@ -59,14 +59,15 @@ class RunRecorder:
         for name, layer in self.backend._environment.layers().items():
             self._snapshots.setdefault(name, []).append(np.asarray(layer, dtype=np.float32).copy())
 
-    def finalize(self) -> Path:
-        backend, env = self.backend, self.backend._environment
-        agents = sorted(backend._schedule.agents, key=lambda a: a.unique_id)
-        dt = float(backend._timedelta)
-        self.run_dir.mkdir(parents=True, exist_ok=True)
+    def _agents_sorted(self) -> List[Any]:
+        return sorted(self.backend._schedule.agents, key=lambda a: a.unique_id)
 
-        # 1. Metadata
-        meta = {
+    def meta(self) -> Dict[str, Any]:
+        """run.json content for the current state."""
+        backend, env = self.backend, self.backend._environment
+        agents = self._agents_sorted()
+        dt = float(backend._timedelta)
+        return {
             "schema": SCHEMA_VERSION,
             "created": datetime.datetime.now().isoformat(timespec="seconds"),
             "git": _git_state(),
@@ -84,23 +85,26 @@ class RunRecorder:
             "home_bases": [list(map(int, h)) for h in agents[0]._home_base_position_store] if agents else [],
             "roles": [a._role for a in agents],
         }
-        (self.run_dir / RUN_FILE).write_text(json.dumps(meta, indent=1, default=_json_default))
 
-        # 2. Environment series (one value per step)
+    def series(self) -> Dict[str, np.ndarray]:
+        """Environment metrics, one value per step so far."""
+        env = self.backend._environment
         series = {k: np.asarray(v, dtype=float) for k, v in env._plotting_stats.items()}
         for k, v in env._growth_stats.items():
             if k != "day":
                 series[k] = np.asarray(v, dtype=float)
         n = min(len(v) for v in series.values()) if series else 0
         series = {k: v[:n] for k, v in series.items()}
-        series["time_h"] = (np.arange(n) + 1) * dt
-        np.savez_compressed(self.run_dir / "series.npz", **series)
+        series["time_h"] = (np.arange(n) + 1) * float(self.backend._timedelta)
+        return series
 
-        # 3. Agent step logs
+    def agents(self) -> Dict[str, np.ndarray]:
+        """Per-agent step logs so far."""
+        agents = self._agents_sorted()
+
         def stack(rows):
             return np.stack(rows) if rows else np.empty((0,))
-        np.savez_compressed(
-            self.run_dir / "agents.npz",
+        return dict(
             position=stack([np.asarray(a._position_store, dtype=np.int32) for a in agents]),
             load=stack([np.asarray(a._load_store, dtype=float) for a in agents]),
             max_load=stack([np.asarray(a._maximum_load_store, dtype=float) for a in agents]),
@@ -109,9 +113,26 @@ class RunRecorder:
                                for a in agents]),
         )
 
-        # 4. Snapshots
-        np.savez_compressed(self.run_dir / "snapshots.npz", time_h=np.asarray(self._snapshot_times),
-                            **{name: np.stack(frames) for name, frames in self._snapshots.items()})
+    def snapshots(self, current_step: Optional[int] = None) -> Dict[str, np.ndarray]:
+        """Snapshots taken so far; with ``current_step``, the live state is appended as a last frame (not stored)."""
+        times = list(self._snapshot_times)
+        frames = {name: list(f) for name, f in self._snapshots.items()}
+        if current_step is not None and (not times or times[-1] < current_step * self.backend._timedelta):
+            times.append(current_step * self.backend._timedelta)
+            for name, layer in self.backend._environment.layers().items():
+                frames.setdefault(name, []).append(np.asarray(layer, dtype=np.float32))
+        return {"time_h": np.asarray(times), **{name: np.stack(f) for name, f in frames.items()}}
+
+    def view(self, current_step: Optional[int] = None) -> "Run":
+        """The run so far as an in-memory ``Run``, usable by every viz function (e.g. live plots)."""
+        return Run.in_memory(self.run_dir, self.meta(), self.series(), self.agents(), self.snapshots(current_step))
+
+    def finalize(self) -> Path:
+        self.run_dir.mkdir(parents=True, exist_ok=True)
+        (self.run_dir / RUN_FILE).write_text(json.dumps(self.meta(), indent=1, default=_json_default))
+        np.savez_compressed(self.run_dir / "series.npz", **self.series())
+        np.savez_compressed(self.run_dir / "agents.npz", **self.agents())
+        np.savez_compressed(self.run_dir / "snapshots.npz", **self.snapshots())
         return self.run_dir
 
 
@@ -132,6 +153,14 @@ class Run:
     """One recorded run. Arrays are loaded lazily on first access."""
     path: Path
     meta: Dict[str, Any]
+
+    @classmethod
+    def in_memory(cls, path: Path, meta: Dict[str, Any], series: Dict[str, np.ndarray],
+                  agents: Dict[str, np.ndarray], snapshots: Dict[str, np.ndarray]) -> "Run":
+        """A run whose arrays are already in memory (nothing is read from ``path``)."""
+        run = cls(Path(path), meta)
+        run.__dict__.update(series=series, agents=agents, snapshots=snapshots)   # pre-fill the cached properties
+        return run
 
     @property
     def seed(self) -> Any:
