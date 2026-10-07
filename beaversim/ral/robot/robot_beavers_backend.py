@@ -724,7 +724,7 @@ class BeaversRobotBackend(BaseRobotBackend):
             neighbourhood_cells, reached_flags, current_index = module_beaver.exploration_gradient_DN(
                 position, limits, local_map, N=exploration_suffix,
                 home_base_store=self._home_base_position_store, eta=self._exploration_eta,
-                N_recovery=self._exploration_N_recovery, step=self._measure_step)
+                N_recovery=self._exploration_N_recovery, step=self._measure_step, rng=self.rng)
         else:
             raise ValueError(f'Invalid exploration mode: {self._exploration_mode}')
 

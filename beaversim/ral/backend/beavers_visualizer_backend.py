@@ -45,6 +45,8 @@ class BeaversVisualizerBackend(BaseBackend, Model):
         # 1. Set simulation parameters from config
         self._seed: int = simulation.get('seed', 0)
         self.rng = self.np.random.default_rng(self._seed)
+        # Mesa seeds self.random in __new__ from a 'seed' kwarg we never pass, so reseed it here
+        self.reset_randomizer(self._seed)
         self._timedelta: float = simulation.get('timedelta', 1.0)
         self._schedule_policy: str = simulation.get('schedule_policy', 'sequential')
         self._gui: bool = simulation.get('gui', False)

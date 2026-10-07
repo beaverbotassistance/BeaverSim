@@ -2,7 +2,6 @@ class BaseBackend():
     
     # imports
     import numpy as np
-    import random
 
     def __init__(self,**kwargs) -> None:
         pass
