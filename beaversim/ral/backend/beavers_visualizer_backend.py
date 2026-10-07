@@ -36,7 +36,9 @@ class BeaversVisualizerBackend(BaseBackend, Model):
         2. Set up random number generator, scheduler, and color maps.
         3. Store configuration and prepare for agent/environment creation.
         """
-        super().__init__(**kwargs)
+        # BaseBackend.__init__ does not chain, so initialize both parents explicitly
+        BaseBackend.__init__(self, **kwargs)
+        Model.__init__(self)
         self._kwargs: Dict[str, Any] = kwargs
         simulation: Optional[Dict[str, Any]] = self._kwargs.get('simulation')
         if simulation is None:
