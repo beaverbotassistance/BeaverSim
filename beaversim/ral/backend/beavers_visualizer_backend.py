@@ -1,8 +1,5 @@
 
 # 1. General imports
-import gzip
-import pickle
-import matplotlib.pyplot as plt
 from mesa import Agent, Model
 from mesa.time import RandomActivation
 
@@ -12,9 +9,7 @@ from beaversim.ral.robot.robot_beavers_backend import BeaversRobotBackend
 from beaversim.ral.environment.environment_beavers_backend import BeaversEnvironmentBackend
 
 # 3. Module imports
-from beaversim.ral.backend.modules.module_colors import ColorMaps
 import beaversim.ral.algorithms.module_misc as module_misc
-from beaversim.ral.backend.modules.beavers_plotting import plot_environment_heatmap, plot_simulation_recap
 from typing import Any, Dict, Optional, List, Tuple
 
 
@@ -26,13 +21,12 @@ class BeaversVisualizerBackend(BaseBackend, Model):
     Responsibilities:
     1. Manage simulation parameters and agent/environment instantiation.
     2. Step through simulation time, updating environment and agents.
-    3. Provide plotting and saving utilities for simulation state and results.
     """
 
     def __init__(self, **kwargs: Any) -> None:
         """
         1. Initialize the visualization backend with simulation parameters.
-        2. Set up random number generator, scheduler, and color maps.
+        2. Set up random number generators and scheduler.
         3. Store configuration and prepare for agent/environment creation.
         """
         # BaseBackend.__init__ does not chain, so initialize both parents explicitly
@@ -50,10 +44,8 @@ class BeaversVisualizerBackend(BaseBackend, Model):
         self.reset_randomizer(self._seed)
         self._timedelta: float = simulation.get('timedelta', 1.0)
         self._schedule_policy: str = simulation.get('schedule_policy', 'sequential')
-        self._gui: bool = simulation.get('gui', False)
         self._N_agents: int = simulation.get('number_of_agents', 1)
         self._print: bool = simulation.get('print', False)
-        self._fig: Optional[plt.Figure] = None
 
         # 2. Mesa scheduler and state
         self._schedule: RandomActivation = RandomActivation(self)
@@ -101,158 +93,6 @@ class BeaversVisualizerBackend(BaseBackend, Model):
         else:
             raise ValueError(f"Invalid schedule policy: {self._schedule_policy}")
     
-
-    def plot_environment_with_heatmap(
-        self,
-        plot_agents: bool = True,
-        plot_visit_markers: bool = False,
-        plot_agent_trajectories: bool = False,
-        plot_motion_destination=False,
-        visit_marker_threshold: float = 0.0,
-        visit_marker_size: float = 22.0,
-    ) -> None:
-        """
-        Plot environment heatmap with agent positions, home bases, and time info using modular plotting utility.
-        """
-        cmaps = ColorMaps()
-        fig = plot_environment_heatmap(
-            environment=self._environment,
-            agents=[a for a in self._schedule.agents if isinstance(a, BeaversVisualizerAgent)],
-            color_maps=cmaps,
-            width=self._width,
-            height=self._height,
-            gui=self._gui,
-            plot_agents=plot_agents,
-            plot_visit_markers=plot_visit_markers,
-            plot_agent_trajectories=plot_agent_trajectories,
-            plot_motion_destination=plot_motion_destination,
-            visit_marker_threshold=visit_marker_threshold,
-            visit_marker_size=visit_marker_size,
-        )
-        self._fig = fig
-    
-
-    def plot_simulation_recap(self) -> None:
-        """
-        Plot N×4 subplots: distance, load, error norm, and exploration eta for each agent using modular plotting utility.
-        """
-        fig = plot_simulation_recap(
-            agents=[a for a in self._schedule.agents if isinstance(a, BeaversVisualizerAgent)],
-            environment=self._environment,
-            gui=self._gui
-        )
-        self._fig = fig
-
-    
-    def save_environment_map(self, directory: str, file_number: int) -> None:
-        """Save current environment map to .npy file with linear rescaling to [-1, 1]."""
-        import os
-        import numpy as np
-        
-        if self._environment is None:
-            raise ValueError("Environment not initialized. Call generate_agents() first.")
-        if self._environment._map is None:
-            raise ValueError("Environment map not available.")
-        
-        # Create directory if needed
-        directory_maps = os.path.join(directory, 'maps')
-        if directory_maps and not os.path.exists(directory_maps):
-            os.makedirs(directory_maps, exist_ok=True)
-        directory_visits = os.path.join(directory, 'visits')
-        if directory_visits and not os.path.exists(directory_visits):
-            os.makedirs(directory_visits, exist_ok=True)                
-        
-        # Linear rescaling to [-1, 1]
-        map_data = self._environment._map.copy().astype(float)        
-        data_min = map_data.min()
-        data_max = map_data.max()                        
-        
-        if data_max > data_min:
-            map_data = (map_data - data_min) / (data_max - data_min) * 2 - 1
-            normalization_info = f"[{data_min:.3f}, {data_max:.3f}] -> [-1.0, 1.0]"
-        else:
-            map_data = map_data * 0
-            normalization_info = f"Constant {data_min:.3f} -> 0.0"
-        
-        # Apply inverse coordinate transformation (reverse of load_map_from_file)
-        map_to_save = np.rot90(map_data, 1)
-        map_to_save = np.flipud(map_to_save)
-        
-        # visits
-        visits_data = self._environment._map_visits_roles.copy().astype(float)
-        visits_to_save = np.rot90(visits_data, 1)
-        visits_to_save = np.flipud(visits_to_save)
-        
-        np.save(os.path.join(directory_maps, f"map_{file_number:04d}.npy"), map_to_save)
-        np.save(os.path.join(directory_visits, f"visits_{file_number:04d}.npy"), visits_to_save)
-        
-        if self._print:
-            print(f"Environment map saved to: {directory}")
-            print(f"Original map shape (environment format): {self._environment._map.shape}")
-            print(f"Saved map shape: {map_to_save.shape}")
-            print(f"Original value range: [{self._environment._map.min():.3f}, {self._environment._map.max():.3f}]")
-            print(f"Saved value range: [{map_to_save.min():.3f}, {map_to_save.max():.3f}]")
-            print(f"{normalization_info}")            
-
-    def save_backend_pickle(self, file_path: str, compress: bool = True) -> None:
-        """Serialize the full backend object (including nested state) to a pickle file.
-
-        Args:
-            file_path: Output path. If no extension is provided, uses .pkl or .pkl.gz.
-            compress: If True, writes gzip-compressed pickle (.pkl.gz).
-        """
-        import os
-
-        if not file_path:
-            raise ValueError("file_path must be a non-empty string")
-
-        directory = os.path.dirname(file_path)
-        if directory and not os.path.exists(directory):
-            os.makedirs(directory, exist_ok=True)
-
-        lower_path = file_path.lower()
-        if compress:
-            if not (lower_path.endswith('.pkl') or lower_path.endswith('.pkl.gz')):
-                file_path += '.pkl.gz'
-            elif lower_path.endswith('.pkl'):
-                file_path += '.gz'
-        else:
-            if not lower_path.endswith('.pkl'):
-                file_path += '.pkl'
-
-        original_fig = self._fig
-        self._fig = None
-        try:
-            if file_path.lower().endswith('.gz'):
-                with gzip.open(file_path, 'wb') as f:
-                    pickle.dump(self, f, protocol=pickle.HIGHEST_PROTOCOL)
-            else:
-                with open(file_path, 'wb') as f:
-                    pickle.dump(self, f, protocol=pickle.HIGHEST_PROTOCOL)
-        finally:
-            self._fig = original_fig
-
-        if self._print:
-            print(f"Backend state saved to: {file_path}")
-
-    @staticmethod
-    def load_backend_pickle(file_path: str) -> 'BeaversVisualizerBackend':
-        """Load a backend object previously saved with save_backend_pickle."""
-        if not file_path:
-            raise ValueError("file_path must be a non-empty string")
-
-        if file_path.lower().endswith('.gz'):
-            with gzip.open(file_path, 'rb') as f:
-                loaded_backend = pickle.load(f)
-        else:
-            with open(file_path, 'rb') as f:
-                loaded_backend = pickle.load(f)
-
-        if not isinstance(loaded_backend, BeaversVisualizerBackend):
-            raise TypeError("Loaded object is not a BeaversVisualizerBackend instance")
-
-        return loaded_backend
-        
 
 
 class BeaversVisualizerAgent(BeaversRobotBackend, Agent):
