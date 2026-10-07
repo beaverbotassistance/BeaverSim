@@ -96,13 +96,11 @@ class BeaversRobotBackend(BaseRobotBackend):
         nearest_even_cells = lower_even_cells if raw_exploration_cells - lower_even_cells <= upper_even_cells - raw_exploration_cells else upper_even_cells
         exploration_cells = max(2, nearest_even_cells)
         self._exploration_mode = f'gradient_D{exploration_cells:03d}'
-        self._measurement_mode = 'full_map'
         self._measure_step = 1
         self._n_traces = 0
         self._exploration_eta = 1.0
 
         self._current_time = 0
-        self._map_quality_measure = None
         self._map_quality_measure_position = None
         self._map_quality_update = False
         self._motion_destination = None
@@ -112,7 +110,6 @@ class BeaversRobotBackend(BaseRobotBackend):
         self._local_map = None
         self._local_map_visits = None
         self._harvesting_actions_counter = 0
-        self._in_water_counter = 0
         self._reset_integral = 50
         self._min_home_distance = 500
         self._last_explored_position = None
@@ -176,14 +173,15 @@ class BeaversRobotBackend(BaseRobotBackend):
         self._wait_b4_explore = 0.0
         return self
     
-    def step_beaver(self, dt: float, time_of_day: str, map_quality: list, limits: list, misc: dict = None) -> None:
+    def step_beaver(self, dt: float, time_of_day: str, local_map, cell_value: float, limits: list, misc: dict = None) -> None:
         """
         Main step function for the beaver agent. Updates state, decides and executes tasks, and manages adaptation.
 
         Args:
             dt (int): Time increment.
             time_of_day (str): Current time of day (e.g., 'day').
-            map_quality (list): Environmental quality measurements.
+            local_map (np.ndarray): Copy of the full environment map observed by the agent.
+            cell_value (float): Environment map value at the agent's current position.
             limits (list): Movement boundaries.
             misc (dict, optional): Additional info from environment.
         """
@@ -195,9 +193,8 @@ class BeaversRobotBackend(BaseRobotBackend):
         self._dt_init = dt
 
         # --- 2. Gather and update environmental observations ---
-        self._map_quality_measure = map_quality
-        self._map_quality_measure_position = self._map_quality_measure[1][-1]  # Current cell quality
-        self.update_local_map(self._map_quality_measure, misc)
+        self._map_quality_measure_position = cell_value
+        self.update_local_map(local_map, misc)
         self._map_quality_update = False
 
         # --- 3. Periodically reset controller integral error ---
@@ -221,10 +218,9 @@ class BeaversRobotBackend(BaseRobotBackend):
         )
         self._map_quality_update = needs_env_update
 
-        # --- 7. If environment was updated, refresh local map at current position ---
+        # --- 7. If environment was updated, write the modified cell into the local map ---
         if self._map_quality_update:
-            self._map_quality_measure = [[self._position], [self._map_quality_measure_position]]
-            self.update_local_map(self._map_quality_measure, misc)
+            self._local_map[self._position[0], self._position[1]] = self._map_quality_measure_position
         self._map_quality_measure_position = self._local_map[self._position[0], self._position[1]]
 
         # --- 8. Store step data for analysis/debugging ---
@@ -477,7 +473,6 @@ class BeaversRobotBackend(BaseRobotBackend):
             # Reset task and agent state for next cycle
             self._status_task = 'FINISHED'
             self._current_action = 'idle'
-            self._in_water_counter = 0
             self._maximum_load = self._maximum_load_init
 
     ############################################################
@@ -734,67 +729,22 @@ class BeaversRobotBackend(BaseRobotBackend):
         self._neighbourhood_current_index = current_index                
         
         
-    def update_local_map(self, map_quality: list, misc: dict = None) -> None:
+    def update_local_map(self, local_map, misc: dict = None) -> None:
         """
-        Update the local map with new measurements from the environment.
+        Replace the local map with the full environment map and refresh the visits map.
 
         Args:
-            map_quality (list): [positions, values] or ['all', [full_map]].
+            local_map (np.ndarray): Copy of the full environment map.
             misc (dict, optional): Additional info (e.g., global visits map).
         """
-        # --- 1. Ensure the local map is initialized ---
-        if self._local_map is None:
-            self._local_map = self.np.full((1, 1), self.np.nan)
+        self._local_map = local_map
+        global_visits_map = misc.get('visits', None) if misc else None
+        self._local_map_visits = self.np.abs(global_visits_map) if global_visits_map is not None else None
 
-        # --- 2. Extract measurement positions and values ---
-        measure_positions = map_quality[0]
-        measure_values = map_quality[1]
+        # Increment visits at current position
+        if self._local_map_visits is not None:
+            self._local_map_visits[self._position[0], self._position[1]] += self._visit_increase
 
-        # --- 3. Determine visit increase (could be adaptive in future) ---
-        visit_increase = self._visit_increase
-
-        # --- 4. Handle full map update (global observation) ---
-        if measure_positions == 'all':
-            # Replace local map with full observed map
-            self._local_map = measure_values[0]
-            global_visits_map = misc.get('visits', None).copy() if misc else None
-                        
-            
-            self._local_map_visits = self.np.abs(global_visits_map) if global_visits_map is not None else None
-            # Increment visits at current position
-            if self._local_map_visits is not None:                
-                self._local_map_visits[self._position[0], self._position[1]] += visit_increase
-            return
-
-        # --- 5. Expand local map if new measurements are out of bounds ---
-        max_x = max(pos[0] for pos in measure_positions)
-        max_y = max(pos[1] for pos in measure_positions)
-        if max_x >= self._local_map.shape[0]:
-            pad_x = max_x - self._local_map.shape[0] + 1
-            self._local_map = self.np.pad(
-                self._local_map,
-                ((0, pad_x), (0, 0)),
-                mode='constant', constant_values=self.np.nan
-            )
-        if max_y >= self._local_map.shape[1]:
-            pad_y = max_y - self._local_map.shape[1] + 1
-            self._local_map = self.np.pad(
-                self._local_map,
-                ((0, 0), (0, pad_y)),
-                mode='constant', constant_values=self.np.nan
-            )
-
-        # --- 6. Update vegetation quality at measured positions ---
-        for pos, val in zip(measure_positions, measure_values):
-            self._local_map[pos[0], pos[1]] = val
-
-        # --- 7. Track time spent in water at current position ---
-        current_cell_value = self._local_map[self._position[0], self._position[1]]
-        if current_cell_value < 0:
-            self._in_water_counter += 1
-        else:
-            self._in_water_counter = 0
-        
     def set_home_base_position(self) -> None:
         """
         Set the motion destination to the closest home base.

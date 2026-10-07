@@ -292,17 +292,10 @@ class BeaversVisualizerAgent(BeaversRobotBackend, Agent):
         # 1. Get data from environment
         dt: float = self._timedelta
         time_of_day: str = self.model._environment._time_of_day
-        measure_positions, measure_values = module_misc.measure(self.model._environment._map, self._position, self._measurement_mode, self._measure_step)
-        map_quality = [measure_positions, measure_values]
+        local_map, cell_value = module_misc.measure(self.model._environment._map, self._position)
 
         # 2. Get map limits
-        if self._measurement_mode == 'full_map':
-            limits = module_misc.get_map_limits(self.model._environment._map)
-        else:
-            if self._local_map is not None:
-                limits = module_misc.get_map_limits(self._local_map)
-            else:
-                limits = [[0, self._position[0] - 1], [0, self._position[1] - 1]]
+        limits = module_misc.get_map_limits(self.model._environment._map)
 
         # 3. Link environment data to agent
         self._vegetation_quality_range = self.model._environment._vegetation_quality_range
@@ -318,7 +311,7 @@ class BeaversVisualizerAgent(BeaversRobotBackend, Agent):
         }
 
         # 5. Step the agent
-        self.step_beaver(dt, time_of_day, map_quality, limits, misc)
+        self.step_beaver(dt, time_of_day, local_map, cell_value, limits, misc)
 
         # 6. Update environment at current position
         try:
