@@ -130,6 +130,14 @@ class BeaversEnvironmentBackend(BaseEnvironmentBackend):
         if self._print:
             print(f"Environment step at time {self._current_time}")
 
+    def layers(self) -> Dict[str, Any]:
+        """
+        Named spatial layers recorded in run snapshots, in array order [x, y].
+        'landscape': combined state (negative = water depth, positive = vegetation quality).
+        'visits_roles': decaying visit ledger, negative = explorers, positive = builders.
+        """
+        return {'landscape': self._map, 'visits_roles': self._map_visits_roles}
+
     def load_map_from_file(self) -> None:
         """
         Load elevation map from .npy file, transform coordinates, and rescale values.
