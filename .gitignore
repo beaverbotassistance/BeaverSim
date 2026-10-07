@@ -1,18 +1,133 @@
-
-# folders
-pyenv/
-.vscode/
-.conda/
-__pycache__/
+# ---------------------------------------------------------------------------
+# Project-specific
+# ---------------------------------------------------------------------------
 output/
 resources/images/
 resources/doc
+core.*
+*.mp4
+
+# Simulation artefacts (backend state dumps, checkpoints)
+*.pkl
+*.pkl.gz
+*.pickle
+*.npz
+*.h5
+*.hdf5
+*.ckpt
+
+# ---------------------------------------------------------------------------
+# Virtual environments / package managers
+# ---------------------------------------------------------------------------
+pyenv/
+.conda/
 beaversim_env/
 beaversim_venv/
-
-# files
-core.*
-*.pyc
-*.mp4
+venv/
+.venv/
+env/
+ENV/
+.env
 *.env
+.envrc
+.python-version
+Pipfile.lock
+poetry.lock
+conda-meta/
 
+# ---------------------------------------------------------------------------
+# Python
+# ---------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+.eggs/
+build/
+dist/
+develop-eggs/
+downloads/
+sdist/
+wheels/
+pip-wheel-metadata/
+pip-log.txt
+pip-delete-this-directory.txt
+MANIFEST
+*.manifest
+*.spec
+
+# Testing / coverage / linting caches
+.pytest_cache/
+.tox/
+.nox/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.hypothesis/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+.ruff_cache/
+.cache/
+nosetests.xml
+*.cover
+*.log
+
+# ---------------------------------------------------------------------------
+# Jupyter
+# ---------------------------------------------------------------------------
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/*
+.jupyter/
+profile_default/
+ipython_config.py
+*-checkpoint.ipynb
+
+# ---------------------------------------------------------------------------
+# IDEs / editors
+# ---------------------------------------------------------------------------
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.code-workspace
+.spyderproject
+.spyproject
+.ropeproject
+*.swp
+*.swo
+*~
+\#*\#
+.\#*
+
+# ---------------------------------------------------------------------------
+# OS files
+# ---------------------------------------------------------------------------
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.directory
+.fuse_hidden*
+.nfs*
+
+# ---------------------------------------------------------------------------
+# Temporary files
+# ---------------------------------------------------------------------------
+*.tmp
+*.temp
+*.bak
+*.orig
+*.rej
+.claude/settings.local.json
