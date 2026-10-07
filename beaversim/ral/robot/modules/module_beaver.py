@@ -51,7 +51,7 @@ def exploration_gradient_DN(
     new_positions: list = []
     gradient_values: list = []
     for i, j in directions:
-        dir_vec = [j - cx, cy - i]  # [dx, dy]
+        dir_vec = [i - cx, j - cy]  # [dx, dy], inverse of matrix_gradient's [cx + dx, cy + dy]
         pos = [position[0] + dir_vec[0], position[1] + dir_vec[1]]
         if pos != list(position):  # Exclude current position
             new_positions.append(pos)
