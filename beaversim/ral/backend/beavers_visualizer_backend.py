@@ -313,12 +313,6 @@ class BeaversVisualizerAgent(BeaversRobotBackend, Agent):
         # 5. Step the agent
         self.step_beaver(dt, time_of_day, local_map, cell_value, limits, misc)
 
-        # 6. Update environment at current position
-        try:
-            self.model._environment._map_original[self._position[0], self._position[1]] = self._map_quality_measure_position
-        except Exception as e:
-            print(f"Error updating environment map at agent position: {e}")
-
 
 class EnvironmentVisualizerAgent(BeaversEnvironmentBackend, Agent):
     """
