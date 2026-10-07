@@ -5,7 +5,6 @@ import pickle
 import matplotlib.pyplot as plt
 from mesa import Agent, Model
 from mesa.time import RandomActivation
-from mesa.space import MultiGrid
 
 # 2. Backend imports
 from beaversim.ral.backend.base_backend import BaseBackend
@@ -59,29 +58,23 @@ class BeaversVisualizerBackend(BaseBackend, Model):
         # 2. Mesa scheduler and state
         self._schedule: RandomActivation = RandomActivation(self)
         self._current_time: float = 0.0
-        self._color_maps: ColorMaps = ColorMaps()
 
     def generate_agents(self, **kwargs: Any) -> None:
         """
         1. Generate environment and agent instances for the simulation.
         2. Initialize the environment agent (not added to scheduler).
-        3. Initialize the grid and place beaver agents.
-        4. Add beaver agents to the scheduler.
+        3. Add beaver agents to the scheduler.
         """
         # 1. Generate environment agent
         self._environment: EnvironmentVisualizerAgent = EnvironmentVisualizerAgent(self._N_agents, self, **kwargs)
         self._environment.rng = self.np.random.default_rng(self._seed)
-
-        # 2. Initialize grid
         self._width: int = self._environment._width
         self._height: int = self._environment._height
-        self._grid: MultiGrid = MultiGrid(self._width, self._height, torus=False)
 
-        # 3. Generate and place beaver agents
+        # 2. Generate beaver agents
         for i in range(self._N_agents):
             agent = BeaversVisualizerAgent(i, self, **kwargs)
             agent.rng = self.np.random.default_rng(self._seed + i + 1)
-            self._grid.place_agent(agent, (agent._position[0], agent._position[1]))
             self._schedule.add(agent)
 
     def step(self) -> None:
@@ -346,13 +339,10 @@ class EnvironmentVisualizerAgent(BeaversEnvironmentBackend, Agent):
             'builder_canalization_ratio': []
         }
 
-    def store_plotting_stats(self, canalization_method="percentile") -> None:
+    def store_plotting_stats(self) -> None:
         """
-        Store pixel densities for water/land, and track the absolute spatial footprint 
-        and active canalization ratios.
-        
-        Args:
-            canalization_method (str): 'percentile' (volume-based) or 'mean' (cell-count based).
+        Store pixel densities for water/land, and track the absolute spatial footprint
+        and active canalization ratios (traffic share of the top 5% active cells).
         """
         total_pixels = self._width * self._height
 
@@ -374,19 +364,12 @@ class EnvironmentVisualizerAgent(BeaversEnvironmentBackend, Agent):
         active_values_e = self.np.abs(self._map_visits_roles[active_mask_e])
         
         if explorer_footprint > 0 and len(active_values_e) > 0:
-            if canalization_method == "percentile":
-                # PERCENTILE METHOD: Volume of traffic on top 5% of active cells
-                total_traffic_e = float(self.np.sum(active_values_e))
-                if total_traffic_e > 0:
-                    top_5_threshold_e = float(self.np.percentile(active_values_e, 95))
-                    heavy_traffic_vol_e = float(self.np.sum(active_values_e[active_values_e >= top_5_threshold_e]))
-                    explorer_canalization = heavy_traffic_vol_e / total_traffic_e
-                    
-            elif canalization_method == "mean":
-                # MEAN METHOD: Ratio of heavily trafficked cells to absolute footprint
-                mean_visits_e = float(self.np.mean(active_values_e))
-                heavy_cells_e = int(self.np.sum(active_values_e > mean_visits_e))
-                explorer_canalization = heavy_cells_e / explorer_footprint
+            # Volume of traffic on top 5% of active cells
+            total_traffic_e = float(self.np.sum(active_values_e))
+            if total_traffic_e > 0:
+                top_5_threshold_e = float(self.np.percentile(active_values_e, 95))
+                heavy_traffic_vol_e = float(self.np.sum(active_values_e[active_values_e >= top_5_threshold_e]))
+                explorer_canalization = heavy_traffic_vol_e / total_traffic_e
 
         # =====================================================================
         # --- BUILDER TRAIL STATS (Positive values) ---
@@ -401,19 +384,12 @@ class EnvironmentVisualizerAgent(BeaversEnvironmentBackend, Agent):
         active_values_b = self._map_visits_roles[active_mask_b]
         
         if builder_footprint > 0 and len(active_values_b) > 0:
-            if canalization_method == "percentile":
-                # PERCENTILE METHOD: Volume of traffic on top 5% of active cells
-                total_traffic_b = float(self.np.sum(active_values_b))
-                if total_traffic_b > 0:
-                    top_5_threshold_b = float(self.np.percentile(active_values_b, 95))
-                    heavy_traffic_vol_b = float(self.np.sum(active_values_b[active_values_b >= top_5_threshold_b]))
-                    builder_canalization = heavy_traffic_vol_b / total_traffic_b
-                    
-            elif canalization_method == "mean":
-                # MEAN METHOD: Ratio of heavily trafficked cells to absolute footprint
-                mean_visits_b = float(self.np.mean(active_values_b))
-                heavy_cells_b = int(self.np.sum(active_values_b > mean_visits_b))
-                builder_canalization = heavy_cells_b / builder_footprint
+            # Volume of traffic on top 5% of active cells
+            total_traffic_b = float(self.np.sum(active_values_b))
+            if total_traffic_b > 0:
+                top_5_threshold_b = float(self.np.percentile(active_values_b, 95))
+                heavy_traffic_vol_b = float(self.np.sum(active_values_b[active_values_b >= top_5_threshold_b]))
+                builder_canalization = heavy_traffic_vol_b / total_traffic_b
 
         # --- STORE STATS ---
         self._plotting_stats['water_pixel_density'].append(water_pixel_density)
@@ -462,7 +438,7 @@ class EnvironmentVisualizerAgent(BeaversEnvironmentBackend, Agent):
         home_base_position_store = list(set(tuple(pos) for pos in self.np.array(home_base_position_store)))
 
         # 2. Step the environment
-        self.step_environment(self._timedelta, map, map_visits, home_base_position_store, self._grass_growth_interval, misc)
+        self.step_environment(self._timedelta, map, map_visits, home_base_position_store, misc)
 
         # 3. Collect stats for plotting AFTER environment has been updated
-        self.store_plotting_stats(canalization_method="percentile")
+        self.store_plotting_stats()
