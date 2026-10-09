@@ -2,7 +2,8 @@
 # Project-specific
 # ---------------------------------------------------------------------------
 output/
-docs/
+docs/*
+!docs/dataset/
 resources/images/
 resources/doc
 core.*
