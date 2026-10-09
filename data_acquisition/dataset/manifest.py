@@ -47,6 +47,12 @@ SITES = {
     "BBC Drone Mimicry Site": "bbc_mimicry",
     "Yard": "yard",
 }
+# Approximate site centres (lat, lon) from photo GPS; used to catch photos filed under the wrong site
+SITE_CENTRES = {"rumney_ranch": (48.9325, -113.1205), "pilling_ranch": (48.5570, -113.0853),
+                "willow_creek": (48.6572, -112.7553), "cut_bank_creek": (48.6588, -112.7392)}
+# A photo farther than this from its folder's site centre is reassigned to the nearest site (km).
+# Willow Creek and Cut Bank Creek are only 1.2 km apart, so between them the folder is trusted.
+MISFILED_KM = 5.0
 # Sites that are not study sites (kept in the manifest, excluded from the dataset)
 NON_STUDY_SITES = {"bbc_mimicry": "filming set-up, not a study site", "yard": "test flight"}
 MONTHS = {"jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6, "june": 6, "jul": 7, "july": 7,
@@ -112,6 +118,12 @@ def survey_date_of(rel_path: str) -> Optional[str]:
     parts = rel_path.split("/")
     flight = parts[3] if parts[1] == "Drone Flights" and len(parts) > 4 else None
     return parse_date(flight) if flight else None
+
+
+def site_km(lat: float, lon: float, site: str) -> float:
+    """Approximate ground distance (km) from a GPS position to a site centre."""
+    c_lat, c_lon = SITE_CENTRES[site]
+    return math.hypot((lat - c_lat) * 111.3, (lon - c_lon) * 111.3 * math.cos(math.radians(c_lat)))
 
 
 def colony_of(name: str) -> Optional[str]:
@@ -227,9 +239,16 @@ def photo_rows(root: Path, files: List[os.DirEntry], workers: int = 4, cache: Op
                              "include": False, "note": "video frame: no EXIF, no GPS"})
             continue  # screenshots, other cameras, thumbnails
         taken_date = (info.get("taken_at") or "")[:10] or None
+        notes = []
+        if site in SITE_CENTRES and "lat" in info:
+            lat, lon = float(info["lat"]), float(info["lon"])
+            if site_km(lat, lon, site) > MISFILED_KM:
+                nearest = min(SITE_CENTRES, key=lambda s: site_km(lat, lon, s))
+                if nearest != site:
+                    notes.append(f"site from GPS: {nearest} (filed under {site})")
+                    site = nearest
         row = {"role": "raw_photo", "site": site, "survey_date": taken_date or folder_date, "folder_date": folder_date,
                "source_path": rel, "bytes": e.stat().st_size, **info}
-        notes = []
         key = (info.get("taken_at"), row["bytes"])
         if key in seen:
             notes.append(f"duplicate of {seen[key]}")
