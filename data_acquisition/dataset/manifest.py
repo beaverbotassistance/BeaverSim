@@ -298,7 +298,7 @@ def ortho_rows(root: Path, files: List[os.DirEntry]) -> List[Dict[str, object]]:
                     notes.append(f"not an RGB orthomosaic ({ds.count} band {ds.dtypes[0]})")
         except Exception as ex:
             notes.append(f"unreadable: {str(ex)[:60]}")
-        if "/SmallChunks/" in rel:
+        if re.search(r"/small ?chunks/", rel, re.I):
             notes.append("SmallChunks split copy")
         if row["site"] in NON_STUDY_SITES:
             notes.append(NON_STUDY_SITES[row["site"]])
