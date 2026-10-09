@@ -84,6 +84,14 @@ battery or per block).
 | **PPK** (post-processed kinematic) | Same corrections, applied after the flight from logged data | 1–3 cm |
 | **GCPs** (ground control points) | Visible targets on the ground surveyed with a survey-grade GNSS rover; used to pin the model during processing | 1–5 cm |
 
+**Can PPK be applied after the fact?** Only if the drone logged its *raw* satellite
+observations during the flight. PPK compares those with a base station's recordings
+from the same time. Free base-station data exists (in the US, NOAA's **CORS** network,
+with multi-year archives), but our Phantom 4 Pro (camera FC6310) stores only the
+final metre-level position in each photo; the RTK variant (FC6310R) is the one that
+logs raw observations. No GNSS logs exist on the field-season drive, so PPK is not
+possible for the 2018–2019 surveys.
+
 "**Survey-grade**" means the centimetre-level options above. With consumer GPS a map
 is internally consistent (distances and shapes inside one survey are right), but the
 whole map can be shifted by metres relative to another survey of the same area.
