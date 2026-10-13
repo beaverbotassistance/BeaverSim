@@ -33,10 +33,9 @@ from typing import Any, Dict, List, Optional
 import yaml
 
 from data_acquisition.catalog import summary as summaries
-from data_acquisition.readers import eml, geotiff, pangaea
+from data_acquisition.readers import RECORD_FILES, RECORDS, geotiff
 
 MODEL = "claude-opus-5-5"
-RECORD_NAMES = {"metadata.xml": "eml", "metadata.tab": "pangaea_tab"}   # file name -> record format
 METHODS_CHARS = 6000        # methods text kept per record (the rest is boilerplate)
 TEXT_EXTENSIONS = (".txt", ".md", ".csv", ".r", ".py", ".json", ".yaml", ".yml")
 TEXT_BYTES = 8000           # small text files (READMEs, settings, GCP lists) are included up to this size
@@ -54,7 +53,7 @@ def _raster(path: Path) -> Dict[str, Any]:
 
 
 def _record(path: Path, fmt: str) -> Dict[str, Any]:
-    r = {"eml": eml.read, "pangaea_tab": pangaea.read}[fmt](path.read_text())
+    r = RECORDS[fmt]["read"](path.read_text())
     return {"format": fmt, "package_id": r["package_id"], "title": r["title"], "licence": r["licence"],
             "creators": r["creators"], "dates": r["dates"], "bounds": r["bounds"],
             "methods": r["methods"][:METHODS_CHARS],
@@ -76,8 +75,8 @@ def gather(root: Path, patterns: List[str]) -> Dict[str, Any]:
             try:
                 if p.suffix.lower() in geotiff.EXTENSIONS:
                     entry["geotiff"] = _raster(p)
-                elif p.name in RECORD_NAMES:
-                    entry["record"] = _record(p, RECORD_NAMES[p.name])
+                elif p.name in RECORD_FILES:
+                    entry["record"] = _record(p, RECORD_FILES[p.name])
                 elif p.suffix.lower() in TEXT_EXTENSIONS:
                     entry["text"] = p.read_bytes()[:TEXT_BYTES].decode("utf-8", "replace")
                     entry["text_truncated"] = p.stat().st_size > TEXT_BYTES
@@ -192,7 +191,7 @@ def _to_summary(out: Dict[str, Any], dataset: str, source_kind: str, evidence: D
         if g["doi"]:
             group["doi"] = g["doi"]
         if g["record"]:
-            group["record"] = {"path": g["record"], "format": RECORD_NAMES.get(g["record"], "unknown")}
+            group["record"] = {"path": g["record"], "format": RECORD_FILES.get(g["record"], "unknown")}
         for k in ("site", "date", "platform", "instruments", "positioning", "notes", "evidence"):
             if g[k]:
                 group[k] = _date(g[k]) if k == "date" else g[k]

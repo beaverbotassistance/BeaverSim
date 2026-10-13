@@ -19,11 +19,9 @@ import pystac
 from data_acquisition.catalog import descriptors, stac
 from data_acquisition.catalog import summary as summaries
 from data_acquisition.catalog.descriptors import add_quality, set_field
-from data_acquisition.readers import eml, geotiff, pangaea
+from data_acquisition.readers import RECORDS, eml, geotiff
 from data_acquisition.sources import dataone
 
-RECORD_READERS = {"eml": eml.read, "pangaea_tab": pangaea.read}
-RECORD_MEDIA = {"eml": "application/xml", "pangaea_tab": "text/tab-separated-values"}
 COMMON_NAMES = {"blue": "blue", "green": "green", "red": "red", "red edge": "rededge", "rededge": "rededge",
                 "near infrared": "nir", "near-infrared": "nir", "nir": "nir"}
 # products measured in metres, and the default name of their bands when the summary gives none
@@ -124,7 +122,7 @@ def build(root: Path, s: Dict[str, Any]) -> (pystac.Catalog, Dict[str, List[str]
         record, described = None, set()
         if g.get("record"):
             described.add(g["record"]["path"])
-            record = RECORD_READERS[g["record"]["format"]]((folder / g["record"]["path"]).read_text())
+            record = RECORDS[g["record"]["format"]]["read"]((folder / g["record"]["path"]).read_text())
         for file in g["files"]:
             f = summaries.resolve(g, file)
             path, described = folder / f["path"], described | {f["path"]}
@@ -139,7 +137,7 @@ def build(root: Path, s: Dict[str, Any]) -> (pystac.Catalog, Dict[str, List[str]
                     raise ValueError(f"two files for {item.id}: {rel}")
                 if record is not None:
                     stac.add_file_asset(item, "metadata", folder / g["record"]["path"], ["metadata"],
-                                        f"{g['record']['format']} record", RECORD_MEDIA.get(g["record"]["format"]))
+                                        f"{g['record']['format']} record", RECORDS[g["record"]["format"]]["media"])
                 items[item.id] = item
                 placed[item.id] = (gi, f["product"], summaries.epoch(f)[2])
             else:

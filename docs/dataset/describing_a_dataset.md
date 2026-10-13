@@ -31,6 +31,27 @@ example.
 `{value, by, date}`. Leave them `null` until someone has checked them. The pipeline reports them
 as missing, which is the intended reminder.
 
+## From a link: intake
+
+For a dataset you only have a DOI or link for, one prompt covers the whole intake:
+
+```
+python -m data_acquisition.intake --url <DOI or link> --root "<root>" --dataset <dataset_slug>
+```
+
+Then, in a new Claude Code session: *Follow output/dataset/intake/<dataset>/prompt.md*. The
+session:
+1. identifies the repository;
+2. if no client in `data_acquisition/sources/` serves it yet, writes one under a fixed contract
+   (standard library only, checksums verified, read-only files, `downloads.csv`). If the
+   repository's metadata format is new, it also writes a record reader under `readers/`,
+   registered in `readers/__init__.py` (`RECORDS`);
+3. lists the files, sizes and licence, proposes what to download, and **stops for your approval**;
+4. downloads, then drafts the summary with steps 2–4 below.
+
+Review the client code as well as the summary before committing. A client is written once per
+repository (Zenodo, HydroShare, …) and then serves every dataset hosted there.
+
 ## Workflow
 
 Claude drafts the summary from evidence gathered by code. A person reviews it.
