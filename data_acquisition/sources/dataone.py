@@ -24,6 +24,9 @@ from data_acquisition.catalog import summary as summaries
 from data_acquisition.readers import eml
 
 CHUNK = 8 * 1024 * 1024
+# DataONE coordinating node: serves objects of every member repository; used when a summary names no
+# member-node API (a member node is closer to the data and supports resumed downloads)
+COORDINATING_NODE = "https://cn.dataone.org/cn/v2"
 LOG_FIELDS = ["source", "doi", "file", "path", "bytes", "checksum_algorithm", "checksum", "licence",
               "dataset_title", "downloaded", "url"]
 
@@ -112,7 +115,8 @@ def main() -> None:
         if g.get("doi"):
             print(g["doi"])
             log(args.root / s["source"]["log"],
-                download(s["source"]["api"], args.root, g["folder"], g["doi"], g.get("download_filter")))
+                download(s["source"].get("api", COORDINATING_NODE), args.root, g["folder"], g["doi"],
+                         g.get("download_filter")))
 
 
 if __name__ == "__main__":
