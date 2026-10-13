@@ -16,6 +16,14 @@ knows about sites or sources. What the files can't tell it goes in one YAML file
 - which **report** belongs to which product;
 - **notes** on anything inconsistent, such as a repository that describes the wrong bands.
 
+Products: orthomosaic, multispectral, dsm, dtm, chm (canopy height), dod (DEM of difference),
+uncertainty (precision or error maps), photos, annotations. Time is a single `date` in most cases.
+Two options cover the rest: `date_precision: year` (or `month`) when only that is known, and
+`start_date`/`end_date` for products that compare two epochs. Files shared by every survey, such
+as READMEs or a ground-control list, are listed once without a date. When two files share site,
+time and product, each gets a `variant`, for example two DEM-of-difference methods. The full
+layout is in [`summary.py`](../../data_acquisition/catalog/summary.py).
+
 [`arcticdata_seward.yaml`](../../data_acquisition/summaries/arcticdata_seward.yaml) is a complete
 example.
 

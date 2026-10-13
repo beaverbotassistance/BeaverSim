@@ -19,13 +19,16 @@ import pystac
 from data_acquisition.catalog import descriptors, stac
 from data_acquisition.catalog import summary as summaries
 from data_acquisition.catalog.descriptors import add_quality, set_field
-from data_acquisition.readers import eml, geotiff
+from data_acquisition.readers import eml, geotiff, pangaea
 from data_acquisition.sources import dataone
 
-RECORD_READERS = {"eml": eml.read}
+RECORD_READERS = {"eml": eml.read, "pangaea_tab": pangaea.read}
+RECORD_MEDIA = {"eml": "application/xml", "pangaea_tab": "text/tab-separated-values"}
 COMMON_NAMES = {"blue": "blue", "green": "green", "red": "red", "red edge": "rededge", "rededge": "rededge",
                 "near infrared": "nir", "near-infrared": "nir", "nir": "nir"}
-ELEVATION = ("dsm", "dtm")
+# products measured in metres, and the default name of their bands when the summary gives none
+METRIC_BANDS = {"dsm": "elevation", "dtm": "elevation", "chm": "canopy_height", "dod": "elevation_change",
+                "uncertainty": "uncertainty"}
 
 
 def _bands(product: str, wanted: Optional[List[str]], header: Dict[str, Any],
@@ -34,20 +37,20 @@ def _bands(product: str, wanted: Optional[List[str]], header: Dict[str, Any],
     and record disagree."""
     flags = []
     declared = geotiff.declared_bands(header)
-    if product in ELEVATION:
-        names = ["elevation"] * header["count"]
-    elif wanted:
+    if wanted:
         names = wanted
         if len(wanted) != header["count"]:
             flags.append(("band_count_conflict", f"summary gives {len(wanted)} bands, the file has {header['count']}",
                           "auto"))
         elif declared and declared != wanted:
             flags.append(("band_order_conflict", f"summary gives {wanted}, the file declares {declared}", "auto"))
+    elif product in METRIC_BANDS:
+        names = [METRIC_BANDS[product]] * header["count"]
     else:
         names = declared or [f"b{i + 1}" for i in range(header["count"])]
-    if entity is not None:
+    if entity is not None and entity["attributes"]:     # only records that describe the file's contents
         repo = [COMMON_NAMES.get(n, n) for n in eml.bands(entity)]
-        expected = [] if product in ELEVATION else names
+        expected = [] if product in METRIC_BANDS else [n for n in names if n != "alpha"]
         if repo != expected:
             flag = "band_order_conflict" if sorted(repo) == sorted(expected) else "repository_band_conflict"
             flags.append((flag, f"repository describes {repo or 'no'} bands; using {expected or 'none'} "
@@ -59,16 +62,16 @@ def raster_item(s: Dict[str, Any], f: Dict[str, Any], path: Path, rel: str, grou
                 record: Optional[Dict[str, Any]], log: Dict[str, Dict[str, str]]) -> pystac.Item:
     source, who = summaries.author(s)
     product, site = f["product"], f["site"]
-    item_id = f"{site}_{f['date'].isoformat()}_{product}"
+    start, end, label = summaries.epoch(f)
+    item_id = f"{site}_{label}_{product}" + (f"_{f['variant']}" if f.get("variant") else "")
     header = geotiff.info(path)
     entity = record["entities"].get(path.name) if record else None
     algorithm, digest = (entity or {}).get("checksum") or (None, None)
 
     names, flags = _bands(product, f.get("bands"), header, entity)
-    bands = [] if product in ELEVATION else [
-        {"name": n, "common_name": n if n in COMMON_NAMES.values() else None} for n in names]
-    item = stac.raster_item(item_id, path, header, f["date"], product, ["data"], bands, title=path.name,
-                            unit=f.get("unit") or ("m" if product in ELEVATION else None),
+    bands = [{"name": n, "common_name": n if n in COMMON_NAMES.values() else None} for n in names]
+    item = stac.raster_item(item_id, path, header, start, end, product, ["data"], bands, title=path.name,
+                            unit=f.get("unit") or ("m" if product in METRIC_BANDS else None),
                             checksum=stac.multihash(algorithm, digest) if algorithm in stac.MULTIHASH else None)
     for flag, detail, flag_source in flags:
         add_quality(item, flag, detail, source=flag_source)
@@ -76,17 +79,19 @@ def raster_item(s: Dict[str, Any], f: Dict[str, Any], path: Path, rel: str, grou
     if record is not None:
         if entity is None:
             add_quality(item, "not_in_record", "the metadata record does not list this file", source="repository")
-        elif entity["size"] is not None and entity["size"] != path.stat().st_size:
+        elif entity["size"] is not None and entity.get("size_exact", True) and entity["size"] != path.stat().st_size:
             add_quality(item, "size_mismatch", f"record {entity['size']} bytes, file {path.stat().st_size}",
                         source="repository")
-        if record["dates"] and not record["dates"][0] <= f["date"].isoformat() <= record["dates"][-1]:
-            add_quality(item, "date_outside_record", f"{f['date']} not within {record['dates'][0]}..{record['dates'][-1]}",
+        if record["dates"] and not record["dates"][0] <= start.isoformat() <= end.isoformat() <= record["dates"][-1]:
+            add_quality(item, "date_outside_record", f"{label} not within {record['dates'][0]}..{record['dates'][-1]}",
                         source="repository")
     for note in f.get("notes") or []:
         add_quality(item, "note", note, source=source)
 
     item.common_metadata.platform = f.get("platform")
     item.common_metadata.instruments = f.get("instruments")
+    if (f.get("date_precision") or "day") != "day":
+        item.properties["beaver:date_precision"] = f["date_precision"]
     if f.get("vertical_datum"):
         item.properties["beaver:vertical_datum"] = f["vertical_datum"]
     set_field(item, "site", site, source, **who)
@@ -112,8 +117,9 @@ def build(root: Path, s: Dict[str, Any]) -> (pystac.Catalog, Dict[str, List[str]
     log = dataone.read_log(root / s["source"]["log"]) if s["source"].get("log") else {}
     report = {"missing": [], "undescribed": [], "unsupported": [], "unattached": []}
     items: Dict[str, pystac.Item] = {}
+    placed: Dict[str, tuple] = {}          # item id -> (group index, product, epoch label)
     attachments = []
-    for g in s["groups"]:
+    for gi, g in enumerate(s["groups"]):
         folder = root / g["folder"]
         record, described = None, set()
         if g.get("record"):
@@ -126,34 +132,39 @@ def build(root: Path, s: Dict[str, Any]) -> (pystac.Catalog, Dict[str, List[str]
             if not path.exists():
                 report["missing"].append(rel)
             elif f.get("role"):
-                attachments.append((g, f, path))
+                attachments.append((gi, f, path))
             elif path.suffix.lower() in geotiff.EXTENSIONS:
                 item = raster_item(s, f, path, rel, g, record, log)
                 if item.id in items:
                     raise ValueError(f"two files for {item.id}: {rel}")
                 if record is not None:
                     stac.add_file_asset(item, "metadata", folder / g["record"]["path"], ["metadata"],
-                                        f"{g['record']['format'].upper()} record", "application/xml")
+                                        f"{g['record']['format']} record", RECORD_MEDIA.get(g["record"]["format"]))
                 items[item.id] = item
+                placed[item.id] = (gi, f["product"], summaries.epoch(f)[2])
             else:
                 report["unsupported"].append(rel)
         if folder.exists():
             report["undescribed"] += [os.path.relpath(p, root) for p in sorted(folder.iterdir())
                                       if p.is_file() and p.name not in described and not p.name.endswith(".part")]
 
-    for g, f, path in attachments:
+    for gi, f, path in attachments:
+        dated = any(f.get(k) is not None for k in ("date", "start_date"))
+        label = summaries.epoch(f)[2] if dated else None
         for product in f["attach_to"]:
-            item = items.get(f"{f['site']}_{f['date'].isoformat()}_{product}")
-            if item:
-                stac.add_file_asset(item, f["role"], path, [f["role"]], f"processing {f['role']}",
+            targets = [items[i] for i, (g2, p2, l2) in placed.items()
+                       if g2 == gi and p2 == product and (label is None or l2 == label)]
+            if not targets:
+                report["unattached"].append(f"{path.name} -> {product}{f' {label}' if label else ''}")
+            for item in targets:
+                key = f["role"] if f["role"] not in item.assets else f"{f['role']}:{path.stem}"
+                stac.add_file_asset(item, key, path, [f["role"]], path.name,
                                     "application/pdf" if path.suffix.lower() == ".pdf" else None)
-            else:
-                report["unattached"].append(f"{path.name} -> {product}")
 
     catalog = pystac.Catalog(s["dataset"], f"{s['title']}. Built from {Path(s['_path']).name}.")
     for slug in sorted({descriptors.get_field(i, "site") for i in items.values()}):
         site_items = sorted((i for i in items.values() if descriptors.get_field(i, "site") == slug),
-                            key=lambda i: (i.datetime, i.id))
+                            key=lambda i: (i.datetime or i.common_metadata.start_datetime, i.id))
         licences = {descriptors.get_field(i, "licence") for i in site_items}
         collection = pystac.Collection(
             slug, s["sites"][slug]["name"], pystac.Extent.from_items(site_items),

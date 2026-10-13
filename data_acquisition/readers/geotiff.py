@@ -20,8 +20,8 @@ def info(path: Path) -> Dict[str, Any]:
 
 
 def declared_bands(header: Dict[str, Any]) -> Optional[List[str]]:
-    """Band names the file itself declares (RGB photometric interpretation), else None."""
-    names = [c for c in header["colorinterp"] if c in ("red", "green", "blue")]
+    """Band names the file itself declares (RGB or RGBA photometric interpretation), else None."""
+    names = [c for c in header["colorinterp"] if c in ("red", "green", "blue", "alpha")]
     return names if len(names) == header["count"] else None
 
 

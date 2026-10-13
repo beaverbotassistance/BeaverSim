@@ -33,18 +33,28 @@ def footprint(info: Dict[str, Any]) -> (Dict[str, Any], List[float]):
     return geom, bbox
 
 
-def raster_item(item_id: str, path: Path, info: Dict[str, Any], date: datetime.date, asset_key: str,
-                roles: List[str], bands: List[Dict[str, Optional[str]]], unit: Optional[str] = None,
+def _utc(d: datetime.date, end: bool = False) -> datetime.datetime:
+    return datetime.datetime.combine(d, datetime.time.max if end else datetime.time(), datetime.timezone.utc)
+
+
+def raster_item(item_id: str, path: Path, info: Dict[str, Any], start: datetime.date, end: datetime.date,
+                asset_key: str, roles: List[str], bands: List[Dict[str, Optional[str]]], unit: Optional[str] = None,
                 checksum: Optional[str] = None, title: Optional[str] = None) -> pystac.Item:
     """Item with one raster asset, footprint from the raster bounds, and proj/raster/eo/file fields.
 
     ``info`` comes from :func:`data_acquisition.readers.geotiff.info`. ``bands`` is one dict per band:
-    ``{"name": ..., "common_name": ...}`` (common_name may be None).
-    ``date`` has day precision: ``datetime`` is midnight UTC of that day.
+    ``{"name": ..., "common_name": ...}`` (common_name may be None); band names are written as
+    ``eo:bands`` for every product.
+    Time: one day (``start == end``) gives ``datetime`` at midnight UTC of that day; a longer span
+    (a month, a year, two epochs) gives ``start_datetime`` / ``end_datetime`` and no ``datetime``.
     """
     geom, bbox = footprint(info)
-    item = pystac.Item(item_id, geom, bbox, datetime.datetime.combine(date, datetime.time(), datetime.timezone.utc),
-                       properties={"gsd": round(min(info["resolution"]), 4)})
+    props = {"gsd": round(min(info["resolution"]), 4)}
+    if start == end:
+        item = pystac.Item(item_id, geom, bbox, _utc(start), properties=props)
+    else:
+        item = pystac.Item(item_id, geom, bbox, None, properties=props,
+                           start_datetime=_utc(start), end_datetime=_utc(end, end=True))
     item.add_asset(asset_key, pystac.Asset(str(path.resolve()), title=title, roles=roles,
                                            media_type=pystac.MediaType.GEOTIFF))
     asset = item.assets[asset_key]
@@ -56,7 +66,7 @@ def raster_item(item_id: str, path: Path, info: Dict[str, Any], date: datetime.d
         RasterBand.create(data_type=DataType(dt), nodata=info["nodata"], unit=unit,
                           spatial_resolution=round(min(info["resolution"]), 4))
         for dt in info["dtypes"]]
-    if any(b.get("common_name") for b in bands):
+    if bands:
         EOExtension.ext(asset, add_if_missing=True).bands = [
             Band.create(name=b["name"], common_name=b.get("common_name")) for b in bands]
 

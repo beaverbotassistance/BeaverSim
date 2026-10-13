@@ -60,10 +60,13 @@ def check_raster(item: pystac.Item, key: str, site: Dict[str, Any], verify: bool
         add_quality(item, "crs_mismatch", f"EPSG:{info['epsg']}, site CRS is {site['crs']}")
     if info["nodata"] is None:
         add_quality(item, "nodata_undeclared", "no nodata value; zero/black pixels may be outside the survey")
+    names = [b.get("name") for b in asset.extra_fields.get("eo:bands", [])]
+    if key in ("dsm", "dtm") and "elevation" in names:      # check only the elevation bands
+        data = data[[i for i, n in enumerate(names) if n == "elevation"]]
     valid = data.compressed()
     if valid.size == 0:
         add_quality(item, "sample_empty", f"central {SAMPLE}px window has no valid pixels; values not checked")
-    elif key == "dsm" and (valid.min() < ELEVATION_RANGE[0] or valid.max() > ELEVATION_RANGE[1]):
+    elif key in ("dsm", "dtm") and (valid.min() < ELEVATION_RANGE[0] or valid.max() > ELEVATION_RANGE[1]):
         add_quality(item, "elevation_range", f"sample {valid.min():.1f}..{valid.max():.1f} m")
     elif key == "multispectral":
         outside = np.mean((valid < REFLECTANCE_RANGE[0]) | (valid > REFLECTANCE_RANGE[1]))
@@ -97,10 +100,19 @@ def curate_item(item: pystac.Item, summary: Dict[str, Any], verify: bool = False
     if site.get("confirmed"):
         _set_entered(item, "site", site["confirmed"], slug)
     lat = (item.bbox[1] + item.bbox[3]) / 2
-    date = item.datetime.date()
-    set_field(item, "season", descriptors.season(date, lat), "auto")
-    if abs(lat) >= SNOW_LATITUDE and date.month in ((11, 12, 1, 2, 3, 4) if lat > 0 else (5, 6, 7, 8, 9, 10)):
-        add_quality(item, "snow_likely", f"{date.isoformat()} at {lat:.1f}° latitude")
+    if item.datetime is not None:
+        date = item.datetime.date()
+        set_field(item, "season", descriptors.season(date, lat), "auto")
+        if abs(lat) >= SNOW_LATITUDE and date.month in ((11, 12, 1, 2, 3, 4) if lat > 0 else (5, 6, 7, 8, 9, 10)):
+            add_quality(item, "snow_likely", f"{date.isoformat()} at {lat:.1f}° latitude")
+    else:   # a time span: one season only if it stays within one; else several epochs, or not known
+        start, end = (item.common_metadata.start_datetime.date(), item.common_metadata.end_datetime.date())
+        seasons = {descriptors.season(start, lat), descriptors.season(end, lat)}
+        if len(seasons) == 1 and (end - start).days <= 92:
+            value = seasons.pop()
+        else:
+            value = "unknown" if item.properties.get("beaver:date_precision") else "multiple"
+        set_field(item, "season", value, "auto", note=f"{start}..{end}")
 
     for field in ("colonies", "land_status", "governance", "licence"):
         entry = site.get(field)
