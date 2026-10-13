@@ -1,134 +1,300 @@
-# Dataset summary: what the files and their metadata records can't tell us, written as data.
-# Schema: data_acquisition/catalog/summary.py. Paths are relative to the data root given on the
-# command line (here the drive's open_datasets folder).
-#
-# Values written here are recorded with source "claude" while `reviewed` is empty, and as
-# "manual" (by the reviewer) once someone has checked them. Land status and governance must be
-# entered by a person.
-
+# Drafted by Claude in a Claude Code session (describe prompt), reviewed by Federico Oliva.
 schema: 1
 dataset: arcticdata_seward
-title: Seward Peninsula beaver drone surveys (NSF Arctic Data Center, Tape, Jones et al.)
-authored: {by: claude, model: claude-opus-5-5, date: 2026-10-13,
-           note: "from file names, EML records and docs/dataset/beaver_open_datasets.md (A1, A2)"}
-reviewed: null                         # {by, date} once a person has checked this file
-
+title: Repeat drone surveys of the Swan Lake drained lake basin (MP64) beaver dams, Seward Peninsula, Alaska, 2021-2024
+  (orthomosaics, DSMs, multispectral; Jones and Tape, NSF Arctic Data Center)
+authored:
+  by: claude
+  model: claude-opus-5-5
+  date: 2026-10-13
+  note: Claude Code session, from evidence.json
+reviewed:
+  by: Federico Oliva
+  date: 2026-10-13
 source:
   kind: dataone
   provider: NSF Arctic Data Center
   url: https://arcticdata.io
-  api: https://arcticdata.io/metacat/d1/mn/v2
-  log: downloads.csv                   # download log written by data_acquisition.sources.dataone
-
+  log: downloads.csv
 sites:
-  swan_lake_dlb:
-    name: Swan Lake drained lake basin (MP64), Seward Peninsula, Alaska
-    crs: EPSG:32603                    # UTM zone 3N, metres
-    colonies: null                     # from AOI estimation and review (pipeline_design.md §5.3)
-    land_status: null                  # not stated in the metadata; possibly Alaska Native corporation land
-    governance: null                   # licence is CC0, which does not settle Indigenous data governance
-
-# One group per downloaded dataset (DOI). Group fields apply to every file unless a file overrides
-# them. `record` is the standard metadata record (EML); licence, title, creators and checksums are
-# read from it and cross-checked, not copied here.
+  swan_lake_dlb_mp64:
+    name: Swan Lake drained lake basin (MP64) beaver dams, Seward Peninsula, Alaska
+    crs: EPSG:32603
+    colonies: null
+    land_status: null
+    governance: null
+    hints:
+      land_status: Not stated in any EML record. beaver_open_datasets.md (A1 'Watch out' and Notes) says the Alaska
+        sites may be on Alaska Native corporation lands; to check against land records.
+      governance: All five EML records give CC0-1.0, which settles copyright only (beaver_open_datasets.md, Notes).
+        The ABON 2024 methods text says local land managers and community representatives were informed 'where
+        appropriate'; no data-use or Indigenous data governance terms are stated.
 groups:
-  - folder: arcticdata/doi_10.18739_A2J09W600
-    doi: doi:10.18739/A2J09W600
-    record: {path: metadata.xml, format: eml}
-    site: swan_lake_dlb
-    date: 2021-08-03
-    platform: DJI Phantom 4 RTK
-    instruments: [FC6310R]
-    positioning: [rtk, gcp]            # D-RTK 2 base station; Leica Viva GNSS ground control (EML methods)
-    files:
-      - {path: Swan_Lake_DLB_MP64_P4RTK_03August2021_Orthomosaic_WGS84_UTM_Zone3N_5cm.tif, product: orthomosaic}
-      - {path: Swan_Lake_DLB_MP64_P4RTK_03August2021_Digital_Surface_Model_WGS84_UTM_Zone3N_Ellipsoid_Heights_10cm.tif,
-         product: dsm, vertical_datum: WGS 84 ellipsoidal height}
-      - {path: Swan_Lake_DLB_MP64_03August2021_P4RTK_Pix4D_report.pdf, role: report, attach_to: [orthomosaic, dsm]}
-
-  - folder: arcticdata/doi_10.18739_A2D795C54
-    doi: doi:10.18739/A2D795C54
-    record: {path: metadata.xml, format: eml}
-    site: swan_lake_dlb
-    date: 2021-08-03
-    platform: DJI P4 Multispectral
-    instruments: [P4M]
-    positioning: [rtk, gcp]
-    files:
-      - {path: Swan_Lake_DLB_MP64_P4_MultiSpectral_03Aug2021_WGS84_UTM_Zone_3N_10cm.tif, product: multispectral,
-         bands: [blue, green, red, rededge, nir], unit: reflectance}
-      - {path: Swan_Lake_DLB_MP64_03August2021_P4_Multispectral_Pix4D_Report.pdf, role: report, attach_to: [multispectral]}
-
-  - folder: arcticdata/doi_10.18739_A25M6284J
-    doi: doi:10.18739/A25M6284J
-    record: {path: metadata.xml, format: eml}
-    site: swan_lake_dlb
-    date: 2022-03-27
-    platform: DJI Phantom 4 RTK
-    instruments: [FC6310R]
-    positioning: [rtk, gcp]
-    notes: ["late-winter survey, snow cover"]
-    files:
-      - {path: Swan_Lake_DLB_MP64_P4RTK_27March2022_Orthomosaic_WGS84_UTM_Zone3N_5cm.tif, product: orthomosaic}
-      - {path: Swan_Lake_DLB_MP64_P4RTK_27March2022_Digital_Surface_Model_WGS84_UTM_Zone3N_Ellpsoid_Height_10cm.tif,
-         product: dsm, vertical_datum: WGS 84 ellipsoidal height}
-      - {path: Swan_Lake_DLB_MP64_27March2022_P4RTK_Pix4D_report.pdf, role: report, attach_to: [orthomosaic, dsm]}
-
-  - folder: arcticdata/doi_10.18739_A2NS0M03W
-    doi: doi:10.18739/A2NS0M03W
-    record: {path: metadata.xml, format: eml}
-    site: swan_lake_dlb
-    date: 2022-08-12
-    platform: DJI Phantom 4 RTK
-    instruments: [FC6310R]
-    positioning: [rtk, gcp]
-    files:
-      - {path: Swan_Lake_DLB_MP64_P4RTK_12August2022_Orthomosaic_WGS84_UTM_Zone3N_5cm.tif, product: orthomosaic}
-      - {path: Swan_Lake_DLB_MP64_P4RTK_12August2022_Digital_Surface_Model_WGS84_UTM_Zone3N_Ellipsoid_Heights_10cm.tif,
-         product: dsm, vertical_datum: WGS 84 ellipsoidal height}
-      - {path: Swan_Lake_DLB_MP64_12August2022_P4RTK_Pix4D_report.pdf, role: report, attach_to: [orthomosaic, dsm]}
-
-  - folder: arcticdata/doi_10.18739_A2RJ48W7C
-    doi: doi:10.18739/A2RJ48W7C
-    record: {path: metadata.xml, format: eml}
-    site: swan_lake_dlb
-    date: 2022-08-12
-    platform: DJI P4 Multispectral
-    instruments: [P4M]
-    positioning: [rtk, gcp]
-    files:
-      - {path: Swan_Lake_DLB_MP64_P4_MultiSpectral_12Aug2022_WGS84_UTM_Zone_3N_10cm.tif, product: multispectral,
-         bands: [blue, green, red, rededge, nir], unit: reflectance}
-      - {path: Swan_Lake_DLB_MP64_12August2022_P4_Multispectral_Pix4D_Report.pdf, role: report, attach_to: [multispectral]}
-
-  - folder: arcticdata/doi_10.18739_A2H12V896
-    doi: doi:10.18739/A2H12V896
-    record: {path: metadata.xml, format: eml}
-    site: swan_lake_dlb
-    date: 2023-08-02
-    platform: DJI P4 Multispectral
-    instruments: [P4M]
-    positioning: [rtk, gcp]
-    files:
-      - {path: Swan_Lake_DLB_MP64_P4_MultiSpectral_02August2023_WGS84_UTM_Zone_3N_10cm.tif, product: multispectral,
-         bands: [blue, green, red, rededge, nir], unit: reflectance}
-      - {path: Swan_Lake_DLB_MP64_02August2023_P4_Multispectral_Pix4D_Report.pdf, role: report, attach_to: [multispectral]}
-
-  # ABON 2024: nine sites in one dataset; only the Swan Lake files were downloaded.
-  - folder: arcticdata/doi_10.18739_A22R3NZ98
-    doi: doi:10.18739/A22R3NZ98
-    record: {path: metadata.xml, format: eml}
-    download_filter: ^Swan_Lake_DLB_
-    site: swan_lake_dlb
-    date: 2024-08-04
-    platform: DJI Mavic 3 Multispectral
-    instruments: [M3M]
-    positioning: [rtk, gcp]
-    notes: ["EML attribute descriptions are shifted between files (the DSM is described as multispectral,
-             the multispectral as RGB, the RGB as elevation); bands below follow the methods text"]
-    files:
-      - {path: Swan_Lake_DLB_M3_Orthomosaic_RGB_04August2024_WGS84_UTM_Zone_3N_5cm.tif, product: orthomosaic}
-      - {path: Swan_Lake_DLB_M3_Digital_Surface_Model_04August2024_WGS84_UTM_Zone_3N_Ellipsoid_Height_10cm.tif,
-         product: dsm, vertical_datum: WGS 84 ellipsoidal height}
-      - {path: Swan_Lake_DLB_M3_Multispectral_Bands_04August2024_WGS84_UTM_Zone_3N_10cm.tif, product: multispectral,
-         bands: [green, red, rededge, nir], unit: reflectance}
+- folder: arcticdata/doi_10.18739_A2D795C54
+  doi: doi:10.18739/A2D795C54
+  record:
+    path: metadata.xml
+    format: eml
+  site: swan_lake_dlb_mp64
+  date: 2021-08-03
+  platform: DJI Phantom 4 RTK Multispectral
+  positioning:
+  - rtk
+  - gcp
+  evidence:
+  - 'doi: folder name doi_10.18739_A2D795C54'
+  - 'site: file names (Swan_Lake_DLB_MP64) and EML title (Swan Lake Drained Lake Basin (MP64), Seward Peninsula)'
+  - 'date: file names (03August2021 / 03Aug2021), EML dates and methods text (03 August 2021)'
+  - 'platform: methods text (DJI Phantom 4 Real-Time Kinematic (DJI P4RTK) Multispectral quadcopter); file names
+    say P4_Multispectral'
+  - 'positioning: methods text (DJI D-RTK 2 Mobile Base Station -> rtk; Leica Viva differential GPS provided ground
+    control -> gcp)'
+  - 'product multispectral: file name (P4_MultiSpectral), EML title (Multispectral Orthomosaic Image), 5-band float32
+    GeoTIFF'
+  - 'bands: EML entity attributes (Blue, Green, Red, Red Edge, Near Infrared); the GeoTIFF header does not declare
+    them (gray + undefined)'
+  - 'unit: methods text (MicaSense calibrated reflectance panel, radiometric calibration in Pix4D Index Calculator)'
+  - 'report: file name (P4_Multispectral_Pix4D_Report), same date and sensor as the multispectral file'
+  files:
+  - path: Swan_Lake_DLB_MP64_P4_MultiSpectral_03Aug2021_WGS84_UTM_Zone_3N_10cm.tif
+    product: multispectral
+    bands: [blue, green, red, rededge, nir]
+    unit: reflectance
+  - path: Swan_Lake_DLB_MP64_03August2021_P4_Multispectral_Pix4D_Report.pdf
+    role: report
+    attach_to: [multispectral]
+- folder: arcticdata/doi_10.18739_A2J09W600
+  doi: doi:10.18739/A2J09W600
+  record:
+    path: metadata.xml
+    format: eml
+  site: swan_lake_dlb_mp64
+  date: 2021-08-03
+  platform: DJI Phantom 4 RTK
+  positioning:
+  - rtk
+  - gcp
+  evidence:
+  - 'doi: folder name doi_10.18739_A2J09W600; also listed in beaver_open_datasets.md (A2, Swan Lake MP64 Aug 2021)'
+  - 'site: file names (Swan_Lake_DLB_MP64) and EML title'
+  - 'date: file names (03August2021), EML dates and methods text'
+  - 'platform: methods text (DJI Phantom 4 Real-Time Kinematic (DJI P4RTK)); file names say P4RTK'
+  - 'positioning: methods text (DJI D-RTK 2 Mobile Base Station -> rtk; Leica Viva differential GPS ground control
+    -> gcp)'
+  - 'products: file names (Orthomosaic, Digital_Surface_Model) and EML title'
+  - 'vertical_datum: methods text (WGS84 UTM Zone 3 North in Ellipsoid Heights (meters)), EML entity (Elevation units
+    are Ellipsoid Height (meters)) and file name (Ellipsoid_Heights)'
+  - 'report: file name (P4RTK_Pix4D_report), same date and platform as both data files'
+  files:
+  - path: Swan_Lake_DLB_MP64_P4RTK_03August2021_Orthomosaic_WGS84_UTM_Zone3N_5cm.tif
+    product: orthomosaic
+    notes:
+    - The GeoTIFF header declares bands red, green, blue; the EML record describes them as Blue, Green, Red. The header
+      order is used.
+  - path: Swan_Lake_DLB_MP64_P4RTK_03August2021_Digital_Surface_Model_WGS84_UTM_Zone3N_Ellipsoid_Heights_10cm.tif
+    product: dsm
+    vertical_datum: WGS84 ellipsoid
+    notes:
+    - Elevation over waterbodies is noisy and does not represent the water surface (methods text).
+  - path: Swan_Lake_DLB_MP64_03August2021_P4RTK_Pix4D_report.pdf
+    role: report
+    attach_to: [orthomosaic, dsm]
+- folder: arcticdata/doi_10.18739_A25M6284J
+  doi: doi:10.18739/A25M6284J
+  record:
+    path: metadata.xml
+    format: eml
+  site: swan_lake_dlb_mp64
+  date: 2022-03-27
+  platform: DJI Phantom 4 RTK
+  positioning:
+  - rtk
+  - gcp
+  notes:
+  - March flight; per beaver_open_datasets.md (A2) March flights show snow-covered terrain.
+  evidence:
+  - 'doi: folder name doi_10.18739_A25M6284J'
+  - 'site: file names (Swan_Lake_DLB_MP64) and EML title'
+  - 'date: file names (27March2022), EML dates and methods text'
+  - 'platform: methods text (DJI P4RTK); file names say P4RTK'
+  - 'positioning: methods text (DJI D-RTK 2 Mobile Base Station -> rtk; Leica Viva differential GPS ground control
+    -> gcp)'
+  - 'products: file names (Orthomosaic, Digital_Surface_Model) and EML title'
+  - 'vertical_datum: methods text (Ellipsoid Heights (meters)), EML entity and file name (Ellpsoid_Height, sic)'
+  - 'snow note: beaver_open_datasets.md A2 (Fit), not the record itself'
+  - 'report: file name (P4RTK_Pix4D_report), same date and platform as both data files'
+  files:
+  - path: Swan_Lake_DLB_MP64_P4RTK_27March2022_Orthomosaic_WGS84_UTM_Zone3N_5cm.tif
+    product: orthomosaic
+    notes:
+    - The GeoTIFF header declares bands red, green, blue; the EML record describes them as Blue, Green, Red. The header
+      order is used.
+  - path: Swan_Lake_DLB_MP64_P4RTK_27March2022_Digital_Surface_Model_WGS84_UTM_Zone3N_Ellpsoid_Height_10cm.tif
+    product: dsm
+    vertical_datum: WGS84 ellipsoid
+    notes:
+    - Elevation over waterbodies is noisy and does not represent the water surface (methods text).
+    - File name misspells 'Ellipsoid' as 'Ellpsoid'.
+  - path: Swan_Lake_DLB_MP64_27March2022_P4RTK_Pix4D_report.pdf
+    role: report
+    attach_to: [orthomosaic, dsm]
+- folder: arcticdata/doi_10.18739_A2NS0M03W
+  doi: doi:10.18739/A2NS0M03W
+  record:
+    path: metadata.xml
+    format: eml
+  site: swan_lake_dlb_mp64
+  date: 2022-08-12
+  platform: DJI Phantom 4 RTK
+  positioning:
+  - rtk
+  - gcp
+  evidence:
+  - 'doi: folder name doi_10.18739_A2NS0M03W'
+  - 'site: file names (Swan_Lake_DLB_MP64) and EML title'
+  - 'date: file names (12August2022), EML dates and methods text'
+  - 'platform: methods text (DJI P4RTK); file names say P4RTK'
+  - 'positioning: methods text (DJI D-RTK 2 Mobile Base Station -> rtk; Leica Viva differential GPS ground control
+    -> gcp)'
+  - 'products: file names (Orthomosaic, Digital_Surface_Model) and EML title'
+  - 'vertical_datum: methods text (Ellipsoid Heights (meters)), EML entity and file name (Ellipsoid_Heights)'
+  - 'report: file name (P4RTK_Pix4D_report), same date and platform as both data files'
+  files:
+  - path: Swan_Lake_DLB_MP64_P4RTK_12August2022_Orthomosaic_WGS84_UTM_Zone3N_5cm.tif
+    product: orthomosaic
+    notes:
+    - The GeoTIFF header declares bands red, green, blue; the EML record describes them as Blue, Green, Red. The header
+      order is used.
+  - path: Swan_Lake_DLB_MP64_P4RTK_12August2022_Digital_Surface_Model_WGS84_UTM_Zone3N_Ellipsoid_Heights_10cm.tif
+    product: dsm
+    vertical_datum: WGS84 ellipsoid
+    notes:
+    - Elevation over waterbodies is noisy and does not represent the water surface (methods text).
+  - path: Swan_Lake_DLB_MP64_12August2022_P4RTK_Pix4D_report.pdf
+    role: report
+    attach_to: [orthomosaic, dsm]
+- folder: arcticdata/doi_10.18739_A2RJ48W7C
+  doi: doi:10.18739/A2RJ48W7C
+  record:
+    path: metadata.xml
+    format: eml
+  site: swan_lake_dlb_mp64
+  date: 2022-08-12
+  platform: DJI Phantom 4 RTK Multispectral
+  positioning:
+  - rtk
+  - gcp
+  evidence:
+  - 'doi: folder name doi_10.18739_A2RJ48W7C'
+  - 'site: file names (Swan_Lake_DLB_MP64) and EML title'
+  - 'date: file names (12August2022 / 12Aug2022), EML dates and methods text'
+  - 'platform: methods text (DJI P4RTK Multispectral quadcopter); file names say P4_Multispectral'
+  - 'positioning: methods text (DJI D-RTK 2 Mobile Base Station -> rtk; Leica Viva differential GPS ground control
+    -> gcp)'
+  - 'product multispectral: file name (P4_MultiSpectral), EML title, 5-band float32 GeoTIFF'
+  - 'bands: EML entity attributes (Blue, Green, Red, Red Edge, Near Infrared); not declared in the GeoTIFF header'
+  - 'unit: methods text (MicaSense calibrated reflectance panel, radiometric calibration)'
+  - 'report: file name (P4_Multispectral_Pix4D_Report), same date and sensor as the multispectral file'
+  files:
+  - path: Swan_Lake_DLB_MP64_P4_MultiSpectral_12Aug2022_WGS84_UTM_Zone_3N_10cm.tif
+    product: multispectral
+    bands: [blue, green, red, rededge, nir]
+    unit: reflectance
+  - path: Swan_Lake_DLB_MP64_12August2022_P4_Multispectral_Pix4D_Report.pdf
+    role: report
+    attach_to: [multispectral]
+- folder: arcticdata/doi_10.18739_A2H12V896
+  doi: doi:10.18739/A2H12V896
+  record:
+    path: metadata.xml
+    format: eml
+  site: swan_lake_dlb_mp64
+  date: 2023-08-02
+  platform: DJI Phantom 4 RTK Multispectral
+  positioning:
+  - rtk
+  - gcp
+  evidence:
+  - 'doi: folder name doi_10.18739_A2H12V896'
+  - 'site: file names (Swan_Lake_DLB_MP64) and EML title'
+  - 'date: file names (02August2023), EML dates and methods text'
+  - 'platform: methods text (DJI P4RTK Multispectral quadcopter); file names say P4_Multispectral'
+  - 'positioning: methods text (DJI D-RTK 2 Mobile Base Station -> rtk; Leica Viva differential GPS ground control
+    -> gcp)'
+  - 'product multispectral: file name (P4_MultiSpectral), EML title, 5-band float32 GeoTIFF'
+  - 'bands: EML entity attributes (Blue, Green, Red, Red Edge, Near Infrared); not declared in the GeoTIFF header'
+  - 'unit: methods text (MicaSense calibrated reflectance panel, radiometric calibration)'
+  - 'report: file name (P4_Multispectral_Pix4D_Report), same date and sensor as the multispectral file'
+  files:
+  - path: Swan_Lake_DLB_MP64_P4_MultiSpectral_02August2023_WGS84_UTM_Zone_3N_10cm.tif
+    product: multispectral
+    bands: [blue, green, red, rededge, nir]
+    unit: reflectance
+  - path: Swan_Lake_DLB_MP64_02August2023_P4_Multispectral_Pix4D_Report.pdf
+    role: report
+    attach_to: [multispectral]
+- folder: arcticdata/doi_10.18739_A22R3NZ98
+  doi: doi:10.18739/A22R3NZ98
+  download_filter: ^Swan_Lake_DLB_       # ABON holds nine sites (24.5 GB); download only Swan Lake
+  record:
+    path: metadata.xml
+    format: eml
+  site: swan_lake_dlb_mp64
+  date: 2024-08-04
+  platform: DJI Mavic 3 Multispectral
+  positioning:
+  - rtk
+  - gcp
+  notes:
+  - Part of the ABON August 2024 multi-site package (nine sites); only the three Swan Lake DLB files are in this folder.
+  - ABON file names say Swan_Lake_DLB without MP64; assigned to the MP64 site because the name matches and the GeoTIFF
+    footprints overlap the 2021-2023 MP64 rasters.
+  - The EML entity descriptions for the three Swan Lake DLB files are shuffled (DSM described as 4 multispectral bands,
+    multispectral as 3 RGB bands, orthomosaic as elevation); the same shuffle affects other ABON sites in the record.
+    Products are taken from the file names, resolutions and band counts instead.
+  evidence:
+  - 'doi: folder name doi_10.18739_A22R3NZ98; also beaver_open_datasets.md A1'
+  - 'site: file names (Swan_Lake_DLB) and GeoTIFF lonlat bboxes (about -164.82..-164.80 E, 65.165..65.172 N), which
+    overlap the MP64 groups; beaver_open_datasets.md A2 lists Swan Lake MP64 Aug 2024 as a possible ABON site'
+  - 'date: file names (04August2024), within EML dates 2024-08-02..2024-08-07'
+  - 'platform: methods text (DJI Mavic 3 Multispectral quadcopter)'
+  - 'positioning: methods text (DJI D-RTK 2 Mobile Base Station -> rtk; Leica Viva differential GPS ground control
+    -> gcp)'
+  - 'products: file names (Orthomosaic_RGB 5cm, Digital_Surface_Model 10cm, Multispectral_Bands 10cm), matching the
+    three products and resolutions in the methods text and the GeoTIFF band counts (3, 1, 4)'
+  - 'bands (multispectral): methods text (green, red, red edge, near-infrared) and EML entities of the other ABON
+    sites (band 1 = green ... band 4 = near infrared); not declared in the GeoTIFF header'
+  - 'unit: methods text (MicaSense calibrated reflectance panel, normalize reflectance values)'
+  - 'vertical_datum: file name (Ellipsoid_Height) and ABON EML DSM definitions (Ellipsoid height in meters (m))'
+  files:
+  - path: Swan_Lake_DLB_M3_Orthomosaic_RGB_04August2024_WGS84_UTM_Zone_3N_5cm.tif
+    product: orthomosaic
+    notes:
+    - The GeoTIFF header declares bands red, green, blue; ABON EML orthomosaic entities give band 1 = blue, band 2 = green,
+      band 3 = red. The header order is used.
+    - The EML entity for this file wrongly describes it as an elevation raster.
+  - path: Swan_Lake_DLB_M3_Digital_Surface_Model_04August2024_WGS84_UTM_Zone_3N_Ellipsoid_Height_10cm.tif
+    product: dsm
+    vertical_datum: WGS84 ellipsoid
+    notes:
+    - The EML entity for this file wrongly describes it as a 4-band multispectral image.
+  - path: Swan_Lake_DLB_M3_Multispectral_Bands_04August2024_WGS84_UTM_Zone_3N_10cm.tif
+    product: multispectral
+    bands: [green, red, rededge, nir]
+    unit: reflectance
+    notes:
+    - The EML entity for this file wrongly describes it as a 3-band RGB orthomosaic.
+    - The multispectral footprint is smaller than the RGB and DSM footprints (GeoTIFF bboxes).
+open_questions:
+- 'RGB band order: every orthomosaic header declares red, green, blue, while every EML record says blue, green, red.
+  The header order is used; check one file visually.'
+- 'Positioning: all methods texts name both an RTK base (D-RTK 2) and Leica Viva ground control. Were the Leica points
+  used as GCPs in processing, or only as check points? The Pix4D reports should say.'
+- 'unit: reflectance is inferred from the radiometric calibration described in the methods; the value scale (0-1 or
+  percent) is not stated. Check on a sample.'
+- 'Site identity: ABON names the site Swan_Lake_DLB without MP64. The footprints overlap, but a person should confirm it
+  is the same MP64 basin.'
+- 'Vertical datum: the records say ellipsoid heights, with WGS84 horizontal datum; the ellipsoid realisation (e.g.
+  WGS84 vs ITRF/NAD83 via the Leica survey) is not stated.'
+- The DataONE member-node API endpoint is not given in the evidence or context, so source.api is left empty.
+- Land status and Indigenous data governance of the Swan Lake basin are not stated in any record (see site hints).

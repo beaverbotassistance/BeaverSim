@@ -65,7 +65,7 @@ def check(s: Dict[str, Any]) -> List[str]:
     if p:
         return p
     for who in ("authored", "reviewed"):
-        if s.get(who) is not None and not (s[who].get("by") and s[who].get("date")):
+        if s.get(who) is not None and not (isinstance(s[who], dict) and s[who].get("by") and s[who].get("date")):
             p.append(f"{who} needs by and date")
     for slug, site in s["sites"].items():
         if not str(site.get("crs", "")).startswith("EPSG:"):
@@ -101,9 +101,10 @@ def check(s: Dict[str, Any]) -> List[str]:
 
 
 def resolve(group: Dict[str, Any], file: Dict[str, Any]) -> Dict[str, Any]:
-    """File fields with group defaults filled in."""
+    """File fields with group defaults filled in; notes add up (group notes, then the file's)."""
     merged = {k: v for k, v in group.items() if k in FILE_FIELDS}
     merged.update(file)
+    merged["notes"] = list(group.get("notes") or []) + list(file.get("notes") or [])
     return merged
 
 
