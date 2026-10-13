@@ -17,11 +17,14 @@ knows about sites or sources. What the files can't tell it goes in one YAML file
 - **notes** on anything inconsistent, such as a repository that describes the wrong bands.
 
 Products: orthomosaic, multispectral, dsm, dtm, chm (canopy height), dod (DEM of difference),
-uncertainty (precision or error maps), photos, annotations. Time is a single `date` in most cases.
+uncertainty (precision or error maps), photos; and three vector products: annotations (mapped features
+such as dams, lodges, ponds, canals), survey_points (ground control, topographic survey) and
+model_output (e.g. BRAT results). A vector file with several layers, such as a geodatabase, is one item. Time is a single `date` in most cases.
 Two options cover the rest: `date_precision: year` (or `month`) when only that is known, and
 `start_date`/`end_date` for products that compare two epochs. Files shared by every survey, such
 as READMEs or a ground-control list, are listed once without a date. When two files share site,
-time and product, each gets a `variant`, for example two DEM-of-difference methods. The full
+time and product, each gets a `variant`, for example two DEM-of-difference methods. A group's `download_filter`
+also sets which files it covers, so two summaries can share one folder. The full
 layout is in [`summary.py`](../../data_acquisition/catalog/summary.py).
 
 [`arcticdata_seward.yaml`](../../data_acquisition/summaries/arcticdata_seward.yaml) is a complete

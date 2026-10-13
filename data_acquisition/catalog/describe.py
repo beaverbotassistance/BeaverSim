@@ -4,7 +4,7 @@
 Commands:
 
 - ``evidence``: gather what code can read for sure (file list and sizes, GeoTIFF headers, metadata
-  records, small text files such as READMEs) into one JSON file. Free.
+  records, small text files such as READMEs, the first pages of PDF reports) into one JSON file. Free.
 - ``prompt``: evidence plus a ``prompt.md`` with the drafting rules, for a **Claude Code session**
   (covered by a Claude Pro/Max subscription). This is the default way to draft a summary; see
   ``docs/dataset/describing_a_dataset.md``.
@@ -32,13 +32,15 @@ from typing import Any, Dict, List, Optional
 
 import yaml
 
+from data_acquisition.catalog import stac
 from data_acquisition.catalog import summary as summaries
-from data_acquisition.readers import RECORD_FILES, RECORDS, geotiff
+from data_acquisition.readers import RECORD_FILES, RECORDS, geotiff, vector
 
 MODEL = "claude-opus-5-5"
 METHODS_CHARS = 6000        # methods text kept per record (the rest is boilerplate)
 TEXT_EXTENSIONS = (".txt", ".md", ".csv", ".r", ".py", ".json", ".yaml", ".yml")
 TEXT_BYTES = 8000           # small text files (READMEs, settings, GCP lists) are included up to this size
+PDF_PAGES, PDF_CHARS = 8, 15000   # processing reports: the first pages hold the summary (camera, dates, GCP errors)
 
 # ---------------------------------------------------------------- evidence
 
@@ -52,6 +54,17 @@ def _raster(path: Path) -> Dict[str, Any]:
             "lonlat_bbox": [round(v, 5) for v in bbox] if bbox else None, "overviews": bool(h["overviews"])}
 
 
+def _vector(path: Path) -> Dict[str, Any]:
+    from data_acquisition.catalog.stac import lonlat_box
+    v = vector.info(path, sample_rows=3)
+    bbox = lonlat_box(v["bounds"], v["crs"])[1] if v["bounds"] and v["crs"] else None
+    return {"epsg": v["epsg"], "crs_name": v["crs"].split('"')[1] if v["crs"] else None,
+            "vertical_crs": v["vertical_crs"], "lonlat_bbox": [round(x, 5) for x in bbox] if bbox else None,
+            "features": v["features"],
+            "layers": [{k: l.get(k) for k in ("name", "geometry_type", "features", "fields", "sample")}
+                       for l in v["layers"]]}
+
+
 def _record(path: Path, fmt: str) -> Dict[str, Any]:
     r = RECORDS[fmt]["read"](path.read_text())
     return {"format": fmt, "package_id": r["package_id"], "title": r["title"], "licence": r["licence"],
@@ -62,21 +75,53 @@ def _record(path: Path, fmt: str) -> Dict[str, Any]:
             "entities_not_downloaded": sum(1 for name in r["entities"] if not (path.parent / name).exists())}
 
 
+def _pdf_text(path: Path) -> (str, bool):
+    """Text of the first pages of a PDF (whitespace collapsed); True if pages or characters were cut."""
+    import re
+    from pypdf import PdfReader
+    reader = PdfReader(path)
+    pages = [re.sub(r"[ \t]+", " ", page.extract_text() or "") for page in reader.pages[:PDF_PAGES]]
+    text = "\n".join(pages)
+    return text[:PDF_CHARS], len(reader.pages) > PDF_PAGES or len(text) > PDF_CHARS
+
+
+def _entries(folder: Path) -> List[Path]:
+    """Files under ``folder`` (recursively), with each File Geodatabase folder as one entry; GDAL raster
+    sidecars and shapefile parts are left out (they belong to their main file)."""
+    out = []
+    for p in sorted(folder.rglob("*")):
+        if any(parent.suffix.lower() == ".gdb" for parent in p.relative_to(folder).parents):
+            continue                                    # inside a geodatabase
+        if p.is_dir() and p.suffix.lower() == ".gdb":
+            out.append(p)
+        elif p.is_file() and not p.name.endswith(".part"):
+            name = p.name.lower()
+            if any(name.endswith(ext) for ext in summaries.SIDECARS + vector.SHAPEFILE_PARTS) and \
+                    (p.with_name(p.name.split(".")[0] + ".tif").exists() or p.with_suffix(".shp").exists()
+                     or any(p.with_name(p.name[:-len(ext)]).exists() for ext in summaries.SIDECARS
+                            if name.endswith(ext))):
+                continue
+            out.append(p)
+    return out
+
+
 def gather(root: Path, patterns: List[str]) -> Dict[str, Any]:
-    """Evidence for every folder matching ``patterns`` (globs relative to ``root``)."""
+    """Evidence for every folder matching ``patterns`` (globs relative to ``root``), subfolders included."""
     folders = sorted({p for pattern in patterns for p in root.glob(pattern) if p.is_dir()})
     out = []
     for folder in folders:
         files = []
-        for p in sorted(folder.iterdir()):
-            if not p.is_file() or p.name.endswith(".part"):
-                continue
-            entry: Dict[str, Any] = {"name": p.name, "bytes": p.stat().st_size}
+        for p in _entries(folder):
+            entry: Dict[str, Any] = {"name": p.relative_to(folder).as_posix(), "bytes": stac.size_of(p)}
             try:
                 if p.suffix.lower() in geotiff.EXTENSIONS:
                     entry["geotiff"] = _raster(p)
+                elif vector.is_vector(p):
+                    entry["vector"] = _vector(p)
                 elif p.name in RECORD_FILES:
                     entry["record"] = _record(p, RECORD_FILES[p.name])
+                elif p.suffix.lower() == ".pdf":
+                    entry["text"], entry["text_truncated"] = _pdf_text(p)
                 elif p.suffix.lower() in TEXT_EXTENSIONS:
                     entry["text"] = p.read_bytes()[:TEXT_BYTES].decode("utf-8", "replace")
                     entry["text_truncated"] = p.stat().st_size > TEXT_BYTES

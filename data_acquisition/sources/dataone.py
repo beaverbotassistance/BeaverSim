@@ -7,6 +7,7 @@ against the checksum in the EML, makes them read-only, and logs one row per file
 ``<root>/<source.log>``.
 
     python -m data_acquisition.sources.dataone --root "<drive>/open_datasets" --summary arcticdata_seward
+    python -m data_acquisition.sources.dataone --root "<drive>/open_datasets" --doi doi:10.18739/A22R3NZ98 --list
 """
 import argparse
 import csv
@@ -22,6 +23,7 @@ from typing import Any, Dict, List, Optional
 
 from data_acquisition.catalog import summary as summaries
 from data_acquisition.readers import eml
+from data_acquisition.sources import dataset_folder
 
 CHUNK = 8 * 1024 * 1024
 # DataONE coordinating node: serves objects of every member repository; used when a summary names no
@@ -103,11 +105,39 @@ def read_log(path: Path) -> Dict[str, Dict[str, str]]:
     return {r["path"]: r for r in csv.DictReader(open(path, newline=""))} if path.exists() else {}
 
 
+def list_files(api: str, doi: str, name_filter: Optional[str] = None) -> None:
+    record = eml.read(_get(f"{api}/object/{urllib.parse.quote(doi, safe='')}").decode("utf-8", "replace"))
+    print(f"  {record['title']}\n  licence: {record['licence'] or record['rights'][:80]}")
+    total = 0
+    for name, e in record["entities"].items():
+        if not name_filter or re.search(name_filter, name):
+            total += e["size"] or 0
+            print(f"  {(e['size'] or 0) / 1e9:9.3f} GB  {name}")
+    print(f"  {total / 1e9:9.3f} GB  total")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--root", required=True, type=Path, help="data root (e.g. the open_datasets folder)")
-    parser.add_argument("--summary", required=True, help="summary name or YAML path")
+    parser.add_argument("--summary", help="download every group of this summary (name or YAML path)")
+    parser.add_argument("--doi", action="append", help="or: these DOIs, into <root>/<repository>/doi_<doi>/")
+    parser.add_argument("--filter", default=None, help="regex on file names (with --doi)")
+    parser.add_argument("--list", action="store_true", help="only print the files and licence (with --doi)")
+    parser.add_argument("--repository", default="arcticdata", help="folder name of the member repository")
+    parser.add_argument("--api", default=COORDINATING_NODE, help="DataONE API base (member or coordinating node)")
     args = parser.parse_args()
+    if args.doi:
+        for doi in args.doi:
+            print(doi)
+            if args.list:
+                list_files(args.api, doi, args.filter)
+            else:
+                folder = dataset_folder(args.root, args.repository, doi)
+                log(args.root / "downloads.csv",
+                    download(args.api, args.root, os.path.relpath(folder, args.root), doi, args.filter))
+        return
+    if not args.summary:
+        parser.error("give --summary or --doi")
     s = summaries.load(args.summary)
     if s["source"]["kind"] != "dataone":
         raise SystemExit(f"source kind is {s['source']['kind']!r}, not dataone")

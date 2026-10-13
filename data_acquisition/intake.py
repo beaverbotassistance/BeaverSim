@@ -14,6 +14,8 @@ import argparse
 import ast
 from pathlib import Path
 
+import yaml
+
 from data_acquisition.catalog import summary as summaries
 from data_acquisition.readers import RECORDS
 
@@ -48,7 +50,14 @@ Source clients (one per repository protocol):
 Metadata-record formats (`data_acquisition/readers/__init__.py`, `RECORDS`):
 {records}
 
-Data readers: GeoTIFF (`readers/geotiff.py`). Products: {products}.
+Data readers: GeoTIFF (`readers/geotiff.py`); vectors: GeoPackage, shapefile, GeoJSON, KML/KMZ, File
+Geodatabase, FlatGeobuf, GPX (`readers/vector.py`). Other formats (CSV tables, LAZ point clouds, photos)
+are kept as attachments. Products: {products}.
+
+Existing summaries and the folders they cover (`data_acquisition/summaries/`):
+{summaries}
+If the new dataset's folder is already used by a summary (e.g. more sites of the same record), write a
+separate summary whose groups' `download_filter` covers only the new files, so the two do not overlap.
 
 ## Steps
 
@@ -101,13 +110,24 @@ and follow the prompt it writes (it ends with `describe check`).
 """
 
 
+def _summaries() -> str:
+    lines = []
+    for p in sorted(summaries.HERE.glob("*.yaml")):
+        s = yaml.safe_load(p.read_text())
+        groups = ", ".join(f"`{g['folder']}`" + (f" (filter `{g['download_filter']}`)" if g.get("download_filter")
+                                                  else "") for g in s.get("groups", []))
+        lines.append(f"- `{p.name}`: {groups}")
+    return "\n".join(lines) or "- none"
+
+
 def write_prompt(url: str, root: Path, dataset: str, out_dir: Path) -> Path:
     out_dir.mkdir(parents=True, exist_ok=True)
     records = "\n".join(f"- `{name}`: saved as `{spec['file']}`, read by `{spec['read'].__module__}`"
                         for name, spec in RECORDS.items())
     prompt = out_dir / "prompt.md"
     prompt.write_text(PROMPT.format(dataset=dataset, url=url, root=root, sources=_modules(HERE / "sources"),
-                                    records=records, products=", ".join(sorted(summaries.PRODUCTS))))
+                                    records=records, products=", ".join(sorted(summaries.PRODUCTS)),
+                                    summaries=_summaries()))
     return prompt
 
 

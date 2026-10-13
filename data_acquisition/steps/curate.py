@@ -2,7 +2,8 @@
 """Step ``curate``: fill the ``beaver:`` descriptors of a catalog and report what is still unknown.
 
 - **auto:** season, and quality checks on each raster (opens, CRS is the site CRS, nodata declared,
-  values plausible for the product, snow likely); optionally the checksum (``--verify``).
+  values plausible for the product, snow likely, unapplied ArcGIS georeferencing) and each vector
+  (opens, empty layers, CRS, heights in feet); optionally the checksum (``--verify``).
 - **manual** (or **claude**, when Claude entered it): site confirmation, colonies, land status,
   governance and licence overrides, from the dataset summary. An entry is ``{value, by, date[, note]}``.
 - **repository** values set by the builder are kept unless the summary overrides them.
@@ -25,7 +26,7 @@ import rasterio
 
 from data_acquisition.catalog import descriptors, stac
 from data_acquisition.catalog import summary as summaries
-from data_acquisition.readers import geotiff
+from data_acquisition.readers import geotiff, vector
 from data_acquisition.sources.archives import verify_member
 from data_acquisition.sources.dataone import file_hash
 from data_acquisition.catalog.descriptors import add_quality, get_field, set_field
@@ -82,26 +83,61 @@ def check_raster(item: pystac.Item, key: str, site: Dict[str, Any], verify: bool
                         f"{outside:.0%} of sampled values outside {REFLECTANCE_RANGE}; range "
                         f"{valid.min():.3g}..{valid.max():.3g}")
     if verify:
-        checksum = asset.extra_fields.get("file:checksum")
-        archive = (get_field(item, "provenance") or {}).get("archive")
-        if archive and not checksum:      # extracted from an archive: check against the archive's CRC-32
-            zip_path = next((p / Path(archive).name for p in path.parents if (p / Path(archive).name).exists()), None)
-            if zip_path and verify_member(zip_path, path):
-                prov = dict(get_field(item, "provenance") or {})
-                prov["verified"] = f"{datetime.date.today().isoformat()} (CRC-32 against {Path(archive).name})"
-                item.properties["beaver:provenance"] = prov
-            else:
-                add_quality(item, "checksum_mismatch", f"differs from its member in {Path(archive).name}")
-        elif not checksum:
-            add_quality(item, "checksum_unknown", "no repository checksum to verify against")
+        _verify(item, asset, path)
+
+
+def check_vector(item: pystac.Item, key: str, site: Dict[str, Any], verify: bool) -> None:
+    """Auto quality flags for the vector asset ``key`` of ``item``."""
+    asset = item.assets[key]
+    path = stac.asset_path(asset)
+    if not path.exists():
+        add_quality(item, "missing_file", str(path))
+        return
+    try:
+        info = vector.info(path)
+    except Exception as e:      # GDAL raises several error types for broken vector files
+        add_quality(item, "unreadable", f"{type(e).__name__}: {e}")
+        return
+    empty = [l["name"] for l in info["layers"] if not l["features"]]
+    if empty:
+        add_quality(item, "empty_layers", f"{len(empty)} of {len(info['layers'])} layers have no features: "
+                                          f"{', '.join(empty[:10])}{'…' if len(empty) > 10 else ''}")
+    expected = int(site["crs"].split(":")[1])
+    if not info["crs"]:
+        add_quality(item, "crs_mixed", "layers have different CRSs (or none); each is reprojected on its own")
+    elif info["epsg"] != expected:
+        add_quality(item, "crs_differs", f"{'EPSG:' + str(info['epsg']) if info['epsg'] else 'a CRS without EPSG code'}"
+                                         f"; site CRS is {site['crs']} (reprojected when processed)")
+    feet = [v for v in info["vertical_crs"] if "foot" in v.lower() or "feet" in v.lower()]
+    if feet:
+        add_quality(item, "vertical_unit_feet", f"heights in {', '.join(feet)}; convert to metres before use")
+    if verify:
+        _verify(item, asset, path)
+
+
+def _verify(item: pystac.Item, asset: pystac.Asset, path: Path) -> None:
+    """Check ``path`` against the repository checksum, or against its archive when it was extracted from one."""
+    checksum = asset.extra_fields.get("file:checksum")
+    archive = (get_field(item, "provenance") or {}).get("archive")
+    if archive and not checksum:      # extracted from an archive: check against the archive's CRC-32
+        zip_path = next((p / Path(archive).name for p in path.parents if (p / Path(archive).name).exists()), None)
+        files = [f for f in path.rglob("*") if f.is_file()] if path.is_dir() else [path]
+        if zip_path and all(verify_member(zip_path, f) for f in files):
+            prov = dict(get_field(item, "provenance") or {})
+            prov["verified"] = f"{datetime.date.today().isoformat()} (CRC-32 against {Path(archive).name})"
+            item.properties["beaver:provenance"] = prov
         else:
-            algorithm = {v: k for k, v in stac.MULTIHASH.items()}[checksum[:4]]
-            if file_hash(path, algorithm) != checksum[4:]:
-                add_quality(item, "checksum_mismatch", f"{algorithm} differs from the repository")
-            else:
-                prov = dict(get_field(item, "provenance") or {})
-                prov["verified"] = datetime.date.today().isoformat()
-                item.properties["beaver:provenance"] = prov
+            add_quality(item, "checksum_mismatch", f"differs from its member in {Path(archive).name}")
+    elif not checksum:
+        add_quality(item, "checksum_unknown", "no repository checksum to verify against")
+    else:
+        algorithm = {v: k for k, v in stac.MULTIHASH.items()}[checksum[:4]]
+        if file_hash(path, algorithm) != checksum[4:]:
+            add_quality(item, "checksum_mismatch", f"{algorithm} differs from the repository")
+        else:
+            prov = dict(get_field(item, "provenance") or {})
+            prov["verified"] = datetime.date.today().isoformat()
+            item.properties["beaver:provenance"] = prov
 
 
 def curate_item(item: pystac.Item, summary: Dict[str, Any], verify: bool = False) -> None:
@@ -138,8 +174,8 @@ def curate_item(item: pystac.Item, summary: Dict[str, Any], verify: bool = False
             item.properties.setdefault(f"beaver:{field}", None)   # listed as missing
 
     for key, asset in item.assets.items():
-        if "data" in (asset.roles or []) and asset.media_type == pystac.MediaType.GEOTIFF:
-            check_raster(item, key, site, verify)
+        if "data" in (asset.roles or []):
+            (check_raster if asset.media_type == pystac.MediaType.GEOTIFF else check_vector)(item, key, site, verify)
 
 
 def curate(catalog_path: Path, summary: Dict[str, Any], verify: bool = False) -> List[Dict[str, Any]]:

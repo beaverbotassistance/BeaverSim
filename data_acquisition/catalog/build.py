@@ -11,6 +11,7 @@ resolved silently. Files on disk that the summary doesn't describe are reported.
 import argparse
 import json
 import os
+import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -19,7 +20,7 @@ import pystac
 from data_acquisition.catalog import descriptors, stac
 from data_acquisition.catalog import summary as summaries
 from data_acquisition.catalog.descriptors import add_quality, set_field
-from data_acquisition.readers import RECORDS, eml, geotiff
+from data_acquisition.readers import RECORD_FILES, RECORDS, eml, geotiff, vector
 from data_acquisition.sources import dataone
 
 COMMON_NAMES = {"blue": "blue", "green": "green", "red": "red", "red edge": "rededge", "rededge": "rededge",
@@ -56,30 +57,38 @@ def _bands(product: str, wanted: Optional[List[str]], header: Dict[str, Any],
     return names, flags
 
 
-def raster_item(s: Dict[str, Any], f: Dict[str, Any], path: Path, rel: str, group: Dict[str, Any],
-                record: Optional[Dict[str, Any]], log: Dict[str, Dict[str, str]]) -> pystac.Item:
+def data_item(s: Dict[str, Any], f: Dict[str, Any], path: Path, rel: str, group: Dict[str, Any],
+              record: Optional[Dict[str, Any]], log: Dict[str, Dict[str, str]]) -> pystac.Item:
+    """Item for a data file (raster or vector): header facts from its reader, the rest from the summary
+    and the record, with flags where they disagree."""
     source, who = summaries.author(s)
     product, site = f["product"], f["site"]
     start, end, label = summaries.epoch(f)
     item_id = f"{site}_{label}_{product}" + (f"_{f['variant']}" if f.get("variant") else "")
-    header = geotiff.info(path)
     archive = f.get("archive")
     entity = record["entities"].get(archive or path.name) if record else None   # an extracted file: the archive's
     algorithm, digest = (entity or {}).get("checksum") or (None, None)
+    checksum = stac.multihash(algorithm, digest) if algorithm in stac.MULTIHASH and not archive else None
 
-    names, flags = _bands(product, f.get("bands"), header, entity)
-    bands = [{"name": n, "common_name": n if n in COMMON_NAMES.values() else None} for n in names]
-    item = stac.raster_item(item_id, path, header, start, end, product, ["data"], bands, title=path.name,
-                            unit=f.get("unit") or ("m" if product in METRIC_BANDS else None),
-                            checksum=stac.multihash(algorithm, digest) if algorithm in stac.MULTIHASH and not archive
-                            else None)
+    if vector.is_vector(path):
+        layers = vector.info(path)
+        item = stac.vector_item(item_id, path, layers, start, end, product, ["data"], checksum, title=path.name)
+        if layers["vertical_crs"]:
+            item.properties["beaver:vertical_crs"] = layers["vertical_crs"]
+        flags = []
+    else:
+        header = geotiff.info(path)
+        names, flags = _bands(product, f.get("bands"), header, entity)
+        bands = [{"name": n, "common_name": n if n in COMMON_NAMES.values() else None} for n in names]
+        item = stac.raster_item(item_id, path, header, start, end, product, ["data"], bands, title=path.name,
+                                unit=f.get("unit") or ("m" if product in METRIC_BANDS else None), checksum=checksum)
     for flag, detail, flag_source in flags:
         add_quality(item, flag, detail, source=flag_source)
 
     if record is not None:
         if entity is None:
             add_quality(item, "not_in_record", "the metadata record does not list this file", source="repository")
-        elif not archive and entity["size"] is not None and entity.get("size_exact", True) \
+        elif not archive and path.is_file() and entity["size"] is not None and entity.get("size_exact", True) \
                 and entity["size"] != path.stat().st_size:
             add_quality(item, "size_mismatch", f"record {entity['size']} bytes, file {path.stat().st_size}",
                         source="repository")
@@ -139,8 +148,8 @@ def build(root: Path, s: Dict[str, Any]) -> (pystac.Catalog, Dict[str, List[str]
                 report["missing"].append(rel)
             elif f.get("role"):
                 attachments.append((gi, f, path))
-            elif path.suffix.lower() in geotiff.EXTENSIONS:
-                item = raster_item(s, f, path, rel, g, record, log)
+            elif path.suffix.lower() in geotiff.EXTENSIONS or vector.is_vector(path):
+                item = data_item(s, f, path, rel, g, record, log)
                 if item.id in items:
                     raise ValueError(f"two files for {item.id}: {rel}")
                 if record is not None:
@@ -152,11 +161,17 @@ def build(root: Path, s: Dict[str, Any]) -> (pystac.Catalog, Dict[str, List[str]
                 report["unsupported"].append(rel)
         if folder.exists():
             rasters = [d for d in described if d.lower().endswith(geotiff.EXTENSIONS)]
-            sidecars = {r + ext for r in rasters for ext in summaries.SIDECARS} | \
-                       {r.rsplit(".", 1)[0] + ext for r in rasters for ext in summaries.SIDECARS}
+            shapefiles = [d[:-4] for d in described if d.lower().endswith(".shp")]
+            sidecars = ({r + ext for r in rasters for ext in summaries.SIDECARS}
+                        | {r.rsplit(".", 1)[0] + ext for r in rasters for ext in summaries.SIDECARS}
+                        | {s_ + ext for s_ in shapefiles for ext in vector.SHAPEFILE_PARTS})
+            containers = [d + "/" for d in described if d.lower().endswith(".gdb")]   # folders read as one file
+            scope = g.get("download_filter")      # files outside the group's filter belong to another summary
             for p in sorted(folder.rglob("*")):
                 rel_f = p.relative_to(folder).as_posix()
-                if p.is_file() and rel_f not in described | sidecars and not p.name.endswith(".part"):
+                if (p.is_file() and rel_f not in described | sidecars and not p.name.endswith(".part")
+                        and not any(rel_f.startswith(c) for c in containers)
+                        and (not scope or rel_f in RECORD_FILES or re.search(scope, rel_f))):
                     report["undescribed"].append(os.path.relpath(p, root))
 
     for gi, f, path in attachments:

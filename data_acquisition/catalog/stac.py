@@ -22,15 +22,20 @@ def multihash(algorithm: str, hexdigest: str) -> str:
     return MULTIHASH[algorithm.lower().replace("-", "")] + hexdigest.lower()
 
 
-def footprint(info: Dict[str, Any]) -> (Dict[str, Any], List[float]):
-    """Lon/lat polygon and bbox of the raster bounds (densified so UTM edges stay accurate)."""
-    left, bottom, right, top = info["bounds"]
+def lonlat_box(bounds, crs: str) -> (Dict[str, Any], List[float]):
+    """Lon/lat polygon and bbox of ``bounds`` (left, bottom, right, top) in ``crs`` (EPSG code or WKT),
+    densified so projected edges stay accurate."""
+    left, bottom, right, top = bounds
     ring = [[left, bottom], [right, bottom], [right, top], [left, top], [left, bottom]]
-    geom = transform_geom(f"EPSG:{info['epsg']}", "EPSG:4326", {"type": "Polygon", "coordinates": [ring]},
-                          precision=7)
-    bbox = list(transform_bounds(f"EPSG:{info['epsg']}", "EPSG:4326", *info["bounds"], densify_pts=21))
+    geom = transform_geom(crs, "EPSG:4326", {"type": "Polygon", "coordinates": [ring]}, precision=7)
+    bbox = list(transform_bounds(crs, "EPSG:4326", *bounds, densify_pts=21))
     geom["coordinates"] = [[list(p) for p in r] for r in geom["coordinates"]]
     return geom, bbox
+
+
+def footprint(info: Dict[str, Any]) -> (Dict[str, Any], List[float]):
+    """Lon/lat polygon and bbox of a raster's bounds (``info`` from ``readers.geotiff.info``)."""
+    return lonlat_box(info["bounds"], f"EPSG:{info['epsg']}")
 
 
 def _utc(d: datetime.date, end: bool = False) -> datetime.datetime:
@@ -72,6 +77,58 @@ def raster_item(item_id: str, path: Path, info: Dict[str, Any], start: datetime.
 
     file_ext = FileExtension.ext(asset, add_if_missing=True)
     file_ext.size = path.stat().st_size
+    if checksum:
+        file_ext.checksum = checksum
+    return item
+
+
+VECTOR_MEDIA = {".gpkg": "application/geopackage+sqlite3", ".geojson": "application/geo+json",
+                ".json": "application/geo+json", ".kml": "application/vnd.google-earth.kml+xml",
+                ".kmz": "application/vnd.google-earth.kmz", ".fgb": "application/vnd.flatgeobuf",
+                ".gpx": "application/gpx+xml", ".shp": "application/vnd.shp"}
+
+
+def size_of(path: Path) -> int:
+    """Bytes of a file, or of every file under a folder (a File Geodatabase is a folder)."""
+    return sum(p.stat().st_size for p in path.rglob("*") if p.is_file()) if path.is_dir() else path.stat().st_size
+
+
+def vector_item(item_id: str, path: Path, info: Dict[str, Any], start: datetime.date, end: datetime.date,
+                asset_key: str, roles: List[str], checksum: Optional[str] = None,
+                title: Optional[str] = None) -> pystac.Item:
+    """Item with one vector asset: footprint from the layers' bounds, proj fields, and the layer list
+    (name, geometry type, features, fields) as ``beaver:layers``.
+
+    ``info`` comes from :func:`data_acquisition.readers.vector.info`. When layers have different CRSs,
+    the footprint is the lon/lat box around all of them and no projection is recorded.
+    """
+    if info["bounds"] and info["crs"]:
+        geom, bbox = lonlat_box(info["bounds"], info["crs"])
+    else:
+        boxes = [lonlat_box(l["bounds"], l["crs"])[1] for l in info["layers"] if l["bounds"] and l["crs"]]
+        bbox = ([min(b[0] for b in boxes), min(b[1] for b in boxes), max(b[2] for b in boxes),
+                 max(b[3] for b in boxes)] if boxes else None)
+        geom = ({"type": "Polygon", "coordinates": [[[bbox[0], bbox[1]], [bbox[2], bbox[1]], [bbox[2], bbox[3]],
+                                                      [bbox[0], bbox[3]], [bbox[0], bbox[1]]]]} if bbox else None)
+    props = {"beaver:layers": [{k: l[k] for k in ("name", "geometry_type", "features", "fields")}
+                               for l in info["layers"]]}
+    if start == end:
+        item = pystac.Item(item_id, geom, bbox, _utc(start), properties=props)
+    else:
+        item = pystac.Item(item_id, geom, bbox, None, properties=props,
+                           start_datetime=_utc(start), end_datetime=_utc(end, end=True))
+    item.add_asset(asset_key, pystac.Asset(str(path.resolve()), title=title, roles=roles,
+                                           media_type=VECTOR_MEDIA.get(path.suffix.lower())))
+    if info["crs"]:
+        proj = ProjectionExtension.ext(item, add_if_missing=True)
+        if info["epsg"]:
+            proj.epsg = info["epsg"]
+        else:
+            proj.wkt2 = info["crs"]
+        if info["bounds"]:
+            proj.bbox = info["bounds"]
+    file_ext = FileExtension.ext(item.assets[asset_key], add_if_missing=True)
+    file_ext.size = size_of(path)
     if checksum:
         file_ext.checksum = checksum
     return item

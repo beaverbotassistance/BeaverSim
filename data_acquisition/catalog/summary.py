@@ -22,7 +22,10 @@ File fields (on a file, or on its group as a default):
     site, date, platform, instruments, positioning, bands, unit, vertical_datum, notes
 
 Products: orthomosaic, multispectral, dsm, dtm, chm (canopy height model), dod (DEM of difference),
-uncertainty (precision or error maps), photos, annotations.
+uncertainty (precision or error maps), photos; vector products: annotations (features mapped by people
+from imagery or in the field: dams, lodges, ponds, canals, colony outlines), survey_points (surveyed
+points: ground control, topographic survey), model_output (model results, e.g. BRAT reach capacities).
+A vector file with several layers is one item; its layers are listed in the catalog.
 
 Time of a data file, one of:
     date: YYYY-MM-DD                          one acquisition (the usual case)
@@ -33,6 +36,10 @@ Time of a data file, one of:
 A report or metadata file (``role``) attaches to the items of its group whose product is in
 ``attach_to`` and whose date matches its own; without a date (its own or the group's) it attaches to
 all of them, e.g. a README or a ground-control file shared by every survey.
+
+Scope: a group's ``download_filter`` (regex on file names) is also the set of files it covers. Files in its
+folder that do not match belong to another summary and are not reported as undescribed, so two
+summaries can share a folder (e.g. one site of a multi-site record, and the record's other sites).
 
 Archives: a repository that publishes a zip lists only the zip. Extract it with
 ``data_acquisition.sources.archives`` (verified against the zip's CRC-32, read-only), list the zip with
@@ -52,7 +59,8 @@ import yaml
 
 HERE = Path(__file__).resolve().parent.parent / "summaries"
 SCHEMA = 1
-PRODUCTS = {"orthomosaic", "multispectral", "dsm", "dtm", "chm", "dod", "uncertainty", "photos", "annotations"}
+PRODUCTS = {"orthomosaic", "multispectral", "dsm", "dtm", "chm", "dod", "uncertainty", "photos",
+            "annotations", "survey_points", "model_output"}
 PRECISIONS = ("day", "month", "year")
 ROLES = {"report", "metadata", "archive"}
 SIDECARS = (".ovr", ".aux.xml", ".tfw", ".tfwx", ".msk", ".prj")   # GDAL/ArcGIS sidecars of a raster
