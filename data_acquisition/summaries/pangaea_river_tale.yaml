@@ -1,0 +1,234 @@
+# Drafted by Claude in a Claude Code session (describe prompt), reviewed by Federico Oliva.
+schema: 1
+dataset: pangaea_river_tale
+title: Drone SfM photogrammetry of a beaver-foraged willow woodland, Clyst William Cross, River Tale, Devon, UK,
+  September 2017 and September 2018 (orthomosaics, DSMs, CHMs, DoDs; Graham et al., PANGAEA)
+authored:
+  by: claude
+  model: claude-opus-5-5
+  date: 2026-10-13
+  note: Claude Code session, from evidence.json
+reviewed:
+  by: Federico Oliva
+  date: 2026-10-13
+source:
+  kind: pangaea
+  provider: PANGAEA
+  url: https://www.pangaea.de
+  log: downloads.csv
+sites:
+  clyst_william_cross:
+    name: Clyst William Cross County Wildlife Site, River Tale, Devon, England
+    crs: EPSG:27700
+    colonies: null
+    land_status: null
+    governance: null
+    hints:
+      colonies: Methods text says beaver (Castor fiber) were reintroduced in 2016; beaver_open_datasets.md (A3) says
+        beavers released 2016. Number of colonies or lodges is not stated.
+      land_status: Methods text calls it a County Wildlife Site (10 ha, willow-dominant riparian woodland); the README
+        lists Devon Wildlife Trust among the author affiliations. Ownership and access status are not stated.
+      governance: The PANGAEA record gives CC-BY-4.0, which settles copyright only. No data-use terms beyond the
+        licence are stated.
+groups:
+- folder: pangaea/doi_10.1594_PANGAEA.939231
+  doi: doi:10.1594/PANGAEA.939231
+  download_filter: ^(?!.*\.(jpg|JPG|laz)$)     # skip the drone images and dense point clouds (3,289 of 3,311 files)
+  record:
+    path: metadata.tab
+    format: pangaea_tab
+  site: clyst_william_cross
+  platform: 3DR IRIS
+  instruments: [Ricoh GR4]
+  positioning: [gcp]
+  unit: m
+  notes:
+  - Only rasters, reports and settings were downloaded; the drone images (JPG) and SfM dense point clouds (LAZ) listed
+    in the record (3,289 entities) are not in this folder.
+  - File names flatten the original directory tree with the separator _DIR_SEP_ (1_ReNestData.R restores it).
+  evidence:
+  - 'doi: folder name doi_10.1594_PANGAEA.939231, record package_id and beaver_open_datasets.md (A3)'
+  - 'site: methods text (Clyst William Cross County Wildlife site, River Tale, lat 50.820, long -3.313), README
+    acronym CWC in file names; GeoTIFF lonlat bboxes around -3.315..-3.312 E, 50.816..50.822 N'
+  - 'crs: every GeoTIFF header (EPSG:27700), ProcessedRastersREADME (OSGB36, EPSG:27700, metres) and input_file.csv
+    (coordinate_system EPSG:: 27700)'
+  - 'dates: folder and file names (17_09_07, 18_09_25), methods text (surveys on 2017/09/07 and 2018/09/25),
+    beaver_open_datasets.md A3 (7 Sept 2017, 25 Sept 2018)'
+  - 'platform and instruments: methods text (3DR IRIS quadcopter with a Ricoh GR4 camera; nadir 60 m and oblique ~20
+    deg 55 m agl, mean GSD ca. 16 mm; Agisoft Metashape v1.5)'
+  - 'positioning: methods text (constrained using 40 fixed ground control points) and CWC_GroundControlMarkers.csv
+    (40 points with x/y/z uncertainties of a few cm) -> gcp; project_settings.csv camera_location_accuracy 20/20/50 m
+    says the image geotags were only used loosely'
+  - 'products and bands: ProcessedRastersREADME band lists, checked against GeoTIFF band counts (CHM 3, DSM 2,
+    PrecisionMap 2, DoD 3, DTM 1); orthomosaic bands come from the header (red, green, blue, alpha)'
+  - 'unit: ProcessedRastersREADME (all rasters in metres)'
+  - 'DoD variants and epochs: file names (DoD_Sep17_Sep18_threshold / _weight) and ProcessedRastersREADME (calculated
+    from the rasters of the two survey dates)'
+  - 'DTM: ProcessedRastersREADME (Environment Agency Lidar Composite (2017), used to derive the CHMs from the DSMs)'
+  - 'reports and settings: SfM_Images_Exports_README (Metashape processing report, project settings, input values of
+    the Metashape Python scripts, shared GCP file) and file names (survey date in each)'
+  files:
+  - path: 1_README.txt
+    role: report
+    attach_to: [orthomosaic, dsm, chm, uncertainty, dod, dtm]
+  - path: 1_ReNestData.R
+    role: metadata
+    attach_to: [orthomosaic, dsm, chm, uncertainty, dod, dtm]
+    notes:
+    - R helper script that restores the directory tree from the _DIR_SEP_ file names; not a data description.
+  - path: ProcessedRasterFiles_DIR_SEP_ProcessedRastersREADME.txt
+    role: report
+    attach_to: [dsm, chm, uncertainty, dod, dtm]
+    notes:
+    - Says every raster in the two survey folders has 3 bands, but then lists 2 bands for the DSM and the precision map,
+      which matches the GeoTIFF headers.
+    - Names the precision maps PrecisionMaps_*survey_date*.tif; the files are PrecisionMap_*.tif.
+  - path: SfM_Images_Exports_DIR_SEP_SfM_Images_Exports_README.txt
+    role: report
+    attach_to: [orthomosaic, dsm, chm, uncertainty]
+  - path: SfM_Images_Exports_DIR_SEP_CWC_GroundControlMarkers.csv
+    role: metadata
+    attach_to: [orthomosaic, dsm, chm, uncertainty]
+    notes:
+    - 40 ground control points in EPSG:27700 with x, y and vertical uncertainties; shared by both survey dates (README).
+    - IDs run Gcp01 to Gcp40 but skip Gcp04, so only 39 rows are listed against the 40 points stated in the README and
+      methods text.
+
+  # ---- survey 2017-09-07 ----
+  - path: SfM_Images_Exports_DIR_SEP_CWC_Images_Rasters_17_09_07_DIR_SEP_17_09_07_Exports_DIR_SEP_17_09_07_CWC_Orthomosaic_200mm.tiff
+    product: orthomosaic
+    date: 2017-09-07
+    unit: null
+  - path: ProcessedRasterFiles_DIR_SEP_17_09_07_ProcessedRasters_DIR_SEP_DigitalSurfaceModel_17_09_07.tif
+    product: dsm
+    date: 2017-09-07
+    bands: [elevation, rasterisation_uncertainty]
+    notes:
+    - 'Band 2: standard deviation of point values within each cell (ProcessedRastersREADME).'
+  - path: ProcessedRasterFiles_DIR_SEP_17_09_07_ProcessedRasters_DIR_SEP_CanopyHeightModel_17_09_07.tif
+    product: chm
+    date: 2017-09-07
+    bands: [canopy_height, rasterisation_uncertainty, terrain_elevation]
+    notes:
+    - Terrain elevation (band 3) comes from the Environment Agency lidar DTM, not from the drone survey.
+  - path: ProcessedRasterFiles_DIR_SEP_17_09_07_ProcessedRasters_DIR_SEP_PrecisionMap_17_09_07.tif
+    product: uncertainty
+    date: 2017-09-07
+    bands: [sfm_precision_filled, sfm_precision]
+    notes:
+    - 'Band 1: SfM precision, gaps filled with the worst observed value; band 2: same, with cells without points left
+      as missing (ProcessedRastersREADME). 1 m cells, against 0.5 m for the DSM and CHM.'
+  - path: SfM_Images_Exports_DIR_SEP_CWC_Images_Rasters_17_09_07_DIR_SEP_17_09_07_Exports_DIR_SEP_17_09_07_CWC_process_report.pdf
+    role: report
+    date: 2017-09-07
+    attach_to: [orthomosaic, dsm, chm, uncertainty]
+  - path: SfM_Images_Exports_DIR_SEP_CWC_Images_Rasters_17_09_07_DIR_SEP_17_09_07_Exports_DIR_SEP_17_09_07_CWC_project_settings.csv
+    role: metadata
+    date: 2017-09-07
+    attach_to: [orthomosaic, dsm, chm, uncertainty]
+    notes:
+    - 883 of 1,639 loaded cameras (53.9 %) were enabled but not aligned in 2017, against 96 (5.8 %) in 2018.
+    - Some counts are negative (cameras manually disabled -769, sparse points removed manually -1,321,618) and the
+      final sparse cloud is larger than the original one; the export is internally inconsistent.
+  - path: SfM_Images_Exports_DIR_SEP_CWC_Images_Rasters_17_09_07_DIR_SEP_17_09_07input_file.csv
+    role: metadata
+    date: 2017-09-07
+    attach_to: [orthomosaic, dsm, chm, uncertainty]
+    notes:
+    - The Metashape project is named 17_09_07_DanesCroft (folder Danes_Mill, GCP file Danes_Croft_GCPsFin.csv), not CWC.
+    - Settings ask for a 0.05 m high-resolution orthomosaic as well; only the 0.2 m export is in the record.
+
+  # ---- survey 2018-09-25 ----
+  - path: SfM_Images_Exports_DIR_SEP_CWC_Images_Rasters_18_09_25_DIR_SEP_18_09_25_Exports_DIR_SEP_18_09_25_CWC_Orthomosaic_200mm.tiff
+    product: orthomosaic
+    date: 2018-09-25
+    unit: null
+  - path: ProcessedRasterFiles_DIR_SEP_18_09_25_ProcessedRasters_DIR_SEP_DigitalSurfaceModel_18_09_25.tif
+    product: dsm
+    date: 2018-09-25
+    bands: [elevation, rasterisation_uncertainty]
+    notes:
+    - 'Band 2: standard deviation of point values within each cell (ProcessedRastersREADME).'
+  - path: ProcessedRasterFiles_DIR_SEP_18_09_25_ProcessedRasters_DIR_SEP_CanopyHeightModel_18_09_25.tif
+    product: chm
+    date: 2018-09-25
+    bands: [canopy_height, rasterisation_uncertainty, terrain_elevation]
+    notes:
+    - Terrain elevation (band 3) comes from the Environment Agency lidar DTM, not from the drone survey.
+  - path: ProcessedRasterFiles_DIR_SEP_18_09_25_ProcessedRasters_DIR_SEP_PrecisionMap_18_09_25.tif
+    product: uncertainty
+    date: 2018-09-25
+    bands: [sfm_precision_filled, sfm_precision]
+    notes:
+    - 'Band 1: SfM precision, gaps filled with the worst observed value; band 2: same, with cells without points left
+      as missing (ProcessedRastersREADME). 1 m cells, against 0.5 m for the DSM and CHM.'
+  - path: SfM_Images_Exports_DIR_SEP_CWC_Images_Rasters_18_09_25_DIR_SEP_18_09_25_Exports_DIR_SEP_18_09_25_CWC_process_report.pdf
+    role: report
+    date: 2018-09-25
+    attach_to: [orthomosaic, dsm, chm, uncertainty]
+  - path: SfM_Images_Exports_DIR_SEP_CWC_Images_Rasters_18_09_25_DIR_SEP_18_09_25_Exports_DIR_SEP_18_09_25_CWC_project_settings.csv
+    role: metadata
+    date: 2018-09-25
+    attach_to: [orthomosaic, dsm, chm, uncertainty]
+    notes:
+    - Sparse points removed manually is negative (-88,495) and the final sparse cloud is larger than the original one;
+      the export is internally inconsistent.
+  - path: SfM_Images_Exports_DIR_SEP_CWC_Images_Rasters_18_09_25_DIR_SEP_18_09_25input_file.csv
+    role: metadata
+    date: 2018-09-25
+    attach_to: [orthomosaic, dsm, chm, uncertainty]
+    notes:
+    - The Metashape project is named 18_09_25_DanesCroft (folder Danes_Mill, GCP file Danes_Croft_GCPsFin.csv), not CWC.
+
+  # ---- change between the two surveys ----
+  - path: ProcessedRasterFiles_DIR_SEP_DEMofDiffRasters_DIR_SEP_DoD_Sep17_Sep18_threshold.tif
+    product: dod
+    variant: threshold
+    start_date: 2017-09-07
+    end_date: 2018-09-25
+    bands: [elevation_difference_lod, lod, elevation_difference_raw]
+    notes:
+    - 'Band 1: elevation difference after the limit of detection (LoD); band 2: the LoD; band 3: simple DoD without
+      LoD (ProcessedRastersREADME).'
+    - The README describes this file as the weighted LoD method and the _weight file as the thresholding method, the
+      opposite of the file names. The variant follows the file name.
+  - path: ProcessedRasterFiles_DIR_SEP_DEMofDiffRasters_DIR_SEP_DoD_Sep17_Sep18_weight.tif
+    product: dod
+    variant: weight
+    start_date: 2017-09-07
+    end_date: 2018-09-25
+    bands: [elevation_difference_lod, lod, elevation_difference_raw]
+    notes:
+    - 'Band 1: elevation difference after the limit of detection (LoD); band 2: the LoD; band 3: simple DoD without
+      LoD (ProcessedRastersREADME).'
+    - The README describes this file as the thresholding LoD method and the _threshold file as the weighted method, the
+      opposite of the file names. The variant follows the file name.
+
+  # ---- external terrain model ----
+  - path: ProcessedRasterFiles_DIR_SEP_DTM_Raster_DIR_SEP_EnvAgen_Lidar_DTM.tif
+    product: dtm
+    date: 2017
+    date_precision: year
+    platform: Environment Agency lidar composite
+    instruments: []
+    positioning: []
+    notes:
+    - Not from the drone surveys. Derived from the Environment Agency Lidar Composite (2017); 2017 is the composite's
+      year, the underlying lidar flights may be older (ProcessedRastersREADME).
+    - 2 m cells and a larger footprint than the SfM rasters (GeoTIFF header); no nodata value declared.
+open_questions:
+- 'DoD method names: the ProcessedRastersREADME swaps threshold and weighted relative to the file names. The variants
+  follow the file names; the code at doi:10.5281/zenodo.5500203 or the paper should settle which is which.'
+- 'Vertical datum: no record states it. Heights are in metres in EPSG:27700 (GCP z about 82-86 m), which suggests
+  Ordnance Datum Newlyn, but this is not written anywhere; check the process reports.'
+- 'Camera: the methods text says Ricoh GR4 (16.2 sensor, 28 mm). Check the camera model in the process reports, since
+  the name may be a typo for another Ricoh GR model.'
+- 'Ground control: the README and methods text say 40 GCPs, but CWC_GroundControlMarkers.csv lists 39 (no Gcp04).
+  Were all used as control, or some as check points? The process reports should say.'
+- 'DTM date: the Environment Agency composite is labelled 2017; the acquisition years of the tiles covering the site
+  are not given.'
+- 'Orthomosaic GSD: methods give a mean GSD of ca. 16 mm, the exports are 0.2 m; the 0.05 m high-resolution 2017
+  orthomosaic requested in input_file.csv is not in the record.'
+- 'Project naming: the Metashape input files name the site Danes Croft / Danes Mill. Confirm it is the same area as
+  Clyst William Cross (the GeoTIFF footprints and GCPs match the methods coordinates).'
+- Land status, governance and colonies of the site are not stated in the record (see site hints).
