@@ -51,7 +51,10 @@ def get_field(item: pystac.Item, field: str) -> Any:
 
 
 def add_quality(item: pystac.Item, flag: str, detail: str, source: str = "auto") -> None:
-    """Append a quality flag (``{"flag", "detail", "source"}``), skipping exact repeats."""
+    """Append a quality flag (``{"flag", "detail", "source"}``), skipping exact repeats.
+
+    Sources: ``auto`` (the ``curate`` checks, recomputed on every run), ``build`` (the builder's cross-checks
+    of summary and file), ``repository``, ``claude`` or ``manual`` (notes from the summary)."""
     flags = item.properties.setdefault(PREFIX + "quality", [])
     entry = {"flag": flag, "detail": detail, "source": source}
     if entry not in flags:

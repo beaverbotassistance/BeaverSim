@@ -78,7 +78,8 @@ Contract for a source client:
 - CLI: `python -m data_acquisition.sources.<repository> --root <root> --doi <doi> [--filter <regex>]`, plus
   a `--list` option that only prints the files (name, size) and licence, without downloading.
 - Saves the repository's metadata record in the dataset folder under the file name its `RECORDS` entry
-  gives, unchanged. Dataset folder: `data_acquisition.sources.dataset_folder(root, "<repository>", doi)`, with
+  gives, unchanged. When a repository serves one record from several endpoints (e.g. metadata and file
+  list separately, or in pages), save every response as served, each labelled with its URL, in that one file. Dataset folder: `data_acquisition.sources.dataset_folder(root, "<repository>", doi)`, with
   the identifier of the exact version downloaded (for versioned repositories, the version DOI, not the
   concept DOI; log the version DOI too).
 - Downloads with the standard library only (`urllib`); resumes partial `.part` files where the server

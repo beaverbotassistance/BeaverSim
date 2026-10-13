@@ -26,7 +26,7 @@ import rasterio
 
 from data_acquisition.catalog import descriptors, stac
 from data_acquisition.catalog import summary as summaries
-from data_acquisition.readers import geotiff, vector
+from data_acquisition.readers import geotiff, table, vector
 from data_acquisition.sources.archives import verify_member
 from data_acquisition.sources.dataone import file_hash
 from data_acquisition.catalog.descriptors import add_quality, get_field, set_field
@@ -58,8 +58,9 @@ def check_raster(item: pystac.Item, key: str, site: Dict[str, Any], verify: bool
         add_quality(item, "unreadable", str(e))
         return
     expected = int(site["crs"].split(":")[1])
-    if info["epsg"] != expected:
-        add_quality(item, "crs_mismatch", f"EPSG:{info['epsg']}, site CRS is {site['crs']}")
+    epsg = info["epsg"] if info["has_crs"] else int(str(item.properties.get("beaver:crs_from_summary", ":0")).split(":")[1])
+    if epsg != expected:
+        add_quality(item, "crs_mismatch", f"EPSG:{epsg}, site CRS is {site['crs']}")
     xform = geotiff.unapplied_georeference(path)
     if xform:
         add_quality(item, "unapplied_georeference",
@@ -94,7 +95,8 @@ def check_vector(item: pystac.Item, key: str, site: Dict[str, Any], verify: bool
         add_quality(item, "missing_file", str(path))
         return
     try:
-        info = vector.info(path)
+        spec = item.properties.get("beaver:table")
+        info = table.info(path, spec, item.properties["beaver:crs_from_summary"]) if spec else vector.info(path)
     except Exception as e:      # GDAL raises several error types for broken vector files
         add_quality(item, "unreadable", f"{type(e).__name__}: {e}")
         return
@@ -175,7 +177,8 @@ def curate_item(item: pystac.Item, summary: Dict[str, Any], verify: bool = False
 
     for key, asset in item.assets.items():
         if "data" in (asset.roles or []):
-            (check_raster if asset.media_type == pystac.MediaType.GEOTIFF else check_vector)(item, key, site, verify)
+            raster = not item.properties.get("beaver:table") and geotiff.is_raster(stac.asset_path(asset))
+            (check_raster if raster else check_vector)(item, key, site, verify)
 
 
 def curate(catalog_path: Path, summary: Dict[str, Any], verify: bool = False) -> List[Dict[str, Any]]:

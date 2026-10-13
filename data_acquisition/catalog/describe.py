@@ -48,8 +48,8 @@ PDF_PAGES, PDF_CHARS = 8, 15000   # processing reports: the first pages hold the
 def _raster(path: Path) -> Dict[str, Any]:
     from data_acquisition.catalog.stac import footprint
     h = geotiff.info(path)
-    _, bbox = footprint(h) if h["epsg"] else (None, None)
-    return {"epsg": h["epsg"], "resolution_m": [round(r, 4) for r in h["resolution"]], "bands": h["count"],
+    _, bbox = footprint(h) if h["epsg"] else (None, None)     # no footprint without a CRS
+    return {"driver": h["driver"], "has_crs": h["has_crs"], "epsg": h["epsg"], "resolution_m": [round(r, 4) for r in h["resolution"]], "bands": h["count"],
             "dtypes": sorted(set(h["dtypes"])), "colorinterp": h["colorinterp"], "nodata": h["nodata"],
             "lonlat_bbox": [round(v, 5) for v in bbox] if bbox else None, "overviews": bool(h["overviews"])}
 
@@ -114,8 +114,8 @@ def gather(root: Path, patterns: List[str]) -> Dict[str, Any]:
         for p in _entries(folder):
             entry: Dict[str, Any] = {"name": p.relative_to(folder).as_posix(), "bytes": stac.size_of(p)}
             try:
-                if p.suffix.lower() in geotiff.EXTENSIONS:
-                    entry["geotiff"] = _raster(p)
+                if geotiff.is_raster(p):
+                    entry["raster"] = _raster(p)
                 elif vector.is_vector(p):
                     entry["vector"] = _vector(p)
                 elif p.name in RECORD_FILES:
@@ -165,6 +165,11 @@ FILE_SCHEMA = _obj({
                                         "elevation products (e.g. [elevation, uncertainty]); [] to use the header"),
     "unit": _str("value unit if not obvious (e.g. reflectance), else \"\""),
     "vertical_datum": _str("for elevation products, the vertical datum stated in the evidence, else \"\""),
+    "crs": _str("EPSG:<code> when the file declares no CRS and the evidence states it, else \"\""),
+    "table": _obj({"skip": {"type": "integer", "description": "lines above the column names"},
+                   "x": _str("x/easting/longitude column, \"\" if the file is not a table of points"),
+                   "y": _str("y/northing/latitude column"), "z": _str("height column, else \"\""),
+                   "delimiter": _str("\"\" for comma")}),
     "notes": _list({"type": "string"}, "inconsistencies or caveats specific to this file"),
 })
 GROUP_SCHEMA = _obj({
@@ -219,6 +224,8 @@ Rules:
   `start_date`/`end_date` for products comparing two epochs. Files shared by every survey (READMEs, ground
   control) are listed once, without a date, and attach to every matching item.
 - Name the bands of multi-band rasters in `bands`, including elevation products with extra bands.
+- A raster without a CRS (`has_crs: false`) needs `crs` from the record or its text. A CSV of points becomes a
+  point layer with `table` (lines to skip above the column names, coordinate columns) and `crs`.
 - Land status, governance and colonies are decided by people. You may give hints with their source.
 - Write every value out in full where it applies. Do not use YAML anchors or aliases (`&name`, `*name`), even
   when several sites or files share the same text: reviewers edit them one by one.
@@ -245,8 +252,10 @@ def _to_summary(out: Dict[str, Any], dataset: str, source_kind: str, evidence: D
         files = []
         for f in g["files"]:
             entry = {"path": f["path"]}
+            if f["table"]["x"]:
+                entry["table"] = {k: v for k, v in f["table"].items() if v not in ("", None)} | {"skip": f["table"]["skip"]}
             for k in ("product", "role", "attach_to", "site", "date", "date_precision", "start_date", "end_date",
-                      "bands", "unit", "vertical_datum", "notes"):
+                      "bands", "unit", "vertical_datum", "crs", "notes"):
                 if f[k] and not (k == "date_precision" and f[k] == "day"):
                     entry[k] = _date(f[k]) if k in ("date", "start_date", "end_date") else f[k]
             files.append(entry)

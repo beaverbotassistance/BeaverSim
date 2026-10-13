@@ -5,7 +5,7 @@ site-specific (file naming, which report belongs to which product, band names a 
 wrong) is written here, so the builder and readers stay generic. Layout::
 
     schema: 1
-    dataset, title
+    dataset, title, [doi]                    doi: the dataset as a whole (e.g. a collection whose members are the groups)
     authored: {by, date[, model, note]}      who wrote the file (a person, or claude + model)
     reviewed: {by, date} | null              a person who checked it; until then values count as "claude"
     source:   {kind, provider, url[, api, log]}
@@ -46,6 +46,15 @@ Archives: a repository that publishes a zip lists only the zip. Extract it with
 ``role: archive``, and give each extracted file ``archive: <path of the zip>`` (or set it on the group).
 Sidecars of a described raster (``.ovr``, ``.aux.xml``, ``.tfw``, ``.tfwx``, ``.msk``, ``.prj``) need not be listed.
 
+CRS a file does not declare: ``crs: EPSG:<code>`` on the file (or group), taken from the record or its text;
+used only when the file has no CRS of its own, and flagged in the catalog as coming from the summary.
+
+Tables of points (CSV): ``table: {skip, x, y[, z, delimiter]}`` gives the lines to skip above the column
+names and the coordinate columns; with ``crs`` (or the site CRS), the rows become a point layer.
+
+A report or metadata file attaches to items of its own group; when its group has none of the products in
+``attach_to`` (e.g. a group holding only a time series), it attaches to matching items of any group.
+
 ``bands`` names the bands in file order for any product, including elevation products whose extra
 bands are not elevations (e.g. ``[elevation, uncertainty]``).
 
@@ -66,7 +75,7 @@ ROLES = {"report", "metadata", "archive"}
 SIDECARS = (".ovr", ".aux.xml", ".tfw", ".tfwx", ".msk", ".prj")   # GDAL/ArcGIS sidecars of a raster
 POSITIONING = {"rtk", "ppk", "gcp", "gnss", "none"}
 FILE_FIELDS = {"path", "product", "variant", "role", "attach_to", "archive", "site", "date", "date_precision",
-               "start_date", "end_date",
+               "start_date", "end_date", "crs", "table",
                "platform", "instruments", "positioning", "bands", "unit", "vertical_datum", "notes"}
 GROUP_FIELDS = FILE_FIELDS - {"path", "product", "variant", "role", "attach_to"} | {"folder", "doi", "record", "download_filter",
                                                                          "files", "evidence"}
@@ -132,6 +141,12 @@ def check(s: Dict[str, Any]) -> List[str]:
                 p.append(f"{fw}: product must be one of {sorted(PRODUCTS)}")
             elif f.get("role") and (f["role"] not in ROLES or not f.get("attach_to")):
                 p.append(f"{fw}: role must be one of {sorted(ROLES)} with attach_to")
+            if merged.get("crs") is not None and not str(merged["crs"]).startswith("EPSG:"):
+                p.append(f"{fw}: crs must be EPSG:<code>")
+            tbl = merged.get("table")
+            if tbl is not None and not (isinstance(tbl, dict) and tbl.get("x") and tbl.get("y")
+                                        and set(tbl) <= {"skip", "x", "y", "z", "delimiter"}):
+                p.append(f"{fw}: table must be {{skip, x, y[, z, delimiter]}}")
             if f.get("product"):
                 if merged.get("site") not in s["sites"]:
                     p.append(f"{fw}: site {merged.get('site')!r} not in sites")

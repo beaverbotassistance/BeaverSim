@@ -23,7 +23,9 @@ model_output (e.g. BRAT results). A vector file with several layers, such as a g
 Two options cover the rest: `date_precision: year` (or `month`) when only that is known, and
 `start_date`/`end_date` for products that compare two epochs. Files shared by every survey, such
 as READMEs or a ground-control list, are listed once without a date. When two files share site,
-time and product, each gets a `variant`, for example two DEM-of-difference methods. A group's `download_filter`
+time and product, each gets a `variant`, for example two DEM-of-difference methods. A raster or table that states no CRS takes `crs: EPSG:<code>` from the record, and a CSV of points
+becomes a point layer with `table` (lines to skip, coordinate columns). A top-level `doi` names the
+dataset as a whole, e.g. a collection whose member records are the groups. A group's `download_filter`
 also sets which files it covers, so two summaries can share one folder. The full
 layout is in [`summary.py`](../../data_acquisition/catalog/summary.py).
 

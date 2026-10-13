@@ -20,7 +20,7 @@ import pystac
 from data_acquisition.catalog import descriptors, stac
 from data_acquisition.catalog import summary as summaries
 from data_acquisition.catalog.descriptors import add_quality, set_field
-from data_acquisition.readers import RECORD_FILES, RECORDS, eml, geotiff, vector
+from data_acquisition.readers import RECORD_FILES, RECORDS, eml, geotiff, table, vector
 from data_acquisition.sources import dataone
 
 COMMON_NAMES = {"blue": "blue", "green": "green", "red": "red", "red edge": "rededge", "rededge": "rededge",
@@ -40,9 +40,9 @@ def _bands(product: str, wanted: Optional[List[str]], header: Dict[str, Any],
         names = wanted
         if len(wanted) != header["count"]:
             flags.append(("band_count_conflict", f"summary gives {len(wanted)} bands, the file has {header['count']}",
-                          "auto"))
+                          "build"))
         elif declared and declared != wanted:
-            flags.append(("band_order_conflict", f"summary gives {wanted}, the file declares {declared}", "auto"))
+            flags.append(("band_order_conflict", f"summary gives {wanted}, the file declares {declared}", "build"))
     elif product in METRIC_BANDS:
         names = [METRIC_BANDS[product]] * header["count"]
     else:
@@ -70,18 +70,38 @@ def data_item(s: Dict[str, Any], f: Dict[str, Any], path: Path, rel: str, group:
     algorithm, digest = (entity or {}).get("checksum") or (None, None)
     checksum = stac.multihash(algorithm, digest) if algorithm in stac.MULTIHASH and not archive else None
 
-    if vector.is_vector(path):
+    flags = []
+    if f.get("table"):          # a CSV of points; the CRS comes from the summary (or the site)
+        crs = f.get("crs") or s["sites"][site]["crs"]
+        layers = table.info(path, f["table"], crs)
+        item = stac.vector_item(item_id, path, layers, start, end, product, ["data"], checksum, title=path.name)
+        item.assets[product].media_type = "text/csv"
+        item.properties["beaver:table"] = f["table"]
+        item.properties["beaver:crs_from_summary"] = crs
+        flags.append(("crs_from_summary", f"the table states no CRS; {crs} from the "
+                                          f"{'summary' if f.get('crs') else 'site'}", "build"))
+    elif vector.is_vector(path):
         layers = vector.info(path)
         item = stac.vector_item(item_id, path, layers, start, end, product, ["data"], checksum, title=path.name)
         if layers["vertical_crs"]:
             item.properties["beaver:vertical_crs"] = layers["vertical_crs"]
-        flags = []
     else:
         header = geotiff.info(path)
-        names, flags = _bands(product, f.get("bands"), header, entity)
+        if not header["has_crs"]:
+            if not f.get("crs"):
+                raise ValueError("the raster declares no CRS; give `crs` in the summary")
+            header["epsg"] = int(f["crs"].split(":")[1])
+            flags.append(("crs_from_summary", f"the raster declares no CRS; {f['crs']} from the summary", "build"))
+        names, band_flags = _bands(product, f.get("bands"), header, entity)
+        flags += band_flags
         bands = [{"name": n, "common_name": n if n in COMMON_NAMES.values() else None} for n in names]
         item = stac.raster_item(item_id, path, header, start, end, product, ["data"], bands, title=path.name,
                                 unit=f.get("unit") or ("m" if product in METRIC_BANDS else None), checksum=checksum)
+        if not header["has_crs"]:
+            item.properties["beaver:crs_from_summary"] = f["crs"]
+        if path.suffix.lower() not in geotiff.EXTENSIONS:
+            item.assets[product].media_type = None      # not a GeoTIFF; the GDAL driver is recorded instead
+            item.assets[product].extra_fields["beaver:driver"] = header["driver"]
     for flag, detail, flag_source in flags:
         add_quality(item, flag, detail, source=flag_source)
 
@@ -92,8 +112,12 @@ def data_item(s: Dict[str, Any], f: Dict[str, Any], path: Path, rel: str, group:
                 and entity["size"] != path.stat().st_size:
             add_quality(item, "size_mismatch", f"record {entity['size']} bytes, file {path.stat().st_size}",
                         source="repository")
-        if record["dates"] and not record["dates"][0] <= start.isoformat() <= end.isoformat() <= record["dates"][-1]:
-            add_quality(item, "date_outside_record", f"{label} not within {record['dates'][0]}..{record['dates'][-1]}",
+        first, last = (record["dates"][0], record["dates"][-1]) if record["dates"] else (None, None)
+        precise = (f.get("date_precision") or "day") == "day"
+        # a precise date (or span) must lie within the record's period; a month or year must only overlap it
+        if first and (not first <= start.isoformat() <= end.isoformat() <= last if precise
+                      else end.isoformat() < first or start.isoformat() > last):
+            add_quality(item, "date_outside_record", f"{label} not within {first}..{last}",
                         source="repository")
     for note in f.get("notes") or []:
         add_quality(item, "note", note, source=source)
@@ -116,6 +140,7 @@ def data_item(s: Dict[str, Any], f: Dict[str, Any], path: Path, rel: str, group:
         "package_id": record["package_id"] if record else None,
         **({"concept_id": record["concept_id"]} if record and record.get("concept_id") else {}),
         "dataset_title": record["title"] if record else s["title"],
+        **({"dataset_doi": s["doi"]} if s.get("doi") and s.get("doi") != group.get("doi") else {}),
         "creators": record["creators"] if record else None, "path": rel,
         "url": (entity or {}).get("url") or dl.get("url"), "downloaded": dl.get("downloaded"),
         "checksum": f"{algorithm}:{digest}" if algorithm and not archive else None,
@@ -148,8 +173,12 @@ def build(root: Path, s: Dict[str, Any]) -> (pystac.Catalog, Dict[str, List[str]
                 report["missing"].append(rel)
             elif f.get("role"):
                 attachments.append((gi, f, path))
-            elif path.suffix.lower() in geotiff.EXTENSIONS or vector.is_vector(path):
-                item = data_item(s, f, path, rel, g, record, log)
+            elif f.get("table") or geotiff.is_raster(path) or vector.is_vector(path):
+                try:
+                    item = data_item(s, f, path, rel, g, record, log)
+                except (ValueError, KeyError) as e:
+                    report["unsupported"].append(f"{rel}: {e}")
+                    continue
                 if item.id in items:
                     raise ValueError(f"two files for {item.id}: {rel}")
                 if record is not None:
@@ -178,8 +207,9 @@ def build(root: Path, s: Dict[str, Any]) -> (pystac.Catalog, Dict[str, List[str]
         dated = any(f.get(k) is not None for k in ("date", "start_date"))
         label = summaries.epoch(f)[2] if dated else None
         for product in f["attach_to"]:
-            targets = [items[i] for i, (g2, p2, l2) in placed.items()
-                       if g2 == gi and p2 == product and (label is None or l2 == label)]
+            same_group = [i for i, (g2, p2, l2) in placed.items() if g2 == gi and p2 == product]
+            targets = [items[i] for i, (g2, p2, l2) in placed.items()       # own group first, else any group
+                       if (g2 == gi or not same_group) and p2 == product and (label is None or l2 == label)]
             if not targets:
                 report["unattached"].append(f"{path.name} -> {product}{f' {label}' if label else ''}")
             for item in targets:
@@ -188,6 +218,8 @@ def build(root: Path, s: Dict[str, Any]) -> (pystac.Catalog, Dict[str, List[str]
                                     "application/pdf" if path.suffix.lower() == ".pdf" else None)
 
     catalog = pystac.Catalog(s["dataset"], f"{s['title']}. Built from {Path(s['_path']).name}.")
+    if s.get("doi"):
+        catalog.extra_fields["beaver:doi"] = s["doi"]
     for slug in sorted({descriptors.get_field(i, "site") for i in items.values()}):
         site_items = sorted((i for i in items.values() if descriptors.get_field(i, "site") == slug),
                             key=lambda i: (i.datetime or i.common_metadata.start_datetime, i.id))
