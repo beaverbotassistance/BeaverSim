@@ -17,13 +17,10 @@ source:
   url: https://arcticdata.io
   api: https://arcticdata.io/metacat/d1/mn/v2
   log: downloads.csv
+# Sites are defined once in data_acquisition/sites.yaml (name, CRS, land status, governance, colonies);
+# here only this dataset's hints for them.
 sites:
   glacier_creek:
-    name: Glacier Creek, Seward Peninsula, Alaska
-    crs: EPSG:32603
-    colonies: null
-    land_status: null
-    governance: null
     hints:
       land_status: Not stated in the EML record. beaver_open_datasets.md (A1 'Watch out' and Notes) says the Alaska
         sites may be on Alaska Native corporation lands; to check against land records.
@@ -31,11 +28,6 @@ sites:
         methods text says local land managers and community representatives were informed 'where appropriate'; no
         data-use or Indigenous data governance terms are stated.
   grouse_creek:
-    name: Grouse Creek, Seward Peninsula, Alaska
-    crs: EPSG:32603
-    colonies: null
-    land_status: null
-    governance: null
     hints:
       land_status: Not stated in the EML record. beaver_open_datasets.md (A1 'Watch out' and Notes) says the Alaska
         sites may be on Alaska Native corporation lands; to check against land records.
@@ -43,11 +35,6 @@ sites:
         methods text says local land managers and community representatives were informed 'where appropriate'; no
         data-use or Indigenous data governance terms are stated.
   kotz_3:
-    name: Kotzebue 3 (Kotz_3), Baldwin Peninsula, Alaska
-    crs: EPSG:32603
-    colonies: null
-    land_status: null
-    governance: null
     hints:
       land_status: Not stated in the EML record. beaver_open_datasets.md (A1 'Watch out' and Notes) says the Alaska
         sites may be on Alaska Native corporation lands; to check against land records.
@@ -55,11 +42,6 @@ sites:
         methods text says local land managers and community representatives were informed 'where appropriate'; no
         data-use or Indigenous data governance terms are stated.
   kotz_b_east:
-    name: Kotzebue B East (Kotz_B_East), Baldwin Peninsula, Alaska
-    crs: EPSG:32603
-    colonies: null
-    land_status: null
-    governance: null
     hints:
       land_status: Not stated in the EML record. beaver_open_datasets.md (A1 'Watch out' and Notes) says the Alaska
         sites may be on Alaska Native corporation lands; to check against land records.
@@ -67,11 +49,6 @@ sites:
         methods text says local land managers and community representatives were informed 'where appropriate'; no
         data-use or Indigenous data governance terms are stated.
   kotz_b_south:
-    name: Kotzebue B South (Kotz_B_South), Baldwin Peninsula, Alaska
-    crs: EPSG:32603
-    colonies: null
-    land_status: null
-    governance: null
     hints:
       land_status: Not stated in the EML record. beaver_open_datasets.md (A1 'Watch out' and Notes) says the Alaska
         sites may be on Alaska Native corporation lands; to check against land records.
@@ -79,11 +56,6 @@ sites:
         methods text says local land managers and community representatives were informed 'where appropriate'; no
         data-use or Indigenous data governance terms are stated.
   kotz_b_west:
-    name: Kotzebue B West (Kotz_B_West), Baldwin Peninsula, Alaska
-    crs: EPSG:32603
-    colonies: null
-    land_status: null
-    governance: null
     hints:
       land_status: Not stated in the EML record. beaver_open_datasets.md (A1 'Watch out' and Notes) says the Alaska
         sites may be on Alaska Native corporation lands; to check against land records.
@@ -91,11 +63,6 @@ sites:
         methods text says local land managers and community representatives were informed 'where appropriate'; no
         data-use or Indigenous data governance terms are stated.
   south_fork_serpentine_river:
-    name: South Fork Serpentine River, Seward Peninsula, Alaska
-    crs: EPSG:32603
-    colonies: null
-    land_status: null
-    governance: null
     hints:
       land_status: Not stated in the EML record. beaver_open_datasets.md (A1 'Watch out' and Notes) says the Alaska
         sites may be on Alaska Native corporation lands; to check against land records.
@@ -103,11 +70,6 @@ sites:
         methods text says local land managers and community representatives were informed 'where appropriate'; no
         data-use or Indigenous data governance terms are stated.
   swan_lake_creek:
-    name: Swan Lake Creek, Seward Peninsula, Alaska
-    crs: EPSG:32603
-    colonies: null
-    land_status: null
-    governance: null
     hints:
       land_status: Not stated in the EML record. beaver_open_datasets.md (A1 'Watch out' and Notes) says the Alaska
         sites may be on Alaska Native corporation lands; to check against land records.
@@ -115,11 +77,6 @@ sites:
         methods text says local land managers and community representatives were informed 'where appropriate'; no
         data-use or Indigenous data governance terms are stated.
   upper_nome_river:
-    name: Upper Nome River, Seward Peninsula, Alaska
-    crs: EPSG:32603
-    colonies: null
-    land_status: null
-    governance: null
     hints:
       land_status: Not stated in the EML record. beaver_open_datasets.md (A1 'Watch out' and Notes) says the Alaska
         sites may be on Alaska Native corporation lands; to check against land records.

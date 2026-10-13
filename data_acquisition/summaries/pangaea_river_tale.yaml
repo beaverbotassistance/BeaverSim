@@ -16,18 +16,15 @@ source:
   provider: PANGAEA
   url: https://www.pangaea.de
   log: downloads.csv
+# Sites are defined once in data_acquisition/sites.yaml (name, CRS, land status, governance, colonies);
+# here only this dataset's hints for them.
 sites:
   clyst_william_cross:
-    name: Clyst William Cross County Wildlife Site, River Tale, Devon, England
-    crs: EPSG:27700
-    colonies: null
-    land_status: null
-    governance: null
     hints:
-      colonies: Methods text says beaver (Castor fiber) were reintroduced in 2016; beaver_open_datasets.md (A3) says
-        beavers released 2016. Number of colonies or lodges is not stated.
-      land_status: Methods text calls it a County Wildlife Site (10 ha, willow-dominant riparian woodland); the README
-        lists Devon Wildlife Trust among the author affiliations. Ownership and access status are not stated.
+      colonies: Methods text says beaver (Castor fiber) were reintroduced in 2016; beaver_open_datasets.md (A3)
+        says beavers released 2016. Number of colonies or lodges is not stated.
+      land_status: Methods text calls it a County Wildlife Site (10 ha, willow-dominant riparian woodland); the
+        README lists Devon Wildlife Trust among the author affiliations. Ownership and access status are not stated.
       governance: The PANGAEA record gives CC-BY-4.0, which settles copyright only. No data-use terms beyond the
         licence are stated.
 groups:

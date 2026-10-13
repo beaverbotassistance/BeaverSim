@@ -32,9 +32,12 @@ layout is in [`summary.py`](../../data_acquisition/catalog/summary.py).
 [`arcticdata_seward.yaml`](../../data_acquisition/summaries/arcticdata_seward.yaml) is a complete
 example.
 
-**Land status, governance and colonies are always entered by a person**, as
-`{value, by, date}`. Leave them `null` until someone has checked them. The pipeline reports them
-as missing, which is the intended reminder.
+**Sites are defined once**, in the registry `data_acquisition/sites.yaml`: name, CRS, and the fields
+only a person may enter (colonies, land status, governance), as `{value, by, date}`. Leave these
+`null` until someone has checked them; the pipeline reports them as missing, which is the
+intended reminder. A summary refers to sites by slug and holds only its own `hints` for them. Two
+datasets of the same place (Red Canyon on Zenodo and on HydroShare) share one site entry, so land
+status is entered once for both.
 
 ## From a link: intake
 
@@ -113,7 +116,14 @@ python -m data_acquisition.steps.curate --catalog "<root>/stac/<dataset>/catalog
     --summary <dataset> [--verify]
 ```
 
-`build` writes `build_report.json`. `curate` prints, for each item, the descriptors still missing
+Then refresh the root catalog, which links every dataset catalog and indexes data by site:
+
+```
+python -m data_acquisition.catalog.root --root "<root>"
+```
+
+It writes `<root>/stac/catalog.json` and `<root>/stac/sites.json`, which lists per site the datasets,
+products and dates found, and which manual fields are still empty. `build` writes `build_report.json`. `curate` prints, for each item, the descriptors still missing
 and the quality flags, and writes `curate_report.csv`. `--verify` hashes every file against the
 repository checksum, which takes about 1–2 minutes per 10 GB on a USB drive.
 

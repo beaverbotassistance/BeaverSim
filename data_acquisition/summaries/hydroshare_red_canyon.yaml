@@ -18,20 +18,17 @@ source:
   url: https://www.hydroshare.org
   api: https://www.hydroshare.org/hsapi
   log: downloads.csv
+# Sites are defined once in data_acquisition/sites.yaml (name, CRS, land status, governance, colonies);
+# here only this dataset's hints for them.
 sites:
   red_canyon_creek:
-    name: Red Canyon Creek study reaches, Wyoming, USA
-    crs: EPSG:32612
-    colonies: null
-    land_status: null
-    governance: null
     hints:
-      colonies: The records and beaver_open_datasets.md (A4) are about beaver dam analogues (BDAs, human-built, installed
-        2018), not beaver-built dams; none says whether beavers are present at the reaches.
-      land_status: Not stated in the records or in beaver_open_datasets.md. The collection record places the creek near
-        Lander, WY.
-      governance: Every HydroShare record gives CC-BY-4.0, which settles copyright only. beaver_open_datasets.md (A4) says
-        the resource has no active owner (questions go to CUAHSI). No other data-use terms are stated.
+      colonies: The records and beaver_open_datasets.md (A4) are about beaver dam analogues (BDAs, human-built,
+        installed 2018), not beaver-built dams; none says whether beavers are present at the reaches.
+      land_status: Not stated in the records or in beaver_open_datasets.md. The collection record places the creek
+        near Lander, WY.
+      governance: Every HydroShare record gives CC-BY-4.0, which settles copyright only. beaver_open_datasets.md
+        (A4) says the resource has no active owner (questions go to CUAHSI). No other data-use terms are stated.
 groups:
   # ---- Collection record: holds no files of its own, only resource.json; members are the four groups below ----
 - folder: hydroshare/doi_10.4211_hs.7c4ae80863174acfb571ccf8bdac8968

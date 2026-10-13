@@ -16,19 +16,16 @@ source:
   provider: NSF Arctic Data Center
   url: https://arcticdata.io
   log: downloads.csv
+# Sites are defined once in data_acquisition/sites.yaml (name, CRS, land status, governance, colonies);
+# here only this dataset's hints for them.
 sites:
   swan_lake_dlb_mp64:
-    name: Swan Lake drained lake basin (MP64) beaver dams, Seward Peninsula, Alaska
-    crs: EPSG:32603
-    colonies: null
-    land_status: null
-    governance: null
     hints:
       land_status: Not stated in any EML record. beaver_open_datasets.md (A1 'Watch out' and Notes) says the Alaska
         sites may be on Alaska Native corporation lands; to check against land records.
       governance: All five EML records give CC0-1.0, which settles copyright only (beaver_open_datasets.md, Notes).
-        The ABON 2024 methods text says local land managers and community representatives were informed 'where
-        appropriate'; no data-use or Indigenous data governance terms are stated.
+        The ABON 2024 methods text says local land managers and community representatives were informed 'where appropriate';
+        no data-use or Indigenous data governance terms are stated.
 groups:
 - folder: arcticdata/doi_10.18739_A2D795C54
   doi: doi:10.18739/A2D795C54

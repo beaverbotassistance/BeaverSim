@@ -9,7 +9,7 @@ wrong) is written here, so the builder and readers stay generic. Layout::
     authored: {by, date[, model, note]}      who wrote the file (a person, or claude + model)
     reviewed: {by, date} | null              a person who checked it; until then values count as "claude"
     source:   {kind, provider, url[, api, log]}
-    sites:    {<slug>: {name, crs, colonies, land_status, governance[, confirmed, hints]}}
+    sites:    {<slug>: {hints}}               this dataset's hints for the manual site fields (optional)
     groups:   - folder, [doi], [record: {path, format}], <file fields as group defaults>, [evidence], files: [...]
     open_questions: [...]                    optional: what the author could not settle from the evidence
 
@@ -58,7 +58,10 @@ A report or metadata file attaches to items of its own group; when its group has
 ``bands`` names the bands in file order for any product, including elevation products whose extra
 bands are not elevations (e.g. ``[elevation, uncertainty]``).
 
-Manual site fields are ``null`` (unknown) or ``{value, by, date[, note]}``.
+Sites are defined once, in the registry ``data_acquisition/sites.yaml``: ``{<slug>: {name, crs, colonies,
+land_status, governance[, confirmed]}}``. Manual site fields are ``null`` (unknown) or
+``{value, by, date[, note]}``. A summary refers to sites by slug; :func:`load` fills in each site it uses from
+the registry, so ``summary["sites"][slug]`` has the registry fields plus this summary's ``hints``.
 """
 import datetime
 from pathlib import Path
@@ -67,6 +70,7 @@ from typing import Any, Dict, List, Optional
 import yaml
 
 HERE = Path(__file__).resolve().parent.parent / "summaries"
+SITES = HERE.parent / "sites.yaml"          # the site registry
 SCHEMA = 1
 PRODUCTS = {"orthomosaic", "multispectral", "dsm", "dtm", "chm", "dod", "uncertainty", "photos",
             "annotations", "survey_points", "model_output"}
@@ -89,11 +93,40 @@ def load(name_or_path: str) -> Dict[str, Any]:
         path = HERE / f"{name_or_path}.yaml"
     text = path.read_text()
     summary = yaml.safe_load(text)
-    problems = check(summary) + anchors(text)
+    sites = load_sites()
+    problems = check_sites(sites) + check(summary, sites) + anchors(text)
     if problems:
         raise ValueError(f"{path}:\n  " + "\n  ".join(problems))
+    hints = summary.get("sites") or {}
+    summary["sites"] = {slug: {**sites[slug], **({"hints": hints[slug]["hints"]} if hints.get(slug) else {})}
+                        for slug in used_sites(summary) | set(hints)}
     summary["_path"] = str(path)
     return summary
+
+
+def load_sites(path: Path = SITES) -> Dict[str, Dict[str, Any]]:
+    """The site registry: ``{slug: {name, crs, colonies, land_status, governance[, confirmed]}}``."""
+    return (yaml.safe_load(path.read_text()) or {}).get("sites") or {} if path.exists() else {}
+
+
+def check_sites(sites: Dict[str, Dict[str, Any]]) -> List[str]:
+    """Problems in the site registry (empty when valid)."""
+    p = []
+    for slug, site in sites.items():
+        if not site.get("name"):
+            p.append(f"sites.yaml {slug}: needs a name")
+        if not str(site.get("crs", "")).startswith("EPSG:"):
+            p.append(f"sites.yaml {slug}: crs must be EPSG:<code>")
+        for field in MANUAL_SITE_FIELDS:
+            v = site.get(field)
+            if v is not None and not (isinstance(v, dict) and v.get("by") and ("value" in v or field == "confirmed")):
+                p.append(f"sites.yaml {slug}: {field} must be null or {{value, by, date}}")
+    return p
+
+
+def used_sites(s: Dict[str, Any]) -> set:
+    """Site slugs a summary's data files use."""
+    return {resolve(g, f).get("site") for g in s.get("groups") or [] for f in g.get("files") or [] if f.get("product")}
 
 
 def anchors(text: str) -> List[str]:
@@ -104,12 +137,13 @@ def anchors(text: str) -> List[str]:
     return [f"YAML anchors/aliases are not allowed, write each value out: {', '.join(found)}"] if found else []
 
 
-def check(s: Dict[str, Any]) -> List[str]:
-    """Schema problems of a summary (empty when valid)."""
+def check(s: Dict[str, Any], sites: Optional[Dict[str, Dict[str, Any]]] = None) -> List[str]:
+    """Schema problems of a summary (empty when valid); ``sites`` is the registry (loaded if not given)."""
+    sites = load_sites() if sites is None else sites
     p = []
     if s.get("schema") != SCHEMA:
         p.append(f"schema must be {SCHEMA}")
-    for key in ("dataset", "title", "authored", "source", "sites", "groups"):
+    for key in ("dataset", "title", "authored", "source", "groups"):
         if not s.get(key):
             p.append(f"missing {key}")
     if p:
@@ -117,13 +151,12 @@ def check(s: Dict[str, Any]) -> List[str]:
     for who in ("authored", "reviewed"):
         if s.get(who) is not None and not (isinstance(s[who], dict) and s[who].get("by") and s[who].get("date")):
             p.append(f"{who} needs by and date")
-    for slug, site in s["sites"].items():
-        if not str(site.get("crs", "")).startswith("EPSG:"):
-            p.append(f"site {slug}: crs must be EPSG:<code>")
-        for field in MANUAL_SITE_FIELDS:
-            v = site.get(field)
-            if v is not None and not (isinstance(v, dict) and v.get("by") and ("value" in v or field == "confirmed")):
-                p.append(f"site {slug}: {field} must be null or {{value, by, date}}")
+    for slug, site in (s.get("sites") or {}).items():
+        extra = set(site or {}) - {"hints"}
+        if extra:
+            p.append(f"site {slug}: only hints belong in a summary; {sorted(extra)} go in data_acquisition/sites.yaml")
+        if slug not in sites:
+            p.append(f"site {slug} is not in data_acquisition/sites.yaml")
     seen: Dict[tuple, str] = {}
     for i, g in enumerate(s["groups"]):
         where = f"group {i} ({g.get('folder')})"
@@ -148,8 +181,8 @@ def check(s: Dict[str, Any]) -> List[str]:
                                         and set(tbl) <= {"skip", "x", "y", "z", "delimiter"}):
                 p.append(f"{fw}: table must be {{skip, x, y[, z, delimiter]}}")
             if f.get("product"):
-                if merged.get("site") not in s["sites"]:
-                    p.append(f"{fw}: site {merged.get('site')!r} not in sites")
+                if merged.get("site") not in sites:
+                    p.append(f"{fw}: site {merged.get('site')!r} is not in data_acquisition/sites.yaml")
                 try:
                     key = (merged.get("site"), epoch(merged)[2], f["product"], f.get("variant"))
                     if key in seen:

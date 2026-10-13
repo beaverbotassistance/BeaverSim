@@ -17,19 +17,17 @@ source:
   url: https://zenodo.org
   api: https://zenodo.org/api
   log: downloads.csv
+# Sites are defined once in data_acquisition/sites.yaml (name, CRS, land status, governance, colonies);
+# here only this dataset's hints for them.
 sites:
   red_canyon_creek:
-    name: Red Canyon Creek study reaches, Wyoming, USA
-    crs: EPSG:32612
-    colonies: null
-    land_status: null
-    governance: null
     hints:
       colonies: The record and beaver_open_datasets.md (A4) are about beaver dam analogues (BDAs, human-built, installed
         2018), not beaver-built dams; neither says whether beavers are present at the reaches.
       land_status: Not stated in the record or in beaver_open_datasets.md.
-      governance: The Zenodo record gives CC-BY-4.0, which settles copyright only. beaver_open_datasets.md (A4) says the
-        companion HydroShare resource has no active owner (questions go to CUAHSI). No other data-use terms are stated.
+      governance: The Zenodo record gives CC-BY-4.0, which settles copyright only. beaver_open_datasets.md (A4)
+        says the companion HydroShare resource has no active owner (questions go to CUAHSI). No other data-use terms
+        are stated.
 groups:
   # One group for the dataset folder: the record lists only the zip, and the rasters were extracted from it into
   # RCRImages/ (paths below are relative to the dataset folder).

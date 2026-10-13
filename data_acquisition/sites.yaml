@@ -1,0 +1,79 @@
+# Site registry: every site the dataset summaries use, defined once.
+# name and crs (the site's local UTM zone, or national grid) are facts; colonies, land_status and governance
+# are entered by a person as {value, by, date[, note]} and stay null until someone has checked them.
+# Hints for those fields come from each dataset's summary. Schema: data_acquisition/catalog/summary.py.
+
+schema: 1
+sites:
+  glacier_creek:
+    name: Glacier Creek, Seward Peninsula, Alaska
+    crs: EPSG:32603
+    colonies: null
+    land_status: null
+    governance: null
+  grouse_creek:
+    name: Grouse Creek, Seward Peninsula, Alaska
+    crs: EPSG:32603
+    colonies: null
+    land_status: null
+    governance: null
+  kotz_3:
+    name: Kotzebue 3 (Kotz_3), Baldwin Peninsula, Alaska
+    crs: EPSG:32603
+    colonies: null
+    land_status: null
+    governance: null
+  kotz_b_east:
+    name: Kotzebue B East (Kotz_B_East), Baldwin Peninsula, Alaska
+    crs: EPSG:32603
+    colonies: null
+    land_status: null
+    governance: null
+  kotz_b_south:
+    name: Kotzebue B South (Kotz_B_South), Baldwin Peninsula, Alaska
+    crs: EPSG:32603
+    colonies: null
+    land_status: null
+    governance: null
+  kotz_b_west:
+    name: Kotzebue B West (Kotz_B_West), Baldwin Peninsula, Alaska
+    crs: EPSG:32603
+    colonies: null
+    land_status: null
+    governance: null
+  south_fork_serpentine_river:
+    name: South Fork Serpentine River, Seward Peninsula, Alaska
+    crs: EPSG:32603
+    colonies: null
+    land_status: null
+    governance: null
+  swan_lake_creek:
+    name: Swan Lake Creek, Seward Peninsula, Alaska
+    crs: EPSG:32603
+    colonies: null
+    land_status: null
+    governance: null
+  upper_nome_river:
+    name: Upper Nome River, Seward Peninsula, Alaska
+    crs: EPSG:32603
+    colonies: null
+    land_status: null
+    governance: null
+  swan_lake_dlb_mp64:
+    name: Swan Lake drained lake basin (MP64) beaver dams, Seward Peninsula, Alaska
+    crs: EPSG:32603
+    colonies: null
+    land_status: null
+    governance: null
+  red_canyon_creek:
+    name: Red Canyon Creek study reaches, Wyoming, USA
+    crs: EPSG:32612
+    colonies: null
+    land_status: null
+    governance: null
+  clyst_william_cross:
+    name: Clyst William Cross County Wildlife Site, River Tale, Devon, England
+    crs: EPSG:27700
+    colonies: null
+    land_status: null
+    governance: null

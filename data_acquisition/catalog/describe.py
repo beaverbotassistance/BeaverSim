@@ -234,11 +234,13 @@ Rules:
 
 def _to_summary(out: Dict[str, Any], dataset: str, source_kind: str, evidence: Dict[str, Any]) -> Dict[str, Any]:
     """Convert the structured output into the summary layout (dropping empty optional fields)."""
-    sites = {}
+    sites, registry = {}, summaries.load_sites()
     for s in out["sites"]:
         hints = {k: s[f"{k}_hint"] for k in ("land_status", "governance") if s[f"{k}_hint"]}
-        sites[s["slug"]] = {"name": s["name"], "crs": s["crs"], "colonies": None, "land_status": None,
-                            "governance": None, **({"hints": hints} if hints else {})}
+        if hints:
+            sites[s["slug"]] = {"hints": hints}
+        if s["slug"] not in registry:          # a new site: added to the registry, manual fields unknown
+            add_site(s["slug"], s["name"], s["crs"])
     groups = []
     for g in out["groups"]:
         group: Dict[str, Any] = {"folder": g["folder"]}
@@ -271,6 +273,14 @@ def _to_summary(out: Dict[str, Any], dataset: str, source_kind: str, evidence: D
                        **({"api": out["api_endpoint"]} if out["api_endpoint"] else {}),
                        **({"log": "downloads.csv"} if source_kind == "dataone" else {})},
             "sites": sites, "groups": groups, "open_questions": out["open_questions"]}
+
+
+def add_site(slug: str, name: str, crs: str) -> None:
+    """Append a new site to the registry (manual fields null), keeping the file's comments."""
+    entry = yaml.safe_dump({slug: {"name": name, "crs": crs, "colonies": None, "land_status": None,
+                                   "governance": None}}, sort_keys=False, allow_unicode=True, width=110)
+    with open(summaries.SITES, "a") as f:
+        f.write("".join("  " + line + "\n" for line in entry.splitlines()))
 
 
 def _date(value: str) -> Any:
@@ -342,8 +352,11 @@ You are drafting a dataset summary for the BeaverSim dataset pipeline, in a Clau
 Write `data_acquisition/summaries/{dataset}.draft.yaml`, in the layout below. Fill it in this way:
 - `dataset: {dataset}`, `schema: {schema}`, `source.kind: {source_kind}`.
 - `authored: {{by: claude, model: <your model id>, date: <today>, note: "Claude Code session, from {evidence_name}"}}`.
-- `reviewed: null`. Every site's `colonies`, `land_status` and `governance`: `null`. Suggestions for them go
-  in the site's `hints`.
+- `reviewed: null`.
+- Sites: use the slugs of `data_acquisition/sites.yaml` (listed below) when the data covers one of those sites;
+  check it against the footprints, not only the name. For a site not there, add an entry to `sites.yaml` with
+  `name`, `crs` and `colonies`, `land_status`, `governance` all `null`. In the summary, `sites:` holds only
+  `{{<slug>: {{hints: ...}}}}`: your suggestions for those manual fields, with their source.
 - One group per evidence folder, with `evidence` listing where each value came from. `open_questions` at the
   end for whatever a person must check.
 
@@ -352,7 +365,10 @@ Then run, and fix every problem it reports:
     python -m data_acquisition.catalog.describe check --summary data_acquisition/summaries/{dataset}.draft.yaml \\
         --root "{root}"
 
-Do not write or edit any other file.
+Do not write or edit any other file, except adding new sites to `data_acquisition/sites.yaml`.
+
+## Sites in the registry
+{sites}
 
 ## Summary layout
 {layout}
@@ -369,8 +385,15 @@ def write_prompt(evidence: Dict[str, Any], dataset: str, source_kind: str, conte
     prompt = out_dir / "prompt.md"
     prompt.write_text(PROMPT.format(dataset=dataset, rules=rules, evidence=ev, evidence_name=ev.name, context=ctx,
                                     schema=summaries.SCHEMA, source_kind=source_kind, root=evidence["root"],
-                                    layout=summaries.__doc__.split("\n", 2)[2].strip()))
+                                    layout=summaries.__doc__.split("\n", 2)[2].strip(),
+                                    sites=registry_lines()))
     return prompt
+
+
+def registry_lines() -> str:
+    """One line per site of the registry: slug, name, CRS."""
+    return "\n".join(f"- `{slug}`: {site.get('name')}, {site.get('crs')}"
+                     for slug, site in summaries.load_sites().items()) or "- none yet"
 
 
 def check_summary(root: Path, path: str) -> int:

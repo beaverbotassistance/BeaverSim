@@ -41,7 +41,9 @@ Every dataset is described as a **STAC** (SpatioTemporal Asset Catalog): JSON fi
 items with geometry, time and assets. Remote sources (Sentinel, NAIP) are already published as
 STAC; our own data is converted to it by the builder (§4).
 
-Layout, one catalog per source:
+Layout, one catalog per dataset summary, under a root catalog (`<root>/stac/catalog.json`) that links them
+all; `sites.json` next to it indexes the data by site across datasets. Sites are defined once in the
+registry `data_acquisition/sites.yaml`.
 
 ```
 <catalog root>/catalog.json
