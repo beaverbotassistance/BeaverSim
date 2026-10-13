@@ -56,6 +56,11 @@ are kept as attachments. Products: {products}.
 
 Existing summaries and the folders they cover (`data_acquisition/summaries/`):
 {summaries}
+Existing sites (slug: name, CRS):
+{sites}
+If the new dataset covers one of these sites, use the same slug (and CRS), so catalogs of different datasets
+link up; check it against the footprints, not only the name.
+
 If the new dataset's folder is already used by a summary (e.g. more sites of the same record), write a
 separate summary whose groups' `download_filter` covers only the new files, so the two do not overlap.
 
@@ -120,6 +125,14 @@ def _summaries() -> str:
     return "\n".join(lines) or "- none"
 
 
+def _sites() -> str:
+    sites = {}
+    for p in sorted(summaries.HERE.glob("*.yaml")):
+        for slug, site in (yaml.safe_load(p.read_text()).get("sites") or {}).items():
+            sites.setdefault(slug, f"- `{slug}`: {site.get('name')}, {site.get('crs')} ({p.stem})")
+    return "\n".join(sites.values()) or "- none"
+
+
 def write_prompt(url: str, root: Path, dataset: str, out_dir: Path) -> Path:
     out_dir.mkdir(parents=True, exist_ok=True)
     records = "\n".join(f"- `{name}`: saved as `{spec['file']}`, read by `{spec['read'].__module__}`"
@@ -127,7 +140,7 @@ def write_prompt(url: str, root: Path, dataset: str, out_dir: Path) -> Path:
     prompt = out_dir / "prompt.md"
     prompt.write_text(PROMPT.format(dataset=dataset, url=url, root=root, sources=_modules(HERE / "sources"),
                                     records=records, products=", ".join(sorted(summaries.PRODUCTS)),
-                                    summaries=_summaries()))
+                                    summaries=_summaries(), sites=_sites()))
     return prompt
 
 
