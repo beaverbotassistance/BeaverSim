@@ -1,0 +1,148 @@
+# Drafted by Claude in a Claude Code session (intake + describe prompts), reviewed by Federico Oliva.
+schema: 1
+dataset: zenodo_red_canyon
+title: UAV SfM orthomosaics of the beaver dam analogue study reaches, Red Canyon Creek, Wyoming, USA, 2017, 2018 and
+  2019 (RGB; Davis et al., Zenodo)
+authored:
+  by: claude
+  model: claude-opus-5-5
+  date: 2026-10-13
+  note: Claude Code session, from evidence.json
+reviewed:
+  by: Federico Oliva
+  date: 2026-10-13
+source:
+  kind: zenodo
+  provider: Zenodo
+  url: https://zenodo.org
+  api: https://zenodo.org/api
+  log: downloads.csv
+sites:
+  red_canyon_creek:
+    name: Red Canyon Creek study reaches, Wyoming, USA
+    crs: EPSG:32612
+    colonies: null
+    land_status: null
+    governance: null
+    hints:
+      colonies: The record and beaver_open_datasets.md (A4) are about beaver dam analogues (BDAs, human-built, installed
+        2018), not beaver-built dams; neither says whether beavers are present at the reaches.
+      land_status: Not stated in the record or in beaver_open_datasets.md.
+      governance: The Zenodo record gives CC-BY-4.0, which settles copyright only. beaver_open_datasets.md (A4) says the
+        companion HydroShare resource has no active owner (questions go to CUAHSI). No other data-use terms are stated.
+groups:
+  # One group for the dataset folder: the record lists only the zip, and the rasters were extracted from it into
+  # RCRImages/ (paths below are relative to the dataset folder).
+- folder: zenodo/doi_10.5281_zenodo.7493153
+  doi: doi:10.5281/zenodo.7493153
+  record:
+    path: metadata.json
+    format: zenodo_json
+  site: red_canyon_creek
+  archive: RCRImages.zip             # every file under RCRImages/ was extracted from it (CRC-32 verified)
+  bands: [red, green, blue, alpha]
+  notes:
+  - The record lists one file, RCRImages.zip; the rasters, world files, overviews (.tif.ovr) and ArcGIS sidecars were
+    extracted from it into RCRImages/, so the record has no entry or checksum for them.
+  - 'Band 4 is a coverage mask: 0 outside the surveyed area and 255 inside (sampled windows); the record does not
+    describe the bands.'
+  evidence:
+  - 'doi: Zenodo record (version doi:10.5281/zenodo.7493153 of concept doi:10.5281/zenodo.7493152, the DOI given in
+    beaver_open_datasets.md A4)'
+  - 'site: record description (study reaches in Red Canyon Creek), beaver_open_datasets.md A4 (Red Canyon Creek,
+    Wyoming); GeoTIFF lonlat bboxes around -108.668..-108.664 E, 42.680..42.684 N'
+  - 'crs: every GeoTIFF header (EPSG:32612) and the ESRI SpatialReference in rgb2017/rgb2019 .tif.aux.xml (WGS 1984
+    UTM zone 12N)'
+  - 'dates: file names (rgb2017, rgb2018, rgb2019) and record description (one year before BDA installation in 2017,
+    immediately after in 2018, one year after in 2019); no month or day is given'
+  - 'product: record title and description (visible-light orthomosaics from UAV images and SfM photogrammetry)'
+  - 'bands: GeoTIFF headers (4 bands; red, green, blue, undefined in 2017 and 2019; gray and undefined in 2018),
+    .aux.xml statistics (0-255 in every band) and sampled windows (band 4 only 0 or 255)'
+  - 'georeferencing: rgb2017 and rgb2019 .tif.aux.xml (ESRI first-order PolynomialXform with 5 and 10 source/target GCP
+    pairs) and .tfwx (rotated affine), against .tfw files equal to the GeoTIFF headers; rgb2018 has neither'
+  - 'platform, instruments, positioning: not in the record or the files (record says only "UAV images")'
+  files:
+  - path: RCRImages.zip
+    role: archive
+    attach_to: [orthomosaic]
+    notes:
+    - The archive as published on Zenodo (MD5 verified on download); the files under RCRImages/ were extracted from it
+      with data_acquisition.sources.archives (CRC-32 verified).
+
+  # ---- 2017: one year before BDA installation ----
+  - path: RCRImages/rgb2017.tif
+    product: orthomosaic
+    date: 2017
+    date_precision: year
+    notes:
+    - 1.56 cm cells, uint8, no nodata value declared (GeoTIFF header).
+    - The ArcGIS georeferencing in rgb2017.tif.aux.xml (5 GCP pairs, shifts of 0.5 to 7.7 m) is not applied by GDAL;
+      the position used here is the unadjusted one from the GeoTIFF header.
+  - path: RCRImages/rgb2017.tif.aux.xml
+    role: metadata
+    date: 2017
+    date_precision: year
+    attach_to: [orthomosaic]
+    notes:
+    - ESRI georeferencing (first-order polynomial, 5 GCP pairs) and band statistics.
+  - path: RCRImages/rgb2017.tfwx
+    role: metadata
+    date: 2017
+    date_precision: year
+    attach_to: [orthomosaic]
+    notes:
+    - World file of the georeferenced (rotated) transform; rgb2017.tfw holds the unadjusted one.
+
+  # ---- 2018: immediately after BDA installation ----
+  - path: RCRImages/rgb2018.tif
+    product: orthomosaic
+    date: 2018
+    date_precision: year
+    notes:
+    - 1.73 cm cells. Stored as uint16 with nodata 256, but every band holds 0-255 (.aux.xml statistics); the header
+      declares band 1 as gray and bands 2-4 as undefined, so the band names follow the other two years.
+    - Outside the surveyed area the colour bands are 255 (white) where 2017 and 2019 are 0; band 4 is 0 there in all
+      three years.
+    - No ArcGIS georeferencing sidecar; 2017 and 2019 appear to have been aligned to this year.
+  - path: RCRImages/rgb2018.tif.aux.xml
+    role: metadata
+    date: 2018
+    date_precision: year
+    attach_to: [orthomosaic]
+    notes:
+    - Band statistics only (no georeferencing transform).
+
+  # ---- 2019: one year after BDA installation ----
+  - path: RCRImages/rgb2019.tif
+    product: orthomosaic
+    date: 2019
+    date_precision: year
+    notes:
+    - 0.94 cm cells, uint8, no nodata value declared (GeoTIFF header).
+    - The ArcGIS georeferencing in rgb2019.tif.aux.xml (10 GCP pairs, shifts of 1.6 to 9.5 m) is not applied by GDAL;
+      the position used here is the unadjusted one from the GeoTIFF header.
+  - path: RCRImages/rgb2019.tif.aux.xml
+    role: metadata
+    date: 2019
+    date_precision: year
+    attach_to: [orthomosaic]
+    notes:
+    - ESRI georeferencing (first-order polynomial, 10 GCP pairs) and band statistics.
+  - path: RCRImages/rgb2019.tfwx
+    role: metadata
+    date: 2019
+    date_precision: year
+    attach_to: [orthomosaic]
+    notes:
+    - World file of the georeferenced (rotated) transform; rgb2019.tfw holds the unadjusted one.
+open_questions:
+- 'Georeferencing: 2017 and 2019 carry an ArcGIS polynomial adjustment (shifts up to 7.7 m and 9.5 m) that GDAL does not
+  apply, so their footprints as read here may be off by several metres relative to 2018. Which position is right, and
+  should the adjusted one be applied (warped) before co-registering the three years?'
+- 'Acquisition dates: only the years are known. The paper (Davis et al. 2021, doi:10.1002/esp.5180) or the HydroShare
+  resource (doi:10.4211/hs.7c4ae80863174acfb571ccf8bdac8968) should give the flight dates; beaver_open_datasets.md says
+  the channel was re-measured in July 2019.'
+- 'Platform, camera and positioning (GCP, RTK or none) are not stated in the record; check the paper.'
+- '2018 band layout: the header declares gray/undefined and the file is uint16; the names red, green, blue, alpha are
+  inferred from the value range and the other two years. Confirm visually.'
+- Land status, governance and colonies of the site are not stated (see site hints).
