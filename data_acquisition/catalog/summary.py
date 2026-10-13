@@ -78,13 +78,21 @@ def load(name_or_path: str) -> Dict[str, Any]:
     path = Path(name_or_path)
     if not path.suffix:
         path = HERE / f"{name_or_path}.yaml"
-    with open(path) as f:
-        summary = yaml.safe_load(f)
-    problems = check(summary)
+    text = path.read_text()
+    summary = yaml.safe_load(text)
+    problems = check(summary) + anchors(text)
     if problems:
         raise ValueError(f"{path}:\n  " + "\n  ".join(problems))
     summary["_path"] = str(path)
     return summary
+
+
+def anchors(text: str) -> List[str]:
+    """YAML anchors and aliases (``&name`` / ``*name``) in a summary's text: not allowed, because each value
+    must be readable where it applies and editable for one site or file without changing the others."""
+    import re
+    found = sorted(set(re.findall(r"(?m)(?:^|[\s:\-\[,])([&*][A-Za-z_][\w-]*)\s*$", text)))
+    return [f"YAML anchors/aliases are not allowed, write each value out: {', '.join(found)}"] if found else []
 
 
 def check(s: Dict[str, Any]) -> List[str]:
