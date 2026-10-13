@@ -9,8 +9,12 @@ wrong) is written here, so the builder and readers stay generic. Layout::
     authored: {by, date[, model, note]}      who wrote the file (a person, or claude + model)
     reviewed: {by, date} | null              a person who checked it; until then values count as "claude"
     source:   {kind, provider, url[, api, log]}
-    sites:    {<slug>: {name, crs, colonies, land_status, governance[, confirmed]}}
-    groups:   - folder, [doi], [record: {path, format}], <file fields as group defaults>, files: [...]
+    sites:    {<slug>: {name, crs, colonies, land_status, governance[, confirmed, hints]}}
+    groups:   - folder, [doi], [record: {path, format}], <file fields as group defaults>, [evidence], files: [...]
+    open_questions: [...]                    optional: what the author could not settle from the evidence
+
+``evidence`` (per group) lists where the values came from; ``hints`` (per site) holds suggestions for
+the manual fields, which only a person may set.
 
 File fields (on a file, or on its group as a default):
     path, product (data files) or role + attach_to (reports, extra metadata),
@@ -32,7 +36,7 @@ POSITIONING = {"rtk", "ppk", "gcp", "gnss", "none"}
 FILE_FIELDS = {"path", "product", "role", "attach_to", "site", "date", "platform", "instruments", "positioning",
                "bands", "unit", "vertical_datum", "notes"}
 GROUP_FIELDS = FILE_FIELDS - {"path", "product", "role", "attach_to"} | {"folder", "doi", "record", "download_filter",
-                                                                         "files"}
+                                                                         "files", "evidence"}
 MANUAL_SITE_FIELDS = ("colonies", "land_status", "governance", "confirmed")
 
 

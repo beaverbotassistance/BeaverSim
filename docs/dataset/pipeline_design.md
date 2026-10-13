@@ -110,11 +110,14 @@ Rules:
   file: detect split copies, non-georeferenced exports, corrupt files and empty layers. For
   downloads: verify against repository checksums.
 
-**Who writes the summary.** A person, or Claude: a `describe` module (later) gathers the evidence
-(file list, headers, metadata records, report excerpts) and asks Claude to draft the summary
-against the schema; the draft is schema-checked and reviewed. Summary values are recorded with
-source `claude` (model and date) until the file has a `reviewed` entry, then as `manual`. Land
-status and governance are always entered by a person.
+**Who writes the summary.** A person, or Claude. `catalog/describe.py` gathers the evidence (file
+list, headers, metadata records) and writes a prompt with the drafting rules. A **Claude Code
+session** drafts the summary from it, which is covered by a Claude Pro/Max subscription and is the
+default path. The same rules can run through the **Claude API** (`describe draft`), which is billed
+separately per token, for unattended use. Either way the draft is schema-checked and reviewed.
+Summary values are recorded with source `claude` (model and date) until the file has a `reviewed`
+entry, then as `manual`. Land status and governance are always entered by a person. How-to:
+[describing_a_dataset.md](describing_a_dataset.md).
 
 ## 5. Space
 
@@ -305,7 +308,7 @@ Figures use `beaversim.viz` (theme, palette, media presets) so they match the si
 | 2 | `inspect.ipynb` on Swan Lake | coverage map, timeline, item browser, side-by-side work |
 | 3 | `stac_api` source + Sentinel-2 in the timeline and side-by-side | Sentinel dates and clipped quick-looks over Swan Lake |
 | 4 | photo and vector readers + Montana summary | Montana in the same inspect notebook, no notebook changes |
-| – | `describe`: Claude drafts a summary from the evidence | any time; not blocking |
+| – | `describe`: Claude drafts a summary from the evidence (Claude Code or API) | **done** |
 | 5 | Planner + `process.ipynb` with `reproject`, `define_aoi` (+ review), `clip`, `vegetation_index` | colony products for Swan Lake |
 | 6 | `annotations` (colony assignment), `water_mask`, `sentinel_series`, `change` | multi-year colony report for Swan Lake; annotated epochs for Rumney |
 | 7 | `photogrammetry` (OpenDroneMap) and `coregister` | Montana surveys processed into the same products |
