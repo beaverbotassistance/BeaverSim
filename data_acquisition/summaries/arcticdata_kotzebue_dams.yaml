@@ -1,0 +1,103 @@
+# Drafted by Claude in a Claude Code session (intake + describe prompts), reviewed by Federico Oliva.
+schema: 1
+dataset: arcticdata_kotzebue_dams
+title: Beaver dam locations in a 100 km² study area near Kotzebue, northwestern Baldwin Peninsula, Alaska, 12 years
+  between 2002 and 2019, digitised from sub-metre satellite imagery (Jones, Tape, Clark, Nitze, Grosse, Disbrow; NSF
+  Arctic Data Center)
+doi: doi:10.18739/A2TB0XV89
+authored:
+  by: claude
+  model: claude-opus-5-5
+  date: 2026-10-13
+  note: Claude Code session, from evidence.json
+reviewed:
+  by: Federico Oliva
+  date: 2026-10-13
+source:
+  kind: dataone
+  provider: NSF Arctic Data Center
+  url: https://arcticdata.io
+  api: https://arcticdata.io/metacat/d1/mn/v2
+  log: downloads.csv
+# Sites are defined once in data_acquisition/sites.yaml (name, CRS, land status, governance, colonies);
+# here only this dataset's hints for them.
+sites:
+  kotzebue_study_area:
+    hints:
+      land_status: Not stated in the EML record. beaver_open_datasets.md (A1 'Watch out' and Notes) says the Alaska
+        sites may be on Alaska Native corporation lands; to check against land records.
+      governance: The EML record gives CC-BY-4.0 (attribution required), which settles copyright only
+        (beaver_open_datasets.md, Notes); no data-use or Indigenous data governance terms are stated.
+      colonies: Not stated. The record maps apparently active dams per year (2 in 2002, 98 in 2019), not colonies or
+        lodges.
+groups:
+- folder: arcticdata/doi_10.18739_A2TB0XV89
+  doi: doi:10.18739/A2TB0XV89
+  record:
+    path: metadata.xml
+    format: eml
+  site: kotzebue_study_area
+  platform: DigitalGlobe satellites (sensors not named)
+  instruments: [panchromatic imagery, 40-70 cm]
+  positioning: [none]
+  evidence:
+  - 'doi: EML packageId and folder name doi_10.18739_A2TB0XV89'
+  - 'site: EML abstract (100 square kilometer study area near Kotzebue), geographicDescription (Northwestern Baldwin
+    Peninsula near Kotzebue, Alaska) and bounding box (-162.663 to -162.389 E, 66.813 to 66.940 N); the 2019 layer
+    spans -162.584 to -162.396 E, 66.811 to 66.945 N. Not one of the registry sites: the ABON 2024 drone footprints
+    of kotz_3 (8 of the 98 dams of 2019 inside) and kotz_b_west (2 inside) lie within it, kotz_b_east and
+    kotz_b_south (0) lie east of it. New site kotzebue_study_area; crs EPSG:32603 as for the other Baldwin Peninsula
+    sites (UTM zone 3N at -162.5 E)'
+  - 'platform, instruments: EML methods (high-resolution satellite imagery from the DigitalGlobe Inc. archive,
+    panchromatic, 40 to 70 cm resolution)'
+  - 'positioning: EML methods (orthorectified on the USGS NED 2 arc-second DEM; dam positions taken from the 2019
+    orthorectification), no ground control or GNSS, hence none'
+  - 'product annotations: EML samplingDescription (dams manually mapped at 1:1,000 as point features in each
+    image), point layers named Kotz_beaver_dams_<year>'
+  - 'start_date, end_date: EML temporalCoverage (2002-08-22 to 2019-07-08); years of the layers: layer names and
+    EML abstract/studyExtent (2002, 2007-2014, 2017-2019)'
+  - 'crs: the geodatabase declares WGS 84 (EPSG:4326) with an EGM96 height vertical part, read with pyogrio;
+    evidence.json reports epsg null because the CRS is compound'
+  - 'archive: the record lists only the zip; the .gdb folder was extracted from it with
+    data_acquisition.sources.archives (89 members, CRC-32 verified)'
+  files:
+  - path: Kotzebue_Study_Area_Beaver_Dams_2002_2019.zip
+    role: archive
+    attach_to: [annotations]
+    notes:
+    - The archive as published (SHA-1 verified on download); Kotzebue_Study_Area_Beaver_Dams_2002_2019.gdb was
+      extracted from it with data_acquisition.sources.archives (CRC-32 verified).
+  - path: Kotzebue_Study_Area_Beaver_Dams_2002_2019.gdb
+    product: annotations
+    archive: Kotzebue_Study_Area_Beaver_Dams_2002_2019.zip
+    start_date: 2002-08-22
+    end_date: 2019-07-08
+    notes:
+    - 'File Geodatabase with one point layer per mapped year, 472 features in all: Kotz_beaver_dams_2002 (2),
+      2007 (6), 2008 (7), 2009 (10), 2010 (15), 2011 (31), 2012 (34), 2013 (42), 2014 (55), 2017 (79), 2018 (93),
+      2019 (98). Fields Long, Lat (decimal degrees; EML attributes also list OBJECTID).'
+    - Each layer holds the apparently active dams of that year's image; a dam that failed or was abandoned is
+      dropped from later years unless re-established (EML samplingDescription). The same dam therefore appears in
+      several layers with the same coordinates; there is no dam identifier across years.
+    - Only the years are known per layer; the exact image dates are not given (the EML gives only the first and
+      last, 2002-08-22 and 2019-07-08).
+    - Kotz_beaver_dams_2008 is stored as Measured 3D Point (read as Point Z), the other layers as 2D points; the
+      EGM96 vertical CRS is declared but the dams carry no meaningful height per the record.
+    - The record abstract also describes a 430 km² northern Baldwin Peninsula study area (3 years); its dams are
+      not in this dataset (beaver_open_datasets.md B1b, doi:10.18739/A2CZ3253W).
+  - path: metadata.xml
+    role: metadata
+    attach_to: [annotations]
+    notes:
+    - EML record (abstract, methods, sampling, CC-BY-4.0 licence, NSF award 1850578).
+open_questions:
+- The geodatabase is one item spanning 2002-2019 (start_date/end_date). Should the catalog split it into one item
+  per year layer, so each year can be matched with imagery of that year? That needs a per-layer date field, which
+  the schema does not have.
+- 'Site: kotzebue_study_area is a new 100 km² site that contains the kotz_3 and part of the kotz_b_west drone
+  footprints. Keep it separate (as drafted), or relate the drone sites to it in the registry?'
+- 'Site crs EPSG:32603 chosen to match the other Baldwin Peninsula sites; the data themselves are in EPSG:4326.'
+- 'The EML west bound (-162.663) is about 3.5 km west of the westernmost dam (-162.584); the bounding box is
+  presumably the study-area outline, which is not included in the dataset.'
+- 'Licence CC-BY-4.0 requires attribution to Jones, Tape, Clark, Nitze, Grosse and Disbrow (Arctic Data Center,
+  doi:10.18739/A2TB0XV89) wherever the dams are used.'

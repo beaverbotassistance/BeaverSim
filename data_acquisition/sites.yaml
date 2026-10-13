@@ -77,3 +77,9 @@ sites:
     colonies: null
     land_status: null
     governance: null
+  kotzebue_study_area:
+    name: Kotzebue study area (100 km²), northwestern Baldwin Peninsula, Alaska
+    crs: EPSG:32603
+    colonies: null
+    land_status: null
+    governance: null
