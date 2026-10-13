@@ -1,0 +1,360 @@
+# Drafted by Claude in a Claude Code session (intake + describe prompts), reviewed by Federico Oliva.
+schema: 1
+dataset: arcticdata_abon_2024
+title: Arctic Beaver Observation Network (ABON) drone surveys of nine beaver sites, Seward and Baldwin Peninsulas,
+  Alaska, August 2024 (orthomosaics, DSMs, multispectral; Jones and Tape, NSF Arctic Data Center)
+authored:
+  by: claude
+  model: claude-opus-5-5
+  date: 2026-10-13
+  note: Claude Code session, from evidence.json
+reviewed:
+  by: Federico Oliva
+  date: 2026-10-13
+source:
+  kind: dataone
+  provider: NSF Arctic Data Center
+  url: https://arcticdata.io
+  api: https://arcticdata.io/metacat/d1/mn/v2
+  log: downloads.csv
+sites:
+  glacier_creek:
+    name: Glacier Creek, Seward Peninsula, Alaska
+    crs: EPSG:32603
+    colonies: null
+    land_status: null
+    governance: null
+    hints:
+      land_status: Not stated in the EML record. beaver_open_datasets.md (A1 'Watch out' and Notes) says the Alaska
+        sites may be on Alaska Native corporation lands; to check against land records.
+      governance: The EML record gives CC0-1.0, which settles copyright only (beaver_open_datasets.md, Notes). The
+        methods text says local land managers and community representatives were informed 'where appropriate'; no
+        data-use or Indigenous data governance terms are stated.
+  grouse_creek:
+    name: Grouse Creek, Seward Peninsula, Alaska
+    crs: EPSG:32603
+    colonies: null
+    land_status: null
+    governance: null
+    hints:
+      land_status: Not stated in the EML record. beaver_open_datasets.md (A1 'Watch out' and Notes) says the Alaska
+        sites may be on Alaska Native corporation lands; to check against land records.
+      governance: The EML record gives CC0-1.0, which settles copyright only (beaver_open_datasets.md, Notes). The
+        methods text says local land managers and community representatives were informed 'where appropriate'; no
+        data-use or Indigenous data governance terms are stated.
+  kotz_3:
+    name: Kotzebue 3 (Kotz_3), Baldwin Peninsula, Alaska
+    crs: EPSG:32603
+    colonies: null
+    land_status: null
+    governance: null
+    hints:
+      land_status: Not stated in the EML record. beaver_open_datasets.md (A1 'Watch out' and Notes) says the Alaska
+        sites may be on Alaska Native corporation lands; to check against land records.
+      governance: The EML record gives CC0-1.0, which settles copyright only (beaver_open_datasets.md, Notes). The
+        methods text says local land managers and community representatives were informed 'where appropriate'; no
+        data-use or Indigenous data governance terms are stated.
+  kotz_b_east:
+    name: Kotzebue B East (Kotz_B_East), Baldwin Peninsula, Alaska
+    crs: EPSG:32603
+    colonies: null
+    land_status: null
+    governance: null
+    hints:
+      land_status: Not stated in the EML record. beaver_open_datasets.md (A1 'Watch out' and Notes) says the Alaska
+        sites may be on Alaska Native corporation lands; to check against land records.
+      governance: The EML record gives CC0-1.0, which settles copyright only (beaver_open_datasets.md, Notes). The
+        methods text says local land managers and community representatives were informed 'where appropriate'; no
+        data-use or Indigenous data governance terms are stated.
+  kotz_b_south:
+    name: Kotzebue B South (Kotz_B_South), Baldwin Peninsula, Alaska
+    crs: EPSG:32603
+    colonies: null
+    land_status: null
+    governance: null
+    hints:
+      land_status: Not stated in the EML record. beaver_open_datasets.md (A1 'Watch out' and Notes) says the Alaska
+        sites may be on Alaska Native corporation lands; to check against land records.
+      governance: The EML record gives CC0-1.0, which settles copyright only (beaver_open_datasets.md, Notes). The
+        methods text says local land managers and community representatives were informed 'where appropriate'; no
+        data-use or Indigenous data governance terms are stated.
+  kotz_b_west:
+    name: Kotzebue B West (Kotz_B_West), Baldwin Peninsula, Alaska
+    crs: EPSG:32603
+    colonies: null
+    land_status: null
+    governance: null
+    hints:
+      land_status: Not stated in the EML record. beaver_open_datasets.md (A1 'Watch out' and Notes) says the Alaska
+        sites may be on Alaska Native corporation lands; to check against land records.
+      governance: The EML record gives CC0-1.0, which settles copyright only (beaver_open_datasets.md, Notes). The
+        methods text says local land managers and community representatives were informed 'where appropriate'; no
+        data-use or Indigenous data governance terms are stated.
+  south_fork_serpentine_river:
+    name: South Fork Serpentine River, Seward Peninsula, Alaska
+    crs: EPSG:32603
+    colonies: null
+    land_status: null
+    governance: null
+    hints:
+      land_status: Not stated in the EML record. beaver_open_datasets.md (A1 'Watch out' and Notes) says the Alaska
+        sites may be on Alaska Native corporation lands; to check against land records.
+      governance: The EML record gives CC0-1.0, which settles copyright only (beaver_open_datasets.md, Notes). The
+        methods text says local land managers and community representatives were informed 'where appropriate'; no
+        data-use or Indigenous data governance terms are stated.
+  swan_lake_creek:
+    name: Swan Lake Creek, Seward Peninsula, Alaska
+    crs: EPSG:32603
+    colonies: null
+    land_status: null
+    governance: null
+    hints:
+      land_status: Not stated in the EML record. beaver_open_datasets.md (A1 'Watch out' and Notes) says the Alaska
+        sites may be on Alaska Native corporation lands; to check against land records.
+      governance: The EML record gives CC0-1.0, which settles copyright only (beaver_open_datasets.md, Notes). The
+        methods text says local land managers and community representatives were informed 'where appropriate'; no
+        data-use or Indigenous data governance terms are stated.
+  upper_nome_river:
+    name: Upper Nome River, Seward Peninsula, Alaska
+    crs: EPSG:32603
+    colonies: null
+    land_status: null
+    governance: null
+    hints:
+      land_status: Not stated in the EML record. beaver_open_datasets.md (A1 'Watch out' and Notes) says the Alaska
+        sites may be on Alaska Native corporation lands; to check against land records.
+      governance: The EML record gives CC0-1.0, which settles copyright only (beaver_open_datasets.md, Notes). The
+        methods text says local land managers and community representatives were informed 'where appropriate'; no
+        data-use or Indigenous data governance terms are stated.
+groups:
+- folder: arcticdata/doi_10.18739_A22R3NZ98
+  doi: doi:10.18739/A22R3NZ98
+  download_filter: ^(?!Swan_Lake_DLB_)    # Swan Lake DLB files belong to arcticdata_seward
+  record:
+    path: metadata.xml
+    format: eml
+  platform: DJI Mavic 3 Multispectral
+  positioning:
+  - rtk
+  - gcp
+  notes:
+  - Same ABON package as the Swan Lake DLB group of arcticdata_seward; this group covers the other sites' 27 files.
+  - The EML entity descriptions are shuffled for Kotz_B_South, Kotz_B_West, South_Fork_Serpentine_River,
+    Swan_Lake_Creek and Upper_Nome_River (each file described as one of its siblings), and correct for Glacier_Creek,
+    Grouse_Creek, Kotz_3 and Kotz_B_East. Products are taken from the file names, resolutions and band counts, which
+    agree with each other for every file.
+  evidence:
+  - 'doi: folder name doi_10.18739_A22R3NZ98; beaver_open_datasets.md A1'
+  - 'site: file name prefix before _M3_ (Glacier_Creek, Grouse_Creek, Kotz_3, Kotz_B_East, Kotz_B_South, Kotz_B_West,
+    South_Fork_Serpentine_River, Swan_Lake_Creek, Upper_Nome_River); site names and peninsulas from
+    beaver_open_datasets.md A1/A2. GeoTIFF lonlat bboxes put the Kotz sites at about 66.8 N, -162.4 E (Baldwin
+    Peninsula) and the others at 64.6-65.9 N, -165.5..-164.7 E (Seward Peninsula)'
+  - 'date: file names (DDMonthYYYY), per file; EML dates 2024-08-02..2024-08-07'
+  - 'platform: methods text (DJI Mavic 3 Multispectral quadcopter); file names say M3'
+  - 'positioning: methods text (DJI D-RTK 2 Mobile Base Station -> rtk; Leica Viva differential GPS provided ground
+    control -> gcp)'
+  - 'products: file names (Orthomosaic_RGB 5cm, Digital_Surface_Model 10cm, Multispectral_Bands 10cm), GeoTIFF
+    resolutions (0.05, 0.1, 0.1 m) and band counts (3 uint8, 1 float32, 4 float32), matching the three products in
+    the methods text'
+  - 'bands (multispectral): methods text (green, red, red edge, near-infrared) and the correctly placed EML entities
+    (band 1 = green ... band 4 = near infrared); the GeoTIFF header does not declare them (gray + undefined)'
+  - 'unit (multispectral): methods text (MicaSense calibrated reflectance panel, normalize reflectance values)'
+  - 'vertical_datum (dsm): file names (Ellipsoid_Height) and EML DSM definitions (Ellipsoid height in meters (m))'
+  - 'orthomosaic bands: GeoTIFF header declares red, green, blue; EML says band 1 = blue, band 2 = green, band 3 = red'
+  files:
+  # Glacier Creek, 2 August 2024
+  - path: Glacier_Creek_M3_Orthomosaic_RGB_02August2024_WGS84_UTM_Zone_3N_5cm.tif
+    product: orthomosaic
+    site: glacier_creek
+    date: 2024-08-02
+  - path: Glacier_Creek_M3_Digital_Surface_Model_02August2024_WGS84_UTM_Zone_3N_Ellipsoid_Height_10cm.tif
+    product: dsm
+    site: glacier_creek
+    date: 2024-08-02
+    vertical_datum: WGS84 ellipsoid
+  - path: Glacier_Creek_M3_Multispectral_Bands_02August2024_WGS84_UTM_Zone_3N_10cm.tif
+    product: multispectral
+    site: glacier_creek
+    date: 2024-08-02
+    bands: [green, red, rededge, nir]
+    unit: reflectance
+  # Grouse Creek, 5 August 2024
+  - path: Grouse_Creek_M3_Orthomosaic_RGB_05August2024_WGS84_UTM_Zone_3N_5cm.tif
+    product: orthomosaic
+    site: grouse_creek
+    date: 2024-08-05
+  - path: Grouse_Creek_M3_Digital_Surface_Model_05August2024_WGS84_UTM_Zone_3N_Ellipsoid_Height_10cm.tif
+    product: dsm
+    site: grouse_creek
+    date: 2024-08-05
+    vertical_datum: WGS84 ellipsoid
+  - path: Grouse_Creek_M3_Multispectral_Bands_05August2024_WGS84_UTM_Zone_3N_10cm.tif
+    product: multispectral
+    site: grouse_creek
+    date: 2024-08-05
+    bands: [green, red, rededge, nir]
+    unit: reflectance
+  # Kotz 3, 7 August 2024
+  - path: Kotz_3_M3_Orthomosaic_RGB_07August2024_WGS84_UTM_Zone_3N_5cm.tif
+    product: orthomosaic
+    site: kotz_3
+    date: 2024-08-07
+  - path: Kotz_3_M3_Digital_Surface_Model_07August2024_WGS84_UTM_Zone_3N_Ellipsoid_Height_10cm.tif
+    product: dsm
+    site: kotz_3
+    date: 2024-08-07
+    vertical_datum: WGS84 ellipsoid
+  - path: Kotz_3_M3_Multispectral_Bands_07August2024_WGS84_UTM_Zone_3N_10cm.tif
+    product: multispectral
+    site: kotz_3
+    date: 2024-08-07
+    bands: [green, red, rededge, nir]
+    unit: reflectance
+  # Kotz B East, 8 August 2024
+  - path: Kotz_B_East_M3_Orthomosaic_RGB_08August2024_WGS84_UTM_Zone_3N_5cm.tif
+    product: orthomosaic
+    site: kotz_b_east
+    date: 2024-08-08
+    notes:
+    - The file name date (08August2024) is one day after the last EML date (2024-08-07).
+  - path: Kotz_B_East_M3_Digital_Surface_Model_08August2024_WGS84_UTM_Zone_3N_Ellipsoid_Height_10cm.tif
+    product: dsm
+    site: kotz_b_east
+    date: 2024-08-08
+    vertical_datum: WGS84 ellipsoid
+    notes:
+    - The file name date (08August2024) is one day after the last EML date (2024-08-07).
+  - path: Kotz_B_East_M3_Multispectral_Bands_08August2024_WGS84_UTM_Zone_3N_10cm.tif
+    product: multispectral
+    site: kotz_b_east
+    date: 2024-08-08
+    bands: [green, red, rededge, nir]
+    unit: reflectance
+    notes:
+    - The file name date (08August2024) is one day after the last EML date (2024-08-07).
+  # Kotz B South, 7 August 2024
+  - path: Kotz_B_South_M3_Orthomosaic_RGB_07August2024_WGS84_UTM_Zone_3N_5cm.tif
+    product: orthomosaic
+    site: kotz_b_south
+    date: 2024-08-07
+    notes:
+    - The EML entity for this file wrongly describes it as an elevation raster.
+  - path: Kotz_B_South_M3_Digital_Surface_Model_07August2024_WGS84_UTM_Zone_3N_Ellipsoid_Height_10cm.tif
+    product: dsm
+    site: kotz_b_south
+    date: 2024-08-07
+    vertical_datum: WGS84 ellipsoid
+    notes:
+    - The EML entity for this file wrongly describes it as a 4-band multispectral image.
+  - path: Kotz_B_South_M3_Multispectral_Bands_07August2024_WGS84_UTM_Zone_3N_10cm.tif
+    product: multispectral
+    site: kotz_b_south
+    date: 2024-08-07
+    bands: [green, red, rededge, nir]
+    unit: reflectance
+    notes:
+    - The EML entity for this file wrongly describes it as a 3-band RGB orthomosaic.
+  # Kotz B West, 7 August 2024
+  - path: Kotz_B_West_M3_Orthomosaic_RGB_07August2024_WGS84_UTM_Zone_3N_5cm.tif
+    product: orthomosaic
+    site: kotz_b_west
+    date: 2024-08-07
+  - path: Kotz_B_West_M3_Digital_Surface_Model_07August2024_WGS84_UTM_Zone_3N_Ellipsoid_Height_10cm.tif
+    product: dsm
+    site: kotz_b_west
+    date: 2024-08-07
+    vertical_datum: WGS84 ellipsoid
+    notes:
+    - The EML entity for this file wrongly describes it as a 4-band multispectral image.
+  - path: Kotz_B_West_M3_Multispectral_Bands_07August2024_WGS84_UTM_Zone_3N_10cm.tif
+    product: multispectral
+    site: kotz_b_west
+    date: 2024-08-07
+    bands: [green, red, rededge, nir]
+    unit: reflectance
+    notes:
+    - The EML entity for this file wrongly describes it as an elevation raster.
+  # South Fork Serpentine River, 5 August 2024
+  - path: South_Fork_Serpentine_River_M3_Orthomosaic_RGB_05August2024_WGS84_UTM_Zone_3N_5cm.tif
+    product: orthomosaic
+    site: south_fork_serpentine_river
+    date: 2024-08-05
+    notes:
+    - The EML entity for this file wrongly describes it as a 4-band multispectral image.
+  - path: South_Fork_Serpentine_River_M3_Digital_Surface_Model_05August2024_WGS84_UTM_Zone_3N_Ellipsoid_Height_10cm.tif
+    product: dsm
+    site: south_fork_serpentine_river
+    date: 2024-08-05
+    vertical_datum: WGS84 ellipsoid
+    notes:
+    - The EML entity for this file wrongly describes it as a 3-band RGB orthomosaic.
+  - path: South_Fork_Serpentine_River_M3_Multispectral_Bands_05August2024_WGS84_UTM_Zone_3N_10cm.tif
+    product: multispectral
+    site: south_fork_serpentine_river
+    date: 2024-08-05
+    bands: [green, red, rededge, nir]
+    unit: reflectance
+    notes:
+    - The EML entity for this file wrongly describes it as an elevation raster.
+  # Swan Lake Creek, 5 August 2024
+  - path: Swan_Lake_Creek_M3_Orthomosaic_RGB_05August2024_WGS84_UTM_Zone_3N_5cm.tif
+    product: orthomosaic
+    site: swan_lake_creek
+    date: 2024-08-05
+    notes:
+    - The EML entity for this file wrongly describes it as a 4-band multispectral image.
+  - path: Swan_Lake_Creek_M3_Digital_Surface_Model_05August2024_WGS84_UTM_Zone_3N_Ellipsoid_Height_10cm.tif
+    product: dsm
+    site: swan_lake_creek
+    date: 2024-08-05
+    vertical_datum: WGS84 ellipsoid
+  - path: Swan_Lake_Creek_M3_Multispectral_Bands_05August2024_WGS84_UTM_Zone_3N_10cm.tif
+    product: multispectral
+    site: swan_lake_creek
+    date: 2024-08-05
+    bands: [green, red, rededge, nir]
+    unit: reflectance
+    notes:
+    - The EML entity for this file wrongly describes it as a 3-band RGB orthomosaic.
+  # Upper Nome River, 2 August 2024
+  - path: Upper_Nome_River_M3_Orthomosaic_RGB_02August2024_WGS84_UTM_Zone_3N_5cm.tif
+    product: orthomosaic
+    site: upper_nome_river
+    date: 2024-08-02
+    notes:
+    - The EML entity for this file wrongly describes it as a 4-band multispectral image.
+  - path: Upper_Nome_River_M3_Digital_Surface_Model_02August2024_WGS84_UTM_Zone_3N_Ellipsoid_Height_10cm.tif
+    product: dsm
+    site: upper_nome_river
+    date: 2024-08-02
+    vertical_datum: WGS84 ellipsoid
+    notes:
+    - The EML entity for this file wrongly describes it as a 3-band RGB orthomosaic.
+  - path: Upper_Nome_River_M3_Multispectral_Bands_02August2024_WGS84_UTM_Zone_3N_10cm.tif
+    product: multispectral
+    site: upper_nome_river
+    date: 2024-08-02
+    bands: [green, red, rededge, nir]
+    unit: reflectance
+    notes:
+    - The EML entity for this file wrongly describes it as an elevation raster.
+open_questions:
+- 'Site count: the methods text and beaver_open_datasets.md say nine ABON sites, but the files name ten (these nine plus
+  Swan_Lake_DLB, in arcticdata_seward). Which one is not counted as an ABON site?'
+- 'Kotz_B_East is dated 08August2024 in its file names, one day after the EML temporal coverage ends (2024-08-07).
+  Which is right?'
+- 'RGB band order: every orthomosaic header declares red, green, blue, while the EML says blue, green, red. The header
+  order is used; check one file visually.'
+- 'Site identity across summaries: beaver_open_datasets.md A2 lists earlier surveys at Upper Nome River (MP31), Glacier
+  Creek Road, Swan Lake Creek, South Fork Serpentine River and Kotzebue B East/West/South/3. Should these slugs match
+  the sites of those records when they are added, and is Glacier_Creek the same site as Glacier Creek Road and
+  Upper_Nome_River the same as MP31? Footprints should be compared when the earlier records are downloaded.'
+- 'Positioning: the methods name both an RTK base (D-RTK 2) and Leica Viva ground control; whether the Leica points
+  were used as GCPs or only as check points is not stated, and the record has no Pix4D reports.'
+- 'unit: reflectance is inferred from the radiometric calibration in the methods; the value scale (0-1 or percent) is
+  not stated. Check on a sample (multispectral nodata is -10000).'
+- 'Vertical datum: ellipsoid heights with a WGS84 horizontal datum; the ellipsoid realisation (WGS84 vs ITRF/NAD83 via
+  the Leica survey) is not stated.'
+- 'DSM over water: the earlier Seward records warn that elevation over waterbodies is noisy; beaver_open_datasets.md A1
+  says the same for ABON, but the ABON methods text in the evidence does not. Confirm before adding the note.'
+- Land status and Indigenous data governance are not stated for any site (see site hints).
