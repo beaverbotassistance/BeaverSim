@@ -1,0 +1,274 @@
+# Drafted by Claude in a Claude Code session (intake + describe prompts), reviewed by Federico Oliva.
+schema: 1
+dataset: hydroshare_red_canyon
+title: UAV SfM elevation models, total station survey points, reach outlines and water levels of the beaver dam
+  analogue study reaches, Red Canyon Creek, Wyoming, USA, 2017 to 2019 (Davis et al., HydroShare)
+doi: doi:10.4211/hs.7c4ae80863174acfb571ccf8bdac8968
+authored:
+  by: claude
+  model: claude-opus-5-5
+  date: 2026-10-13
+  note: Claude Code session, from evidence.json
+reviewed:
+  by: Federico Oliva
+  date: 2026-10-13
+source:
+  kind: hydroshare
+  provider: CUAHSI HydroShare
+  url: https://www.hydroshare.org
+  api: https://www.hydroshare.org/hsapi
+  log: downloads.csv
+sites:
+  red_canyon_creek:
+    name: Red Canyon Creek study reaches, Wyoming, USA
+    crs: EPSG:32612
+    colonies: null
+    land_status: null
+    governance: null
+    hints:
+      colonies: The records and beaver_open_datasets.md (A4) are about beaver dam analogues (BDAs, human-built, installed
+        2018), not beaver-built dams; none says whether beavers are present at the reaches.
+      land_status: Not stated in the records or in beaver_open_datasets.md. The collection record places the creek near
+        Lander, WY.
+      governance: Every HydroShare record gives CC-BY-4.0, which settles copyright only. beaver_open_datasets.md (A4) says
+        the resource has no active owner (questions go to CUAHSI). No other data-use terms are stated.
+groups:
+  # ---- Collection record: holds no files of its own, only resource.json; members are the four groups below ----
+- folder: hydroshare/doi_10.4211_hs.7c4ae80863174acfb571ccf8bdac8968
+  doi: doi:10.4211/hs.7c4ae80863174acfb571ccf8bdac8968
+  record:
+    path: resource.json
+    format: hydroshare_json
+  site: red_canyon_creek
+  evidence:
+  - 'doi: record package_id; beaver_open_datasets.md A4 (HydroShare doi:10.4211/hs.7c4ae80863174acfb571ccf8bdac8968)'
+  - 'role: record title and methods (collection of the water level, DEM, topographic survey and shapefile resources;
+    orthomosaics are in the linked Zenodo record doi:10.5281/zenodo.7493152, described in zenodo_red_canyon)'
+  - 'site: record methods (Red Canyon Creek near Lander, WY) and bounds (-108.6675..-108.6633 E, 42.6803..42.6837 N),
+    same reaches as zenodo_red_canyon'
+  files:
+  - path: resource.json
+    role: metadata
+    attach_to: [dsm, survey_points, annotations]
+    notes:
+    - Collection record (Davis, Lautz, Kelleher, Vidon, Pearce, Russoniello), describing the study design (BDAs
+      installed 2018, channel measured immediately after and again in July 2019) and pointing to Davis et al. (2021),
+      doi:10.1002/esp.5180. It has no data files of its own.
+
+  # ---- DEMs, 2018 and 2019 ----
+- folder: hydroshare/doi_10.4211_hs.4fa15157d0dc4de4a36290e3ce160094
+  doi: doi:10.4211/hs.4fa15157d0dc4de4a36290e3ce160094
+  record:
+    path: resource.json
+    format: hydroshare_json
+  site: red_canyon_creek
+  crs: EPSG:32612
+  platform: UAV
+  positioning: [gcp]
+  bands: [elevation]
+  unit: m
+  notes:
+  - ESRI ASCII grids (AAIGrid) with no CRS of their own; the CRS is the one given in the record methods.
+  - Made with Structure from Motion from visible-light UAV images; elevations include whatever stands on the ground, so
+    they are filed as dsm (the record calls them DEMs).
+  evidence:
+  - 'doi: record package_id'
+  - 'product: record methods (DEMs from visible-light UAV images and Structure from Motion photogrammetry); dsm because
+    SfM surfaces are not filtered to bare ground in any text'
+  - 'crs: record methods ("WGS 84 / UTM Zone 12N (EPSG::32612)"); the AAIGrid headers have no CRS (has_crs false)'
+  - 'dates: record methods (2018 immediately after BDA installation, 2019 one year later); collection record (re-measured
+    July 2019); this record''s coverage dates 2018-08-14 and 2019-07-30, read here as the months only'
+  - 'platform: record methods (UAV flights)'
+  - 'positioning: 2018_GCPs.csv and 2019_GCPs.csv text in the topographic survey record (surveyed GCPs used to generate
+    the 2018 and 2019 DEMs in Agisoft PhotoScan)'
+  - 'unit: Floodplain_Check_Point_Measurements.csv columns ("2019 DEM Elevation (m)", "2018 DEM Elevation (m)"), whose
+    values match the survey elevations in metres'
+  - 'bands: AAIGrid headers (1 band, float32, nodata -9999)'
+  - 'instruments: not stated (record says only visible-light images); vertical_datum: not stated anywhere'
+  files:
+  - path: dem_2018.txt
+    product: dsm
+    date: 2018-08-01
+    date_precision: month
+    notes:
+    - 6.9 cm cells (record methods and file header). Immediately after BDA installation.
+    - The record's coverage starts 2018-08-14, likely the flight day; not stated as such.
+  - path: dem_2019.txt
+    product: dsm
+    date: 2019-07-01
+    date_precision: month
+    notes:
+    - 6.9 cm cells (record methods and file header). One year after BDA installation.
+    - The record's coverage ends 2019-07-30, likely the flight day; not stated as such.
+  - path: resource.json
+    role: metadata
+    attach_to: [dsm]
+    notes:
+    - HydroShare record of the DEMs (methods give resolution, source images and CRS).
+
+  # ---- Reach outlines: masks for the 2018-2019 DEM differencing ----
+- folder: hydroshare/doi_10.4211_hs.1b62145209d44ee5b34e5716bce9ad85
+  doi: doi:10.4211/hs.1b62145209d44ee5b34e5716bce9ad85
+  record:
+    path: resource.json
+    format: hydroshare_json
+  site: red_canyon_creek
+  start_date: 2018-08-14
+  end_date: 2019-07-30
+  notes:
+  - One polygon per file, used as a mask when differencing the 2018 and 2019 DEMs with Geomorphic Change Detection
+    (GCD); the shapefiles are dated by the DEM pair they mask, not by when they were drawn (ArcGIS metadata 2021-01-10).
+  evidence:
+  - 'doi: record package_id'
+  - 'product: record methods (outlines of the BDA reach and the upstream reference reach, drawn as GCD masks), hence
+    annotations'
+  - 'variant: file names (BDAReach, RefReach) and record methods'
+  - 'start_date, end_date: record coverage dates (2018-08-14, 2019-07-30), equal to the DEM record''s'
+  - 'crs: shapefile headers (EPSG:32612) and .shp.xml (WGS_1984_UTM_Zone_12N, WKID 32612)'
+  files:
+  - path: BDAReach.shp
+    product: annotations
+    variant: bda_reach
+    notes:
+    - Experimental reach with the beaver dam analogues (Polygon Z, 1 feature, area 700.5 m² in Shape_Area).
+  - path: RefReach.shp
+    product: annotations
+    variant: reference_reach
+    notes:
+    - Upstream reference reach without BDAs (Polygon Z, 1 feature, area 565.2 m² in Shape_Area).
+  - path: BDAReach.shp.xml
+    role: metadata
+    attach_to: [annotations]
+    notes:
+    - ArcGIS item metadata of BDAReach.shp (CRS, creation 2021-01-10, FeatureClassToFeatureClass from the GCD project
+      mask); attaches to both outlines because they share the same dates.
+  - path: RefReach.shp.xml
+    role: metadata
+    attach_to: [annotations]
+    notes:
+    - ArcGIS item metadata of RefReach.shp; attaches to both outlines because they share the same dates.
+  - path: resource.json
+    role: metadata
+    attach_to: [annotations]
+    notes:
+    - HydroShare record of the reach outlines.
+
+  # ---- Total station survey points ----
+- folder: hydroshare/doi_10.4211_hs.9fe3a89f35f2402782c8608d6fe87890
+  doi: doi:10.4211/hs.9fe3a89f35f2402782c8608d6fe87890
+  record:
+    path: resource.json
+    format: hydroshare_json
+  site: red_canyon_creek
+  crs: EPSG:32612
+  instruments: [total station]
+  unit: m
+  notes:
+  - 'The record methods say "latitude, longitude, and elevation", but every file holds Northing and Easting in metres
+    (about 4728100 N, 691200 E), which fall inside the record bounds in UTM zone 12N; the CRS is taken from the DEM
+    record, which these points georeference and check.'
+  evidence:
+  - 'doi: record package_id'
+  - 'product: record methods (total station measurements to georeference and check the UAV data) and the text line
+    heading each CSV, hence survey_points'
+  - 'instruments: record methods (total station)'
+  - 'crs: not stated in this record; EPSG:32612 from the DEM record methods, consistent with the coordinate values and
+    the record bounds'
+  - 'table: CSV text (description lines above the column names; Easting, Northing and elevation columns)'
+  - 'dates: GCP file names (2018_, 2019_) and their first line (GCPs of the 2018 / 2019 DEM); the other files give no
+    survey date, so they span the record coverage (2018-08-06 to 2019-07-31)'
+  - 'unit: column names ("Elevation (m)")'
+  files:
+  - path: 2018_GCPs.csv
+    product: survey_points
+    variant: gcp
+    date: 2018
+    date_precision: year
+    table: {skip: 2, x: Easting, y: Northing, z: Elevation (m)}
+    notes:
+    - 10 ground control points used to generate the 2018 DEM in Agisoft PhotoScan.
+  - path: 2019_GCPs.csv
+    product: survey_points
+    variant: gcp
+    date: 2019
+    date_precision: year
+    table: {skip: 2, x: Easting, y: Northing, z: Elevation (m)}
+    notes:
+    - 13 ground control points used to generate the 2019 DEM in Agisoft PhotoScan.
+  - path: Floodplain_Check_Point_Measurements.csv
+    product: survey_points
+    variant: floodplain_check
+    start_date: 2018-08-06
+    end_date: 2019-07-31
+    table: {skip: 3, x: Easting, y: Northing, z: Survey Elevation (m)}
+    notes:
+    - 24 well casings with survey elevation and the 2019 (n=24) and 2018 (n=19, obscured points left empty) DEM
+      elevations; used to assess DEM accuracy and precision (Figures 2 and S3 of the paper).
+  - path: Submerged_Streambed_Elevation_Measurements.csv
+    product: survey_points
+    variant: submerged_streambed
+    start_date: 2018-08-06
+    end_date: 2019-07-31
+    table: {skip: 3, x: Easting, y: Northing, z: Survey Elevation (m)}
+    notes:
+    - 165 streambed points with survey elevation, uncorrected DEM elevation and refraction-corrected DEM elevation
+      (following Woodget et al., 2014); used to evaluate refraction corrections (Figure 2). Which year's DEM is not
+      stated.
+    - Each row ends with a comma, so the table has an empty last column.
+  - path: Total_Station_Repeat_Measurements.csv
+    product: survey_points
+    variant: total_station_repeat
+    start_date: 2018-08-06
+    end_date: 2019-07-31
+    table: {skip: 3, x: Easting 1, y: Northing 1, z: Elevation 1 (m)}
+    notes:
+    - 8 locations measured twice (Northing/Easting/Elevation 1 and 2) to assess total station accuracy and precision
+      (Figure S1); the point layer uses the first measurement.
+  - path: resource.json
+    role: metadata
+    attach_to: [survey_points]
+    notes:
+    - HydroShare record of the topographic survey.
+
+  # ---- Water levels: a time series, no spatial product ----
+- folder: hydroshare/doi_10.4211_hs.0d456f6dc1484489a5927d244d51bcd5
+  doi: doi:10.4211/hs.0d456f6dc1484489a5927d244d51bcd5
+  record:
+    path: resource.json
+    format: hydroshare_json
+  site: red_canyon_creek
+  evidence:
+  - 'doi: record package_id'
+  - 'role: record methods (pressure transducer water levels downstream of the BDAs); a time series fits none of the
+    products, so it is kept as metadata attached to the DEMs'
+  - 'time span: record coverage (2017-08-18 to 2019-07-22) and first CSV rows (8/18/2017 19:00, 30 min steps)'
+  files:
+  - path: WaterLevels.csv
+    role: metadata
+    attach_to: [dsm]
+    notes:
+    - 'Water level (cm) every 30 minutes, 2017-08-18 to 2019-07-22, from a pressure transducer (+/- 1 cm) downstream of
+      the BDAs; columns "Date/Time" (M/D/YYYY H:MM, time zone not stated) and "Water Level (cm)". The PT location is in
+      Figure 1 of Davis et al. (2021), not in the files.'
+  - path: resource.json
+    role: metadata
+    attach_to: [dsm]
+    notes:
+    - HydroShare record of the water levels.
+open_questions:
+- 'DEM dates: the record gives only "2018, immediately after BDA installation" and "2019, one year after"; its coverage
+  dates (2018-08-14, 2019-07-30) are likely the flight days. Confirm in Davis et al. (2021), doi:10.1002/esp.5180, and
+  set day dates if so (also for the 2018 and 2019 orthomosaics in zenodo_red_canyon).'
+- 'DEM product: filed as dsm because SfM elevations are not said to be filtered to bare ground; the paper may say
+  whether vegetation was removed (dtm) and whether the submerged areas were refraction-corrected in the published grids.'
+- 'Vertical datum of the DEMs and survey points is not stated (the shapefile CRS has an unknown vertical datum).'
+- 'Survey point CRS: the topographic record says "latitude, longitude" but the files hold UTM-like northing/easting;
+  EPSG:32612 is taken from the DEM record. Confirm that the total station was tied to the same frame (the points sit in
+  the record bounds when read as UTM 12N).'
+- 'Survey dates: the floodplain check points, streambed points and repeat measurements have no date; which campaign
+  (2018, 2019 or both) did each come from? The submerged streambed file also does not say which year''s DEM it
+  compares.'
+- 'Camera, UAV model and GCP-only versus RTK/PPK positioning are not stated beyond the GCP files; check the paper.'
+- 'Water levels are a time series with no product in the schema; kept as metadata attached to the DEMs. Decide whether
+  they belong in the catalog differently, and the time zone of the timestamps.'
+- Land status, governance and colonies of the site are not stated (see site hints).
