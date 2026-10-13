@@ -26,6 +26,7 @@ import rasterio
 from data_acquisition.catalog import descriptors, stac
 from data_acquisition.catalog import summary as summaries
 from data_acquisition.readers import geotiff
+from data_acquisition.sources.archives import verify_member
 from data_acquisition.sources.dataone import file_hash
 from data_acquisition.catalog.descriptors import add_quality, get_field, set_field
 
@@ -58,6 +59,12 @@ def check_raster(item: pystac.Item, key: str, site: Dict[str, Any], verify: bool
     expected = int(site["crs"].split(":")[1])
     if info["epsg"] != expected:
         add_quality(item, "crs_mismatch", f"EPSG:{info['epsg']}, site CRS is {site['crs']}")
+    xform = geotiff.unapplied_georeference(path)
+    if xform:
+        add_quality(item, "unapplied_georeference",
+                    f"ArcGIS {xform['type']} (order {xform['order']}, {xform['gcps']} control points, shifts "
+                    f"{xform['shift_min']}..{xform['shift_max']} m) in {path.name}.aux.xml is not applied when the "
+                    "file is read; the footprint is the unadjusted position")
     if info["nodata"] is None:
         add_quality(item, "nodata_undeclared", "no nodata value; zero/black pixels may be outside the survey")
     names = [b.get("name") for b in asset.extra_fields.get("eo:bands", [])]
@@ -76,7 +83,16 @@ def check_raster(item: pystac.Item, key: str, site: Dict[str, Any], verify: bool
                         f"{valid.min():.3g}..{valid.max():.3g}")
     if verify:
         checksum = asset.extra_fields.get("file:checksum")
-        if not checksum:
+        archive = (get_field(item, "provenance") or {}).get("archive")
+        if archive and not checksum:      # extracted from an archive: check against the archive's CRC-32
+            zip_path = next((p / Path(archive).name for p in path.parents if (p / Path(archive).name).exists()), None)
+            if zip_path and verify_member(zip_path, path):
+                prov = dict(get_field(item, "provenance") or {})
+                prov["verified"] = f"{datetime.date.today().isoformat()} (CRC-32 against {Path(archive).name})"
+                item.properties["beaver:provenance"] = prov
+            else:
+                add_quality(item, "checksum_mismatch", f"differs from its member in {Path(archive).name}")
+        elif not checksum:
             add_quality(item, "checksum_unknown", "no repository checksum to verify against")
         else:
             algorithm = {v: k for k, v in stac.MULTIHASH.items()}[checksum[:4]]

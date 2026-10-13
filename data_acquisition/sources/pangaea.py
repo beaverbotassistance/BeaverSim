@@ -21,16 +21,13 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from data_acquisition.readers import pangaea
+from data_acquisition.sources import dataset_folder
 from data_acquisition.sources.dataone import file_hash, log
 
 RECORD = "https://doi.pangaea.de/{doi}?format=textfile"
 FILES = "https://download.pangaea.de/dataset/{id}/files/{name}"
 CHUNK = 8 * 1024 * 1024
 WAITS = [60, 120, 240, 480, 900]          # seconds between rounds while files are staged from tape
-
-
-def folder_of(root: Path, doi: str) -> Path:
-    return root / "pangaea" / re.sub(r"[^A-Za-z0-9._-]+", "_", doi)
 
 
 def _fetch(url: str, dest: Path) -> bool:
@@ -52,7 +49,7 @@ def download(root: Path, doi: str, name_filter: Optional[str] = None) -> List[Di
     bare = doi.removeprefix("doi:")
     text = urllib.request.urlopen(RECORD.format(doi=bare), timeout=120).read().decode("utf-8")
     record = pangaea.read(text)
-    folder = folder_of(root, doi)
+    folder = dataset_folder(root, "pangaea", doi)
     folder.mkdir(parents=True, exist_ok=True)
     (folder / "metadata.tab").write_text(text)
     dataset_id = bare.rsplit(".", 1)[-1]

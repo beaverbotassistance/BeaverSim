@@ -64,11 +64,15 @@ Contract for a source client:
 - CLI: `python -m data_acquisition.sources.<repository> --root <root> --doi <doi> [--filter <regex>]`, plus
   a `--list` option that only prints the files (name, size) and licence, without downloading.
 - Saves the repository's metadata record in the dataset folder under the file name its `RECORDS` entry
-  gives, unchanged. Dataset folder: `<root>/<repository>/<doi with non [A-Za-z0-9._-] replaced by _>/`.
+  gives, unchanged. Dataset folder: `data_acquisition.sources.dataset_folder(root, "<repository>", doi)`, with
+  the identifier of the exact version downloaded (for versioned repositories, the version DOI, not the
+  concept DOI; log the version DOI too).
 - Downloads with the standard library only (`urllib`); resumes partial `.part` files where the server
   supports ranges; retries temporary errors with a growing wait.
 - Verifies every file against the repository's checksum when it gives one; raises on a mismatch.
 - Makes every downloaded file read-only; never deletes or overwrites a downloaded file.
+- If the repository publishes archives (zip), extracts them with `data_acquisition.sources.archives.extract`
+  (CRC-checked, read-only, never overwrites) after verifying the archive; never extract any other way.
 - Appends one row per file to `<root>/downloads.csv` with `dataone.log` (same columns).
 
 **3. List before downloading.** Run the client with `--list`. Report to the user: number of files, total

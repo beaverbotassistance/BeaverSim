@@ -31,3 +31,31 @@ def sample(path: Path, size: int = 1024) -> np.ma.MaskedArray:
         w = Window(max(0, d.width // 2 - size // 2), max(0, d.height // 2 - size // 2),
                    min(size, d.width), min(size, d.height))
         return d.read(window=w, masked=True)
+
+
+def unapplied_georeference(path: Path) -> Optional[Dict[str, Any]]:
+    """An ArcGIS georeferencing adjustment stored in ``<file>.aux.xml`` (``GeodataXform``), which GDAL
+    does not apply, so the file's position as read here is the unadjusted one. Returns its type,
+    order, number of control-point pairs and the range of their shifts (in CRS units), or None.
+    """
+    import math
+    import re
+    aux = path.with_name(path.name + ".aux.xml")
+    if not aux.exists():
+        return None
+    text = aux.read_text(errors="replace")
+    xform = re.search(r'<GeodataXform[^>]*xsi:type="typens:(\w+)"(.*?)</GeodataXform>', text, re.S)
+    if not xform:
+        return None
+    body = xform.group(2)
+
+    def points(tag: str) -> List[float]:
+        block = re.search(rf"<{tag}[^>]*>(.*?)</{tag}>", body, re.S)
+        return [float(v) for v in re.findall(r"<Double>([^<]+)</Double>", block.group(1))] if block else []
+
+    src, dst = points("SourceGCPs"), points("TargetGCPs")
+    pairs = list(zip(zip(src[0::2], src[1::2]), zip(dst[0::2], dst[1::2])))
+    shifts = [math.dist(a, b) for a, b in pairs]
+    order = re.search(r"<PolynomialOrder>(\d+)</PolynomialOrder>", body)
+    return {"type": xform.group(1), "order": int(order.group(1)) if order else None, "gcps": len(pairs),
+            "shift_min": round(min(shifts), 2) if shifts else None, "shift_max": round(max(shifts), 2) if shifts else None}

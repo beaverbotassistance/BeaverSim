@@ -63,21 +63,24 @@ def raster_item(s: Dict[str, Any], f: Dict[str, Any], path: Path, rel: str, grou
     start, end, label = summaries.epoch(f)
     item_id = f"{site}_{label}_{product}" + (f"_{f['variant']}" if f.get("variant") else "")
     header = geotiff.info(path)
-    entity = record["entities"].get(path.name) if record else None
+    archive = f.get("archive")
+    entity = record["entities"].get(archive or path.name) if record else None   # an extracted file: the archive's
     algorithm, digest = (entity or {}).get("checksum") or (None, None)
 
     names, flags = _bands(product, f.get("bands"), header, entity)
     bands = [{"name": n, "common_name": n if n in COMMON_NAMES.values() else None} for n in names]
     item = stac.raster_item(item_id, path, header, start, end, product, ["data"], bands, title=path.name,
                             unit=f.get("unit") or ("m" if product in METRIC_BANDS else None),
-                            checksum=stac.multihash(algorithm, digest) if algorithm in stac.MULTIHASH else None)
+                            checksum=stac.multihash(algorithm, digest) if algorithm in stac.MULTIHASH and not archive
+                            else None)
     for flag, detail, flag_source in flags:
         add_quality(item, flag, detail, source=flag_source)
 
     if record is not None:
         if entity is None:
             add_quality(item, "not_in_record", "the metadata record does not list this file", source="repository")
-        elif entity["size"] is not None and entity.get("size_exact", True) and entity["size"] != path.stat().st_size:
+        elif not archive and entity["size"] is not None and entity.get("size_exact", True) \
+                and entity["size"] != path.stat().st_size:
             add_quality(item, "size_mismatch", f"record {entity['size']} bytes, file {path.stat().st_size}",
                         source="repository")
         if record["dates"] and not record["dates"][0] <= start.isoformat() <= end.isoformat() <= record["dates"][-1]:
@@ -102,10 +105,15 @@ def raster_item(s: Dict[str, Any], f: Dict[str, Any], path: Path, rel: str, grou
     set_field(item, "provenance", {
         "source": s["source"]["provider"], "doi": group.get("doi"),
         "package_id": record["package_id"] if record else None,
+        **({"concept_id": record["concept_id"]} if record and record.get("concept_id") else {}),
         "dataset_title": record["title"] if record else s["title"],
         "creators": record["creators"] if record else None, "path": rel,
         "url": (entity or {}).get("url") or dl.get("url"), "downloaded": dl.get("downloaded"),
-        "checksum": f"{algorithm}:{digest}" if algorithm else None, "summary": Path(s["_path"]).name},
+        "checksum": f"{algorithm}:{digest}" if algorithm and not archive else None,
+        **({"archive": f"{group['folder']}/{archive}",
+            "archive_checksum": f"{algorithm}:{digest}" if algorithm else None,
+            "extracted": "CRC-32 verified against the archive (data_acquisition.sources.archives)"} if archive else {}),
+        "summary": Path(s["_path"]).name},
         "repository" if record else source, **({} if record else who))
     return item
 
@@ -143,8 +151,13 @@ def build(root: Path, s: Dict[str, Any]) -> (pystac.Catalog, Dict[str, List[str]
             else:
                 report["unsupported"].append(rel)
         if folder.exists():
-            report["undescribed"] += [os.path.relpath(p, root) for p in sorted(folder.iterdir())
-                                      if p.is_file() and p.name not in described and not p.name.endswith(".part")]
+            rasters = [d for d in described if d.lower().endswith(geotiff.EXTENSIONS)]
+            sidecars = {r + ext for r in rasters for ext in summaries.SIDECARS} | \
+                       {r.rsplit(".", 1)[0] + ext for r in rasters for ext in summaries.SIDECARS}
+            for p in sorted(folder.rglob("*")):
+                rel_f = p.relative_to(folder).as_posix()
+                if p.is_file() and rel_f not in described | sidecars and not p.name.endswith(".part"):
+                    report["undescribed"].append(os.path.relpath(p, root))
 
     for gi, f, path in attachments:
         dated = any(f.get(k) is not None for k in ("date", "start_date"))

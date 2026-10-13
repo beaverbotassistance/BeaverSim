@@ -34,6 +34,11 @@ A report or metadata file (``role``) attaches to the items of its group whose pr
 ``attach_to`` and whose date matches its own; without a date (its own or the group's) it attaches to
 all of them, e.g. a README or a ground-control file shared by every survey.
 
+Archives: a repository that publishes a zip lists only the zip. Extract it with
+``data_acquisition.sources.archives`` (verified against the zip's CRC-32, read-only), list the zip with
+``role: archive``, and give each extracted file ``archive: <path of the zip>`` (or set it on the group).
+Sidecars of a described raster (``.ovr``, ``.aux.xml``, ``.tfw``, ``.tfwx``, ``.msk``, ``.prj``) need not be listed.
+
 ``bands`` names the bands in file order for any product, including elevation products whose extra
 bands are not elevations (e.g. ``[elevation, uncertainty]``).
 
@@ -49,9 +54,11 @@ HERE = Path(__file__).resolve().parent.parent / "summaries"
 SCHEMA = 1
 PRODUCTS = {"orthomosaic", "multispectral", "dsm", "dtm", "chm", "dod", "uncertainty", "photos", "annotations"}
 PRECISIONS = ("day", "month", "year")
-ROLES = {"report", "metadata"}
+ROLES = {"report", "metadata", "archive"}
+SIDECARS = (".ovr", ".aux.xml", ".tfw", ".tfwx", ".msk", ".prj")   # GDAL/ArcGIS sidecars of a raster
 POSITIONING = {"rtk", "ppk", "gcp", "gnss", "none"}
-FILE_FIELDS = {"path", "product", "variant", "role", "attach_to", "site", "date", "date_precision", "start_date", "end_date",
+FILE_FIELDS = {"path", "product", "variant", "role", "attach_to", "archive", "site", "date", "date_precision",
+               "start_date", "end_date",
                "platform", "instruments", "positioning", "bands", "unit", "vertical_datum", "notes"}
 GROUP_FIELDS = FILE_FIELDS - {"path", "product", "variant", "role", "attach_to"} | {"folder", "doi", "record", "download_filter",
                                                                          "files", "evidence"}

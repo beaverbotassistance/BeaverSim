@@ -6,12 +6,14 @@ entry here; the builder and the evidence gatherer use this table only.
 
 A record reader returns ``{package_id, title, licence, rights, creators, dates, bounds, methods,
 entities}``, where ``entities`` maps a file name to ``{url, pid, size, checksum: (algorithm, hex) |
-None, attributes: [...]}``; optional ``size_exact: False`` when the record rounds sizes.
+None, attributes: [...]}``; optional ``size_exact: False`` when the record rounds sizes, and
+``concept_id`` when the record is one version of a versioned dataset (e.g. a Zenodo concept DOI).
 """
-from data_acquisition.readers import eml, pangaea
+from data_acquisition.readers import eml, pangaea, zenodo
 
 RECORDS = {
     "eml": {"read": eml.read, "file": "metadata.xml", "media": "application/xml"},
     "pangaea_tab": {"read": pangaea.read, "file": "metadata.tab", "media": "text/tab-separated-values"},
+    "zenodo_json": {"read": zenodo.read, "file": "metadata.json", "media": "application/json"},
 }
 RECORD_FILES = {spec["file"]: name for name, spec in RECORDS.items()}   # file name -> format
