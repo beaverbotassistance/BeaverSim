@@ -119,45 +119,41 @@ This interactive notebook teaches you how to:
 - Remove water bodies using stream thresholding
 - Export data ready for simulation
 
-### 2. Pre-configured Demo Simulations
+### 2. Run Simulations
 
-Run the example simulations with pre-processed data.
+Each site has its own folder in `notebooks/simulations/` with two notebooks:
 
-**Using VS Code (Recommended):**
-- Open the notebook file in VS Code
-- Run cells to see simulation results and visualizations inline
+| Site | Folder | Data |
+|---|---|---|
+| Acadia National Park, Maine | `acadia/` | DEM, 0.5 m |
+| Rumney Marsh, Boston | `rumney_marsh/` | DEM, 1 m |
+| Rumney Ranch A2, Montana | `rumney_ranch/` | RGB, 1 m |
 
-**Using Jupyter Notebook (Browser):**
+- **`run_simulation.ipynb`** runs one simulation with a **live dashboard** that refreshes while it runs
+  (landscape now, change since start, trail traffic by role, swarm and environment metrics).
+- **`run_montecarlo.ipynb`** runs several conditions × seeds in parallel; the comparison plot is redrawn
+  each time a run finishes.
 
-#### Acadia National Park Demo (Recommended First)
-```bash
-jupyter notebook notebooks/demo_csv_acadia.ipynb
+Every run is saved as a small **run record** (`run.json` + `series.npz` + `agents.npz` + `snapshots.npz`,
+see `beaversim/records.py`) under `output/simulations/<site>/`.
+
+Simulations can also be run from Python without notebooks:
+
+```python
+from beaversim.experiments import run, run_montecarlo
+run(config, "output/simulations/my_run")
+run_montecarlo(config, "output/simulations/my_experiment", seeds=range(1, 6),
+               conditions={"visits": {"robot.exploration_map": ["vegetation_visits", "vegetation_visits"]}},
+               processes=10)
 ```
 
-**Features:**
-- Smaller area (~150m × 150m)
-- Faster computation
-- High resolution (0.5m per pixel)
-- Ideal for learning and testing
+### 3. Analyse Results
 
-#### Boston Rumney Marsh Demo (Advanced)
-```bash
-jupyter notebook notebooks/demo_csv_boston.ipynb
-```
+- **`notebooks/analysis/run_report.ipynb`**: report for one run (what was simulated, landscape change,
+  trail traffic, evolution, environment and swarm metrics, agent diagnostics).
+- **`notebooks/analysis/montecarlo_report.ipynb`**: conditions compared across seeds (mean ± 1σ).
 
-**Features:**
-- Larger area (~400m × 400m)
-- More computationally intensive
-- 1m resolution
-- Realistic large-scale simulation
-
-⚠️ **Note**: The Boston demo requires more memory and processing time. Start with Acadia to familiarize yourself with the framework.
-
-Both demos include:
-- Pre-loaded elevation data
-- Configured beaver agents
-- Optimized simulation parameters
-- Visualization examples
+Set the run or experiment folder at the top of the notebook and run all cells.
 
 ## DEM Data Processing
 
@@ -201,81 +197,34 @@ Example regions:
 ```
 BeaverSim/
 ├── beaversim/
-│   ├── ral/                      # Robot Abstraction Layer
-│   │   ├── backend/              # Simulation backends
-│   │   │   ├── base_backend.py
-│   │   │   ├── beavers_visualizer_backend.py
-│   │   │   └── modules/          # Color maps and utilities
-│   │   ├── environment/          # Environment simulation
-│   │   │   ├── environment_backend.py
-│   │   │   └── environment_beavers_backend.py
-│   │   ├── robot/                # Agent behaviors
-│   │   │   ├── robot_backend.py
-│   │   │   ├── robot_beavers_backend.py
-│   │   │   └── modules/          # Beaver-specific modules
-│   │   └── algorithms/           # Utility algorithms
-│   ├── scenarios/                # Pre-defined simulation scenarios
-│   │   └── standard_beavers_scenario.py
-│   ├── utils/                    # DEM processing utilities
-│   │   ├── dem_to_matrix.py
-│   │   └── dem_conversion_interactive.ipynb
-│   └── constants.py              # Global constants
-├── notebooks/                    # Example notebooks
-│   ├── demo_csv_boston.ipynb
-│   └── demo_csv_acadia.ipynb
+│   ├── ral/                      # Simulator core
+│   │   ├── backend/              # Mesa model and agent/environment adapters
+│   │   ├── environment/          # Environment state and dynamics
+│   │   ├── robot/                # Beaver agent behaviour, control and dynamics
+│   │   └── algorithms/           # Neighbourhoods and gradients
+│   ├── experiments.py            # Headless runners: run(), run_montecarlo()
+│   ├── records.py                # Run record format (writer and loader)
+│   ├── viz/                      # Figures: theme, primitives, single-run, Monte Carlo, live dashboard
+│   └── constants.py
+├── data_acquisition/             # DEM / RGB to simulation matrices
+├── notebooks/
+│   ├── notebooks_DEM/            # DEM conversion
+│   ├── notebooks_RGB/            # RGB conversion
+│   ├── simulations/<site>/       # run_simulation, run_montecarlo
+│   └── analysis/                 # run_report, montecarlo_report
 ├── requirements.txt
 └── README.md
 ```
 
 ## Visualization
 
-The framework provides comprehensive real-time visualization of the simulation through two main plotting functions:
+All figures come from `beaversim.viz` and share one theme:
 
-### Environment Heatmaps
-
-Three-panel visualization showing:
-
-1. **Initial Vegetation Quality**
-   - Starting state of the environment
-   - Elevation with blue-brown-green colormap
-   - Water bodies (streams/rivers) shown in blue/negative values
-
-2. **Current Vegetation Quality**
-   - Real-time vegetation state during simulation
-   - Shows vegetation depletion from harvesting
-   - Regrowth dynamics over time
-   - Agent positions marked (red = explorers, black = expanders)
-   - Home base locations (gray rectangles)
-
-3. **Agent Visit Frequency**
-   - Heatmap showing exploration patterns
-   - Color-coded by visit intensity
-   - Reveals agent movement strategies and territorial behavior
-   - Overlay shows water bodies for reference
-
-### Simulation Analytics
-
-Per-agent statistics tracking:
-
-1. **Distance from Initial Position**
-   - Movement range over simulation
-   - River crossing events (blue markers)
-   - Territory exploration patterns
-
-2. **Load Variation**
-   - Current load vs maximum capacity
-   - Harvesting efficiency
-   - Resource transport patterns
-
-3. **Control Error Norm**
-   - PID controller performance
-   - Navigation accuracy
-   - Behavioral stability metrics
-
-4. **Exploration Parameters**
-   - Exploration eta (resource quality threshold)
-   - Harvest threshold boundaries (min/max)
-   - Adaptive behavior indicators
+- **Media presets**: `viz.use_theme("chapter" | "paper" | "slides")` sets every size.
+- **Palette**: every colour is a named token in `viz.Palette` (roles, landscape, change, compared series).
+  Export with `viz.Palette().to_json("palette.json")`, edit, and load with `viz.use_theme(palette="palette.json")`
+  to restyle every figure.
+- **Saving**: `viz.save(fig, "output/figures/name")` writes PDF and PNG.
 
 ## Dependencies
 

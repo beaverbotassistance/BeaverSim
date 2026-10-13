@@ -1,5 +1,3 @@
-from curses import error
-
 import numpy as np
 from typing import Any, Optional, List
 
@@ -9,7 +7,7 @@ class Controller:
     def __init__(self, **kwargs) -> None:
         controller = kwargs.get('controller')
         self._name: str = controller.get('name')        
-        self._max: float = controller.get('max', np.inf)
+        self._max: float = np.inf  # output saturation, set by the robot from its exploration distance
         self._accuracy: float = controller.get('accuracy', 1e0)
         self._dimension: int = controller.get('dimension', 2)
         
@@ -22,11 +20,9 @@ class Controller:
             self._neighbourhood_size = controller.get('neighbourhood_size', None)
             self._beta_repulsive: float = controller.get('beta_repulsive', None)            
             
-        
-        self._Kp_init, self._Kd_init, self._Ki_init = self._Kp, self._Kd, self._Ki
+
         self._status: str = 'IDLE'
         self._dt: Optional[float] = None
-        self._max_scaled: Optional[float] = None
         self._current_value: Any = None
         self._setpoint: Any = None
         self._error: float = 0.0
@@ -42,11 +38,10 @@ class Controller:
         self._error_old = self._error
         self._error = error
         self._error_integral += self._error
-        self._max_scaled = self._max
-        
+
         # anti windup for integral term
         if self._Ki != 0:
-            integral_limit = self._max_scaled / self._Ki
+            integral_limit = self._max / self._Ki
             self._error_integral = np.clip(self._error_integral, -integral_limit, integral_limit)
         return error
     
@@ -109,7 +104,7 @@ class Controller:
             control += flow_influence
         else:
             raise NotImplementedError()
-        return np.clip(control, -self._max_scaled, self._max_scaled).reshape((1, self._dimension))
+        return np.clip(control, -self._max, self._max).reshape((1, self._dimension))
     
     def P_controller(self, setpoint: float, current_value: float) -> np.ndarray:
         """Simple P controller: output = Kp * (setpoint - current_value)."""

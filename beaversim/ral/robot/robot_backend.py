@@ -2,8 +2,8 @@ class BaseRobotBackend():
     
     # imports
     import numpy as np
-    import random
-    
+    # No class-level `import random`: it would shadow mesa.Agent.random (the model's seeded RNG)
+
     def __init__(self, **kwargs) -> None:
         pass
     

@@ -44,10 +44,8 @@ class BeaversRobotBackend(BaseRobotBackend):
         home_base_position_list = list(home_base_position)
         if home_base_position_list and isinstance(home_base_position_list[0], (list, tuple, self.np.ndarray)):
             self._home_base_position_store = [[int(coord / resolution_m) for coord in pos] for pos in home_base_position_list]
-            self._home_base_position = [self._home_base_position_store[0]]
         else:
             self._home_base_position_store = [[int(coord / resolution_m) for coord in home_base_position_list]]
-            self._home_base_position = [self._home_base_position_store[0]]
         self._maximum_load = self._robot.get('maximum_load')                        
         self._harvest_interval = self._robot.get('harvest_interval')
         self._epsilon_greedy = self._robot.get('epsilon_greedy')        
@@ -83,7 +81,6 @@ class BeaversRobotBackend(BaseRobotBackend):
         self._maximum_load_init = self._maximum_load
 
         # Hardcoded parameters (not from config)
-        self._exploration_N_recovery = int(8 / resolution_m)
         self._range_x = [int(-5 / resolution_m), int(5 / resolution_m)]
         self._range_y = [int(-5 / resolution_m), int(5 / resolution_m)]       
         
@@ -96,13 +93,10 @@ class BeaversRobotBackend(BaseRobotBackend):
         nearest_even_cells = lower_even_cells if raw_exploration_cells - lower_even_cells <= upper_even_cells - raw_exploration_cells else upper_even_cells
         exploration_cells = max(2, nearest_even_cells)
         self._exploration_mode = f'gradient_D{exploration_cells:03d}'
-        self._measurement_mode = 'full_map'
         self._measure_step = 1
-        self._n_traces = 0
         self._exploration_eta = 1.0
 
         self._current_time = 0
-        self._map_quality_measure = None
         self._map_quality_measure_position = None
         self._map_quality_update = False
         self._motion_destination = None
@@ -111,40 +105,19 @@ class BeaversRobotBackend(BaseRobotBackend):
         self._neighbourhood_current_index = None
         self._local_map = None
         self._local_map_visits = None
-        self._harvesting_actions_counter = 0
-        self._in_water_counter = 0
         self._reset_integral = 50
-        self._min_home_distance = 500
-        self._last_explored_position = None
 
         self._vegetation_quality_range = None
 
-        # Position initialization
-        position = 'random_home'
-        if position == 'random':
-            self._position = [self.random.randint(self._range_x[0], self._range_x[1] - 1),
-                              self.random.randint(self._range_y[0], self._range_y[1] - 1)]
-        elif position == 'home':
-            self._position = self._home_base_position[0]
-        elif position == 'random_home':
-            # Choose a random home base from the list
-            if isinstance(self._home_base_position_store, list) and len(self._home_base_position_store) > 0:
-                selected_base = list(self.random.choice(self._home_base_position_store))
-                # Randomly select a position around the chosen home base within the allowed range
-                self._position = [
-                    selected_base[0] + self.random.randint(self._range_x[0], self._range_x[1] - 1),
-                    selected_base[1] + self.random.randint(self._range_y[0], self._range_y[1] - 1)
-                ]
-            else:
-                raise ValueError('home_base_position must be a non-empty list for random_home initialization')
-        elif position is None:
-            self._position = [0, 0]
-        elif isinstance(position, list):
-            self._position = position
-            self._position[0] = self.np.clip(self._position[0], self._range_x[0], self._range_x[1])
-            self._position[1] = self.np.clip(self._position[1], self._range_y[0], self._range_y[1])
+        # Position initialization: random position around a randomly chosen home base
+        if isinstance(self._home_base_position_store, list) and len(self._home_base_position_store) > 0:
+            selected_base = list(self.random.choice(self._home_base_position_store))
+            self._position = [
+                selected_base[0] + self.random.randint(self._range_x[0], self._range_x[1] - 1),
+                selected_base[1] + self.random.randint(self._range_y[0], self._range_y[1] - 1)
+            ]
         else:
-            raise ValueError('Invalid position value: {}'.format(position))
+            raise ValueError('home_base_position must be a non-empty list for random_home initialization')
 
         self._load = 0
         self._controller = Controller(**self._robot)
@@ -153,21 +126,16 @@ class BeaversRobotBackend(BaseRobotBackend):
         self._dynamics = Dynamics(initial_state, **self._robot)
         self._local_map_control = None
 
-        self._status_robot = 'IDLE'
         self._status_task = 'IDLE'
         self._status_motion = 'IDLE'
         self._current_task = None
         self._current_action = None
 
         self._destination_store = []
-        self._action_store = []
         self._position_store = []
         self._error_store = []
         self._load_store = []
-        self._task_store = []
-        self._time_store = []
         self._exploration_eta_store = []
-        self._harvest_interval_store = []
         self._maximum_load_store = []
 
         self._exploration_eta_init = self._exploration_eta
@@ -176,14 +144,15 @@ class BeaversRobotBackend(BaseRobotBackend):
         self._wait_b4_explore = 0.0
         return self
     
-    def step_beaver(self, dt: float, time_of_day: str, map_quality: list, limits: list, misc: dict = None) -> None:
+    def step_beaver(self, dt: float, time_of_day: str, local_map, cell_value: float, limits: list, misc: dict = None) -> None:
         """
         Main step function for the beaver agent. Updates state, decides and executes tasks, and manages adaptation.
 
         Args:
             dt (int): Time increment.
             time_of_day (str): Current time of day (e.g., 'day').
-            map_quality (list): Environmental quality measurements.
+            local_map (np.ndarray): Copy of the full environment map observed by the agent.
+            cell_value (float): Environment map value at the agent's current position.
             limits (list): Movement boundaries.
             misc (dict, optional): Additional info from environment.
         """
@@ -195,9 +164,8 @@ class BeaversRobotBackend(BaseRobotBackend):
         self._dt_init = dt
 
         # --- 2. Gather and update environmental observations ---
-        self._map_quality_measure = map_quality
-        self._map_quality_measure_position = self._map_quality_measure[1][-1]  # Current cell quality
-        self.update_local_map(self._map_quality_measure, misc)
+        self._map_quality_measure_position = cell_value
+        self.update_local_map(local_map, misc)
         self._map_quality_update = False
 
         # --- 3. Periodically reset controller integral error ---
@@ -221,22 +189,17 @@ class BeaversRobotBackend(BaseRobotBackend):
         )
         self._map_quality_update = needs_env_update
 
-        # --- 7. If environment was updated, refresh local map at current position ---
+        # --- 7. If environment was updated, write the modified cell into the local map ---
         if self._map_quality_update:
-            self._map_quality_measure = [[self._position], [self._map_quality_measure_position]]
-            self.update_local_map(self._map_quality_measure, misc)
+            self._local_map[self._position[0], self._position[1]] = self._map_quality_measure_position
         self._map_quality_measure_position = self._local_map[self._position[0], self._position[1]]
 
         # --- 8. Store step data for analysis/debugging ---
         self._destination_store.append(self._motion_destination)
-        self._action_store.append(self._current_action)
         self._position_store.append(self._position)
         self._error_store.append(self._controller._error)
         self._load_store.append(self._load)
-        self._task_store.append(self._current_task)
-        self._time_store.append(time_of_day)
         self._exploration_eta_store.append(self._exploration_eta)
-        self._harvest_interval_store.append(self._harvest_interval.copy())
         self._maximum_load_store.append(self._maximum_load)
 
         # --- 9. Optional debug print ---
@@ -262,21 +225,19 @@ class BeaversRobotBackend(BaseRobotBackend):
             self._status_task = 'IDLE'
 
         # --- 2. Task selection logic ---
-        cond_atomic = True  # Always true for atomic implementation
-
         # Epsilon-greedy: with probability epsilon, allow random exploration
         rand = self.random.uniform(0, 1)
         cond_rand = rand < self._epsilon_greedy
 
         # --- 3. Task decision based on state ---
         # Priority: store if full, then harvest if in range, else explore
-        if cond_atomic and (
+        if (
             self._load >= self.np.floor(self._maximum_load) or
             self._maximum_load <= 0.1 * self._maximum_load_init
         ):
             self._current_task = 'store'
         elif (
-            cond_atomic and cond_rand and
+            cond_rand and
             self._map_quality_measure_position > 1 * self._harvest_interval[0] and
             self._map_quality_measure_position < self._harvest_interval[1] and
             (not any(
@@ -328,34 +289,23 @@ class BeaversRobotBackend(BaseRobotBackend):
         else:
             raise ValueError(f'Invalid task: {self._current_task}')
     
-    def do_action(self, time_of_day: str = None, limits: list = None, misc: dict = None) -> bool:
+    def do_action(self, time_of_day: str = None, limits: list = None, misc: dict = None) -> None:
         """
-        Execute the current action and return success status.
+        Execute the current action (move, remove_vegetation or idle).
 
         Args:
             time_of_day (str, optional): Current time of day.
             limits (list, optional): Movement boundaries.
             misc (dict, optional): Additional info.
-
-        Returns:
-            bool: True if action was executed as requested, False otherwise.
-        """        
-        requested_action = self._current_action
-        
+        """
         # Execute the action based on time of day
         if time_of_day == 'day':
             if self._current_action == 'move':
-                self._status_robot = 'ACTING'
                 self.move(time_of_day, limits, misc)
             elif self._current_action == 'remove_vegetation':
-                self._status_robot = 'ACTING'
                 self.remove_vegetation(time_of_day, limits, misc)
-            elif self._current_action == 'idle':
-                self._status_robot = 'IDLE'
         else:
             raise ValueError('Invalid time_of_day: {}'.format(time_of_day))
-        
-        return requested_action == self._current_action
         
     ############################################################
     # TASKS
@@ -370,15 +320,10 @@ class BeaversRobotBackend(BaseRobotBackend):
             limits (list, optional): Movement boundaries.
             misc (dict, optional): Additional info.
         """
-        # Set the current action to remove vegetation
+        # Remove vegetation; harvesting completes in a single step
         self._current_action = 'remove_vegetation'
-
-        # Attempt to perform the action
-        success = self.do_action(time_of_day, limits, misc)
-
-        # If the action was successful, mark the task as finished
-        if success:
-            self._status_task = 'FINISHED'
+        self.do_action(time_of_day, limits, misc)
+        self._status_task = 'FINISHED'
 
     def explore(self, time_of_day: str = None, limits: list = None, misc: dict = None) -> None:
         """
@@ -457,27 +402,18 @@ class BeaversRobotBackend(BaseRobotBackend):
             limits (list, optional): Movement boundaries.
             misc (dict, optional): Additional info.
         """
-        # --- 1. Set up for storing: move towards home base ---
+        # --- 1. Move towards home base ---
         self._current_action = 'move'
-        self._last_explored_position = self._position.copy() 
-
-        # Attempt to move to home base
-        success = self.do_action(time_of_day, limits, misc)
+        self.do_action(time_of_day, limits, misc)
 
         # --- 2. If arrived at home base, store vegetation and reset state ---
-        if success and self._status_motion == 'FINISHED':
+        if self._status_motion == 'FINISHED':
             # Store the collected vegetation at home base
             self.store_vegetation(time_of_day, limits)
-
-            # Restore original control gains after storing
-            self._controller._Kp = self._controller._Kp_init
-            self._controller._Kd = self._controller._Kd_init
-            self._controller._Ki = self._controller._Ki_init
 
             # Reset task and agent state for next cycle
             self._status_task = 'FINISHED'
             self._current_action = 'idle'
-            self._in_water_counter = 0
             self._maximum_load = self._maximum_load_init
 
     ############################################################
@@ -602,13 +538,11 @@ class BeaversRobotBackend(BaseRobotBackend):
                     max_allowed_removal = max(0, 0.99 * self._map_quality_measure_position)
                     if max_allowed_removal > 0:
                         actual_removal = min(self._vegetation_removal, max_allowed_removal)
-                        self._harvesting_actions_counter += 1
                         self._map_quality_measure_position -= actual_removal
                         self._load += actual_removal
                     return
 
         # Normal harvesting (either won't go negative, or river is nearby)
-        self._harvesting_actions_counter += 1
         self._map_quality_measure_position -= self._vegetation_removal
         self._load += self._vegetation_removal
 
@@ -647,7 +581,7 @@ class BeaversRobotBackend(BaseRobotBackend):
             return True
         else:
             return False
-        s
+
     ############################################################
     # UTILITIES
     ############################################################
@@ -706,10 +640,7 @@ class BeaversRobotBackend(BaseRobotBackend):
             raise ValueError(f'Invalid exploration_map value: {self._exploration_map}')
 
         # Set movement limits based on local map size
-        if self._local_map is not None:
-            limits = [[0, self._local_map.shape[0] - 1], [0, self._local_map.shape[1] - 1]]
-        else:
-            limits = [[self._position[0], self._position[0]], [self._position[1], self._position[1]]]
+        limits = [[0, self._local_map.shape[0] - 1], [0, self._local_map.shape[1] - 1]]
 
         # Parse exploration mode into prefix and suffix
         if len(self._exploration_mode) > 2:
@@ -724,7 +655,7 @@ class BeaversRobotBackend(BaseRobotBackend):
             neighbourhood_cells, reached_flags, current_index = module_beaver.exploration_gradient_DN(
                 position, limits, local_map, N=exploration_suffix,
                 home_base_store=self._home_base_position_store, eta=self._exploration_eta,
-                N_recovery=self._exploration_N_recovery, step=self._measure_step)
+                step=self._measure_step, rng=self.rng)
         else:
             raise ValueError(f'Invalid exploration mode: {self._exploration_mode}')
 
@@ -734,67 +665,22 @@ class BeaversRobotBackend(BaseRobotBackend):
         self._neighbourhood_current_index = current_index                
         
         
-    def update_local_map(self, map_quality: list, misc: dict = None) -> None:
+    def update_local_map(self, local_map, misc: dict = None) -> None:
         """
-        Update the local map with new measurements from the environment.
+        Replace the local map with the full environment map and refresh the visits map.
 
         Args:
-            map_quality (list): [positions, values] or ['all', [full_map]].
+            local_map (np.ndarray): Copy of the full environment map.
             misc (dict, optional): Additional info (e.g., global visits map).
         """
-        # --- 1. Ensure the local map is initialized ---
-        if self._local_map is None:
-            self._local_map = self.np.full((1, 1), self.np.nan)
+        self._local_map = local_map
+        global_visits_map = misc.get('visits', None) if misc else None
+        self._local_map_visits = self.np.abs(global_visits_map) if global_visits_map is not None else None
 
-        # --- 2. Extract measurement positions and values ---
-        measure_positions = map_quality[0]
-        measure_values = map_quality[1]
+        # Increment visits at current position
+        if self._local_map_visits is not None:
+            self._local_map_visits[self._position[0], self._position[1]] += self._visit_increase
 
-        # --- 3. Determine visit increase (could be adaptive in future) ---
-        visit_increase = self._visit_increase
-
-        # --- 4. Handle full map update (global observation) ---
-        if measure_positions == 'all':
-            # Replace local map with full observed map
-            self._local_map = measure_values[0]
-            global_visits_map = misc.get('visits', None).copy() if misc else None
-                        
-            
-            self._local_map_visits = self.np.abs(global_visits_map) if global_visits_map is not None else None
-            # Increment visits at current position
-            if self._local_map_visits is not None:                
-                self._local_map_visits[self._position[0], self._position[1]] += visit_increase
-            return
-
-        # --- 5. Expand local map if new measurements are out of bounds ---
-        max_x = max(pos[0] for pos in measure_positions)
-        max_y = max(pos[1] for pos in measure_positions)
-        if max_x >= self._local_map.shape[0]:
-            pad_x = max_x - self._local_map.shape[0] + 1
-            self._local_map = self.np.pad(
-                self._local_map,
-                ((0, pad_x), (0, 0)),
-                mode='constant', constant_values=self.np.nan
-            )
-        if max_y >= self._local_map.shape[1]:
-            pad_y = max_y - self._local_map.shape[1] + 1
-            self._local_map = self.np.pad(
-                self._local_map,
-                ((0, 0), (0, pad_y)),
-                mode='constant', constant_values=self.np.nan
-            )
-
-        # --- 6. Update vegetation quality at measured positions ---
-        for pos, val in zip(measure_positions, measure_values):
-            self._local_map[pos[0], pos[1]] = val
-
-        # --- 7. Track time spent in water at current position ---
-        current_cell_value = self._local_map[self._position[0], self._position[1]]
-        if current_cell_value < 0:
-            self._in_water_counter += 1
-        else:
-            self._in_water_counter = 0
-        
     def set_home_base_position(self) -> None:
         """
         Set the motion destination to the closest home base.

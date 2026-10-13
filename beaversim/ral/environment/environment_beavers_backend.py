@@ -1,6 +1,6 @@
 # Import parent class
 from beaversim.ral.environment.environment_backend import BaseEnvironmentBackend
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 import json
 from scipy import ndimage
 
@@ -52,7 +52,6 @@ class BeaversEnvironmentBackend(BaseEnvironmentBackend):
         self._map = self._map_original.copy()
         self._map_visits = self.np.zeros(self._map_original.shape)
         self._map_visits_roles = self.np.zeros(self._map_original.shape)
-        self._map_visits_boolean = self.np.zeros(self._map_original.shape, dtype=bool)        
         self._map_visits_roles_explorer = self.np.zeros(self._map_original.shape, dtype=bool)
         self._map_visits_roles_builder = self.np.zeros(self._map_original.shape, dtype=bool)
         
@@ -99,7 +98,6 @@ class BeaversEnvironmentBackend(BaseEnvironmentBackend):
         map: Any,
         map_visits: Any,
         home_base_position_store: Any,
-        grass_growth_interval: Optional[list],
         misc: dict
     ) -> None:
         """
@@ -112,15 +110,12 @@ class BeaversEnvironmentBackend(BaseEnvironmentBackend):
         # --- 2. Update maps from agent observations ---
         self._map = map.copy()
         self._map_visits = map_visits.copy()
-        
-        # 1. Update the generic boolean visit map (bitwise OR is a permanent latch)
-        self._map_visits_boolean = self._map_visits_boolean | (self._map_visits > 0)
 
-        # 2. Get the decaying roles map
+        # 1. Get the decaying roles map
         map_visits_roles = misc.get('map_visits_roles', self.np.zeros(self._map_original.shape))
         self._map_visits_roles = map_visits_roles.copy()
 
-        # 3. Update the permanent roles boolean map   
+        # 2. Update the permanent roles boolean map
         eps = 1e-4  # Small epsilon to avoid floating-point issues     
         self._map_visits_roles_explorer = self._map_visits_roles_explorer | (map_visits_roles < -eps)
         self._map_visits_roles_builder = self._map_visits_roles_builder | (map_visits_roles > eps)
@@ -134,6 +129,14 @@ class BeaversEnvironmentBackend(BaseEnvironmentBackend):
         # --- 4. Optional debug print ---
         if self._print:
             print(f"Environment step at time {self._current_time}")
+
+    def layers(self) -> Dict[str, Any]:
+        """
+        Named spatial layers recorded in run snapshots, in array order [x, y].
+        'landscape': combined state (negative = water depth, positive = vegetation quality).
+        'visits_roles': decaying visit ledger, negative = explorers, positive = builders.
+        """
+        return {'landscape': self._map, 'visits_roles': self._map_visits_roles}
 
     def load_map_from_file(self) -> None:
         """
@@ -180,13 +183,11 @@ class BeaversEnvironmentBackend(BaseEnvironmentBackend):
         while a mean-reversion feedback keeps the average vegetation close to a seasonal target.
         """
         from scipy.stats import skewnorm
-        # --- 1. Compute growth and vegetation masks ---
+        # --- 1. Compute growth mask ---
         # 1.1. growth_mask: Where grass is allowed to grow (elevation in allowed interval)
-        # 1.2. vegetation_mask: Where there is any vegetation (for stats)
         growth_mask = (self._map > grass_growth_interval[0]) & (self._map < grass_growth_interval[1])
-        vegetation_mask = (self._map >= 0.05)
         if not self.np.any(growth_mask):
-            # 1.3. If no growth possible, propagate previous stats and exit
+            # 1.2. If no growth possible, propagate previous stats and exit
             self._growth_stats['day'].append(int(self._current_day))
             self._growth_stats['growth_factor_mean'].append(float(self._growth_stats['growth_factor_mean'][-1]) if self._growth_stats['growth_factor_mean'] else 0.0)
             self._growth_stats['growth_factor_std'].append(float(self._growth_stats['growth_factor_std'][-1]) if self._growth_stats['growth_factor_std'] else 0.0)
