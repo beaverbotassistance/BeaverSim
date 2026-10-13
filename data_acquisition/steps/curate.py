@@ -1,0 +1,160 @@
+#!/usr/bin/env python3
+"""Step ``curate``: fill the ``beaver:`` descriptors of a catalog and report what is still unknown.
+
+- **auto:** season, and quality checks on each raster (opens, CRS is the site CRS, nodata declared,
+  values plausible for the product, snow likely); optionally the checksum (``--verify``).
+- **manual:** site confirmation, colonies, land status, governance and licence overrides, from the
+  preset. A manual entry is ``{value, by, date[, note]}``.
+- **repository** values set by the adapter are kept unless the preset overrides them.
+
+Auto quality flags are recomputed on every run; repository and manual flags are kept.
+The catalog is rewritten in place and ``curate_report.csv`` is written next to it.
+
+    python -m data_acquisition.steps.curate --catalog "<drive>/open_datasets/stac/arcticdata_seward/catalog.json" \\
+        --preset arcticdata_seward [--verify]
+"""
+import argparse
+import csv
+import datetime
+import hashlib
+from pathlib import Path
+from typing import Any, Dict, List
+
+import numpy as np
+import pystac
+import rasterio
+from rasterio.windows import Window
+
+from data_acquisition import presets
+from data_acquisition.catalog import descriptors, stac
+from data_acquisition.catalog.descriptors import add_quality, get_field, set_field
+
+SAMPLE = 1024           # side of the central window read for value checks, pixels
+SNOW_LATITUDE = 55.0    # above this latitude, Nov–Apr surveys are flagged as likely snow-covered
+ELEVATION_RANGE = (-500.0, 9000.0)
+REFLECTANCE_RANGE = (0.0, 1.5)   # reflectance slightly above 1 is possible over specular surfaces
+
+
+def _manual(entry: Any) -> Dict[str, Any]:
+    if not isinstance(entry, dict) or "value" not in entry or not entry.get("by"):
+        raise ValueError(f"manual preset entry needs value and by: {entry!r}")
+    return entry
+
+
+def _sample(path) -> np.ma.MaskedArray:
+    """Central window of every band, nodata masked."""
+    with rasterio.open(path) as d:
+        w = Window(max(0, d.width // 2 - SAMPLE // 2), max(0, d.height // 2 - SAMPLE // 2),
+                   min(SAMPLE, d.width), min(SAMPLE, d.height))
+        return d.read(window=w, masked=True)
+
+
+def check_raster(item: pystac.Item, key: str, site: Dict[str, Any], verify: bool) -> None:
+    """Auto quality flags for the raster asset ``key`` of ``item``."""
+    asset = item.assets[key]
+    path = stac.asset_path(asset)
+    if not path.exists():
+        add_quality(item, "missing_file", str(path))
+        return
+    try:
+        info = stac.raster_info(path)
+        data = _sample(path)
+    except rasterio.errors.RasterioError as e:
+        add_quality(item, "unreadable", str(e))
+        return
+    expected = int(site["crs"].split(":")[1])
+    if info["epsg"] != expected:
+        add_quality(item, "crs_mismatch", f"EPSG:{info['epsg']}, site CRS is {site['crs']}")
+    if info["nodata"] is None:
+        add_quality(item, "nodata_undeclared", "no nodata value; zero/black pixels may be outside the survey")
+    valid = data.compressed()
+    if valid.size == 0:
+        add_quality(item, "sample_empty", f"central {SAMPLE}px window has no valid pixels; values not checked")
+    elif key == "dsm" and (valid.min() < ELEVATION_RANGE[0] or valid.max() > ELEVATION_RANGE[1]):
+        add_quality(item, "elevation_range", f"sample {valid.min():.1f}..{valid.max():.1f} m")
+    elif key == "multispectral":
+        outside = np.mean((valid < REFLECTANCE_RANGE[0]) | (valid > REFLECTANCE_RANGE[1]))
+        if outside > 0.01:
+            add_quality(item, "not_reflectance",
+                        f"{outside:.0%} of sampled values outside {REFLECTANCE_RANGE}; range "
+                        f"{valid.min():.3g}..{valid.max():.3g}")
+    if verify:
+        checksum = asset.extra_fields.get("file:checksum")
+        if not checksum:
+            add_quality(item, "checksum_unknown", "no repository checksum to verify against")
+        else:
+            algorithm = {"d510": "md5", "1220": "sha256"}[checksum[:4]]
+            h = hashlib.new(algorithm)
+            with open(path, "rb") as f:
+                for block in iter(lambda: f.read(8 << 20), b""):
+                    h.update(block)
+            if h.hexdigest() != checksum[4:]:
+                add_quality(item, "checksum_mismatch", f"{algorithm} differs from the repository")
+            else:
+                prov = dict(get_field(item, "provenance") or {})
+                prov["verified"] = datetime.date.today().isoformat()
+                item.properties["beaver:provenance"] = prov
+
+
+def curate_item(item: pystac.Item, preset: Dict[str, Any], verify: bool = False) -> None:
+    slug = get_field(item, "site")
+    site = preset["sites"].get(slug)
+    if site is None:
+        add_quality(item, "unknown_site", f"site {slug!r} is not in the preset")
+        return
+    # reset auto flags, keep repository and manual ones
+    item.properties["beaver:quality"] = [q for q in get_field(item, "quality") or [] if q["source"] != "auto"]
+
+    if site.get("confirmed"):
+        c = site["confirmed"]
+        set_field(item, "site", slug, "manual", by=c["by"], date=str(c.get("date")), note=c.get("note"))
+    lat = (item.bbox[1] + item.bbox[3]) / 2
+    date = item.datetime.date()
+    set_field(item, "season", descriptors.season(date, lat), "auto")
+    if abs(lat) >= SNOW_LATITUDE and date.month in ((11, 12, 1, 2, 3, 4) if lat > 0 else (5, 6, 7, 8, 9, 10)):
+        add_quality(item, "snow_likely", f"{date.isoformat()} at {lat:.1f}° latitude")
+
+    for field in ("colonies", "land_status", "governance", "licence"):
+        entry = site.get(field)
+        if entry is not None:
+            entry = _manual(entry)
+            set_field(item, field, entry["value"], "manual", by=entry["by"], date=str(entry.get("date")),
+                      note=entry.get("note"))
+        else:
+            item.properties.setdefault(f"beaver:{field}", None)   # listed as missing
+
+    for key, asset in item.assets.items():
+        if "data" in (asset.roles or []) and asset.media_type == pystac.MediaType.GEOTIFF:
+            check_raster(item, key, site, verify)
+
+
+def curate(catalog_path: Path, preset: Dict[str, Any], verify: bool = False) -> List[Dict[str, Any]]:
+    catalog = stac.load(catalog_path)
+    items = list(catalog.get_items(recursive=True))
+    for item in items:
+        print(f"  {item.id}")
+        curate_item(item, preset, verify)
+    catalog.save(pystac.CatalogType.SELF_CONTAINED)
+    rows = descriptors.summary(items)
+    with open(catalog_path.parent / "curate_report.csv", "w", newline="") as f:
+        w = csv.DictWriter(f, ["item", "missing", "quality"])
+        w.writeheader()
+        w.writerows(rows)
+    return rows
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    parser.add_argument("--catalog", required=True, type=Path)
+    parser.add_argument("--preset", required=True)
+    parser.add_argument("--verify", action="store_true", help="hash every file against its repository checksum")
+    args = parser.parse_args()
+    rows = curate(args.catalog, presets.load(args.preset), args.verify)
+    for r in rows:
+        print(f"{r['item']:45s} missing: {r['missing'] or '-':35s} quality: {r['quality'] or '-'}")
+    errors = stac.validate(stac.load(args.catalog))
+    print("STAC valid" if not errors else "\n".join(["STAC errors:"] + errors))
+
+
+if __name__ == "__main__":
+    main()

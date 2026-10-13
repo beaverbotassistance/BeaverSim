@@ -90,11 +90,13 @@ pycparser==3.0
 Pygments==2.20.0
 pyparsing==3.3.2
 pyproj==3.7.2
+pystac==1.15.2
 python-dateutil==2.9.0.post0
 python-json-logger==4.1.0
 python-slugify==8.0.4
 PyYAML==6.0.3
 pyzmq==27.1.0
+rasterio==1.5.1
 referencing==0.37.0
 requests==2.34.2
 rfc3339-validator==0.1.4
