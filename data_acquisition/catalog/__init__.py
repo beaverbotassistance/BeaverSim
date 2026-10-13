@@ -1,1 +1,1 @@
-"""STAC helpers shared by adapters and steps: build items from files, save, load, validate, descriptors."""
+"""STAC helpers: build items from files, save, load, validate, descriptors, dataset summaries."""

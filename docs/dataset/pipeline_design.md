@@ -13,7 +13,7 @@ Principles:
 - **Inspection first.** Before processing anything, show what a dataset contains: types, coverage,
   dates, quality, licence.
 - **Dataset-agnostic.** The notebooks and steps know *data types*, never dataset names.
-  Everything specific to one source lives in its adapter and preset.
+  Everything specific to one source lives in its dataset summary file (§4).
 - **SI units everywhere.** Metres, square metres, seconds, ISO 8601 dates in UTC. Other units
   (feet, US survey feet, degrees for distances) are converted at ingest; the original unit is recorded.
 - **Physical values are kept.** Stored products are never min–max normalised (see §8).
@@ -39,7 +39,7 @@ positioning, and are not a robust input. They stay listed in the catalog as excl
 
 Every dataset is described as a **STAC** (SpatioTemporal Asset Catalog): JSON files that list
 items with geometry, time and assets. Remote sources (Sentinel, NAIP) are already published as
-STAC; our own data is converted to it by adapters.
+STAC; our own data is converted to it by the builder (§4).
 
 Layout, one catalog per source:
 
@@ -64,12 +64,13 @@ Python tooling: `pystac`, `pystac-client`, `rasterio`/`rioxarray`.
 
 Collecting these fields is a pipeline step of its own (`curate`, §7), run once per dataset and
 revisited when new information arrives. Every field records **where its value came from**:
-`auto` (derived from the data), `repository` (from the source's metadata), or `manual` (entered
-by a person, with name and date).
+`auto` (derived from the data), `repository` (from the source's metadata), `claude` (from a
+summary drafted by Claude and not yet reviewed), or `manual` (entered or checked by a person,
+with name and date).
 
 | Field | Meaning | Collected by |
 |---|---|---|
-| `beaver:site` | site slug | adapter (path or repository metadata), confirmed manually |
+| `beaver:site` | site slug | summary file, confirmed manually |
 | `beaver:colonies` | colonies present in the item | annotations or AOI intersection (§5) |
 | `beaver:positioning` | `rtk`, `gnss`, `gcp`, `none` | auto (EXIF, processing report) or repository |
 | `beaver:season` | winter / spring / summer / autumn | auto (date and latitude) |
@@ -77,33 +78,43 @@ by a person, with name and date).
 | `beaver:licence` | SPDX id (CC0-1.0, CC-BY-4.0, …) | repository; manual for private data |
 | `beaver:land_status` | ownership / jurisdiction of the site | **manual** |
 | `beaver:governance` | data-use terms, Indigenous data-governance notes, publication approval needed | **manual** |
-| `beaver:provenance` | source, DOI, original path, downloaded date, checksum | adapter |
+| `beaver:provenance` | source, DOI, original path, downloaded date, checksum | builder (metadata record, download log) |
 
-Manual fields live in the dataset's **preset** file, so they are versioned and reviewable. The
+Manual fields live in the dataset's **summary** file (§4), so they are versioned and reviewable. The
 inspect notebook shows fields still missing and blocks nothing: it reports what is unknown.
 
-## 4. Adapters
+## 4. From files to a catalog: readers, summaries, one builder
 
-An adapter turns one source into a STAC catalog. Adapters are **written new**, under
-`data_acquisition/adapters/`. The earlier scripts (`dataset/manifest.py`, `audit.py`, `build.py`,
-`open_data/arcticdata.py`) were a first attempt at understanding the Montana drive and testing a
-download; they are kept as **reference only**, for the lessons they encode:
+There are no per-source adapters with their own logic. Code is organised by **data type** and by
+**metadata standard**. Everything specific to a source or site is written as **data**, in a
+dataset summary file:
 
-- capture date from EXIF is the truth, folder names are not;
-- site from GPS when a photo is far from its folder's site;
-- duplicates by capture time and size;
-- split copies, non-georeferenced exports, corrupt files and empty layers must be detected;
-- downloads verified against repository checksums.
+| Part | What it knows | Where |
+|---|---|---|
+| **Readers** | one data type (GeoTIFF, vector, drone photos) or one metadata standard (EML) | `readers/` |
+| **Dataset summary** | per dataset: sites (CRS, manual fields), and per group of files (one DOI, one survey): site, date, product, sensor, positioning, bands, notes; which report belongs to which product | `summaries/<dataset>.yaml` |
+| **Builder** | data root + summary → STAC catalog; cross-checks summary, file header and metadata record | `catalog/build.py` |
+| **Access clients** | one protocol each (DataONE download, STAC API query) | `sources/` |
 
-| Adapter | Source |
-|---|---|
-| `field_drive` | Montana field-season drive (raw files on the drive, not `beaver_dataset/`) |
-| `arcticdata` | NSF Arctic Data Center (download + catalog) |
-| `remote_stac` | Sentinel-2/1 (Earth Search), NAIP (Planetary Computer) |
-| `folder` | any folder of GeoTIFFs and vector files; site/date from a preset |
+Rules:
+- **Structured facts come from readers**, never from the summary: CRS, bounds, band count,
+  checksums, licence, repository dates.
+- **Disagreements are flagged, not resolved**: summary vs file header vs metadata record
+  (band order and count, file not in the record, size, date outside the record). Files on disk
+  that the summary doesn't describe, and described files that are missing, are reported.
+- **Workarounds are written in the summary as data** (e.g. "the repository's band descriptions are
+  shifted; bands follow the methods text"), with a note that travels to the item's quality flags.
+- **Lessons from the earlier scripts** (`dataset/`, reference only; the first downloader `open_data/arcticdata.py` was replaced by `sources/dataone.py` and `readers/eml.py`) become rules of
+  the readers they belong to. For drone photos: capture date from EXIF, not folder names; site from
+  GPS when a photo is far from its folder's site; duplicates by capture time and size. For any
+  file: detect split copies, non-georeferenced exports, corrupt files and empty layers. For
+  downloads: verify against repository checksums.
 
-A **preset** (one YAML file per dataset) holds what the files can't tell us: site names, colony
-list, manual descriptors (§3.1), known quirks.
+**Who writes the summary.** A person, or Claude: a `describe` module (later) gathers the evidence
+(file list, headers, metadata records, report excerpts) and asks Claude to draft the summary
+against the schema; the draft is schema-checked and reviewed. Summary values are recorded with
+source `claude` (model and date) until the file has a `reviewed` entry, then as `manual`. Land
+status and governance are always entered by a person.
 
 ## 5. Space
 
@@ -187,7 +198,7 @@ and produces a standard figure.
 
 | Step | Needs | Produces | Level |
 |---|---|---|---|
-| `curate` | catalog + preset | filled `beaver:` descriptors, list of missing fields | dataset |
+| `curate` | catalog + summary | filled `beaver:` descriptors, list of missing fields | dataset |
 | `photogrammetry` | raw photos | orthomosaic, DSM (OpenDroneMap) | site |
 | `reproject` | raster or vector | same data in the site CRS and SI units, **native resolution** | site |
 | `coregister` | two rasters of the same site, different dates | aligned raster + shift estimate | site |
@@ -227,7 +238,7 @@ never on the dataset name. Both start with **reminders**: check governance notes
 before sharing figures; check basemap terms before using maps in publications.
 
 **`inspect.ipynb`**: catalog → understanding.
-1. Load or build the catalog (adapter + source path + preset).
+1. Load or build the catalog (data root + summary file).
 2. Summary: items by type, site, date; licences; governance notes; descriptors still missing.
 3. Coverage map: footprints of all items, AOIs if present.
 4. Timeline: one row per product type, one mark per epoch; Sentinel dates alongside.
@@ -237,7 +248,7 @@ before sharing figures; check basemap terms before using maps in publications.
 
 **`process.ipynb`**: config → products.
 1. Load the catalog; the planner proposes a plan.
-2. Config dictionary, pre-filled from the plan and the preset:
+2. Config dictionary, pre-filled from the plan and the summary:
    ```python
    config = {
        "catalog": "...",
@@ -273,13 +284,13 @@ afterwards.
 
 ```
 data_acquisition/
-  catalog/      STAC helpers: build, read, validate, descriptors
-  adapters/     field_drive, arcticdata, remote_stac, folder
+  catalog/      STAC helpers, descriptors, summary schema, build.py (summary → catalog)
+  readers/      geotiff, eml; later vector, photos
+  sources/      dataone (download); later stac_api (Sentinel, NAIP)
+  summaries/    one YAML file per dataset
   steps/        one module per step
   planner.py
-  presets/      one YAML file per dataset
   dataset/      earlier scripts, reference only
-  open_data/    earlier downloader, reference only
   modules/      existing DEM/RGB conversion, reused where useful
 notebooks/dataset/inspect.ipynb, process.ipynb
 ```
@@ -290,10 +301,11 @@ Figures use `beaversim.viz` (theme, palette, media presets) so they match the si
 
 | # | Milestone | Done when |
 |---|---|---|
-| 1 | Catalog helpers + `arcticdata` adapter + `curate` | Swan Lake downloads described as a valid STAC catalog with descriptors |
+| 1 | Catalog helpers, GeoTIFF/EML readers, builder, DataONE client, `curate` | Swan Lake downloads described as a valid STAC catalog with descriptors (**done**) |
 | 2 | `inspect.ipynb` on Swan Lake | coverage map, timeline, item browser, side-by-side work |
-| 3 | `remote_stac` adapter + Sentinel-2 in the timeline and side-by-side | Sentinel dates and clipped quick-looks over Swan Lake |
-| 4 | `field_drive` adapter | Montana in the same inspect notebook, no notebook changes |
+| 3 | `stac_api` source + Sentinel-2 in the timeline and side-by-side | Sentinel dates and clipped quick-looks over Swan Lake |
+| 4 | photo and vector readers + Montana summary | Montana in the same inspect notebook, no notebook changes |
+| – | `describe`: Claude drafts a summary from the evidence | any time; not blocking |
 | 5 | Planner + `process.ipynb` with `reproject`, `define_aoi` (+ review), `clip`, `vegetation_index` | colony products for Swan Lake |
 | 6 | `annotations` (colony assignment), `water_mask`, `sentinel_series`, `change` | multi-year colony report for Swan Lake; annotated epochs for Rumney |
 | 7 | `photogrammetry` (OpenDroneMap) and `coregister` | Montana surveys processed into the same products |

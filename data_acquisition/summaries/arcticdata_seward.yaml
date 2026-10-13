@@ -1,0 +1,134 @@
+# Dataset summary: what the files and their metadata records can't tell us, written as data.
+# Schema: data_acquisition/catalog/summary.py. Paths are relative to the data root given on the
+# command line (here the drive's open_datasets folder).
+#
+# Values written here are recorded with source "claude" while `reviewed` is empty, and as
+# "manual" (by the reviewer) once someone has checked them. Land status and governance must be
+# entered by a person.
+
+schema: 1
+dataset: arcticdata_seward
+title: Seward Peninsula beaver drone surveys (NSF Arctic Data Center, Tape, Jones et al.)
+authored: {by: claude, model: claude-opus-5-5, date: 2026-10-13,
+           note: "from file names, EML records and docs/dataset/beaver_open_datasets.md (A1, A2)"}
+reviewed: null                         # {by, date} once a person has checked this file
+
+source:
+  kind: dataone
+  provider: NSF Arctic Data Center
+  url: https://arcticdata.io
+  api: https://arcticdata.io/metacat/d1/mn/v2
+  log: downloads.csv                   # download log written by data_acquisition.sources.dataone
+
+sites:
+  swan_lake_dlb:
+    name: Swan Lake drained lake basin (MP64), Seward Peninsula, Alaska
+    crs: EPSG:32603                    # UTM zone 3N, metres
+    colonies: null                     # from AOI estimation and review (pipeline_design.md §5.3)
+    land_status: null                  # not stated in the metadata; possibly Alaska Native corporation land
+    governance: null                   # licence is CC0, which does not settle Indigenous data governance
+
+# One group per downloaded dataset (DOI). Group fields apply to every file unless a file overrides
+# them. `record` is the standard metadata record (EML); licence, title, creators and checksums are
+# read from it and cross-checked, not copied here.
+groups:
+  - folder: arcticdata/doi_10.18739_A2J09W600
+    doi: doi:10.18739/A2J09W600
+    record: {path: metadata.xml, format: eml}
+    site: swan_lake_dlb
+    date: 2021-08-03
+    platform: DJI Phantom 4 RTK
+    instruments: [FC6310R]
+    positioning: [rtk, gcp]            # D-RTK 2 base station; Leica Viva GNSS ground control (EML methods)
+    files:
+      - {path: Swan_Lake_DLB_MP64_P4RTK_03August2021_Orthomosaic_WGS84_UTM_Zone3N_5cm.tif, product: orthomosaic}
+      - {path: Swan_Lake_DLB_MP64_P4RTK_03August2021_Digital_Surface_Model_WGS84_UTM_Zone3N_Ellipsoid_Heights_10cm.tif,
+         product: dsm, vertical_datum: WGS 84 ellipsoidal height}
+      - {path: Swan_Lake_DLB_MP64_03August2021_P4RTK_Pix4D_report.pdf, role: report, attach_to: [orthomosaic, dsm]}
+
+  - folder: arcticdata/doi_10.18739_A2D795C54
+    doi: doi:10.18739/A2D795C54
+    record: {path: metadata.xml, format: eml}
+    site: swan_lake_dlb
+    date: 2021-08-03
+    platform: DJI P4 Multispectral
+    instruments: [P4M]
+    positioning: [rtk, gcp]
+    files:
+      - {path: Swan_Lake_DLB_MP64_P4_MultiSpectral_03Aug2021_WGS84_UTM_Zone_3N_10cm.tif, product: multispectral,
+         bands: [blue, green, red, rededge, nir], unit: reflectance}
+      - {path: Swan_Lake_DLB_MP64_03August2021_P4_Multispectral_Pix4D_Report.pdf, role: report, attach_to: [multispectral]}
+
+  - folder: arcticdata/doi_10.18739_A25M6284J
+    doi: doi:10.18739/A25M6284J
+    record: {path: metadata.xml, format: eml}
+    site: swan_lake_dlb
+    date: 2022-03-27
+    platform: DJI Phantom 4 RTK
+    instruments: [FC6310R]
+    positioning: [rtk, gcp]
+    notes: ["late-winter survey, snow cover"]
+    files:
+      - {path: Swan_Lake_DLB_MP64_P4RTK_27March2022_Orthomosaic_WGS84_UTM_Zone3N_5cm.tif, product: orthomosaic}
+      - {path: Swan_Lake_DLB_MP64_P4RTK_27March2022_Digital_Surface_Model_WGS84_UTM_Zone3N_Ellpsoid_Height_10cm.tif,
+         product: dsm, vertical_datum: WGS 84 ellipsoidal height}
+      - {path: Swan_Lake_DLB_MP64_27March2022_P4RTK_Pix4D_report.pdf, role: report, attach_to: [orthomosaic, dsm]}
+
+  - folder: arcticdata/doi_10.18739_A2NS0M03W
+    doi: doi:10.18739/A2NS0M03W
+    record: {path: metadata.xml, format: eml}
+    site: swan_lake_dlb
+    date: 2022-08-12
+    platform: DJI Phantom 4 RTK
+    instruments: [FC6310R]
+    positioning: [rtk, gcp]
+    files:
+      - {path: Swan_Lake_DLB_MP64_P4RTK_12August2022_Orthomosaic_WGS84_UTM_Zone3N_5cm.tif, product: orthomosaic}
+      - {path: Swan_Lake_DLB_MP64_P4RTK_12August2022_Digital_Surface_Model_WGS84_UTM_Zone3N_Ellipsoid_Heights_10cm.tif,
+         product: dsm, vertical_datum: WGS 84 ellipsoidal height}
+      - {path: Swan_Lake_DLB_MP64_12August2022_P4RTK_Pix4D_report.pdf, role: report, attach_to: [orthomosaic, dsm]}
+
+  - folder: arcticdata/doi_10.18739_A2RJ48W7C
+    doi: doi:10.18739/A2RJ48W7C
+    record: {path: metadata.xml, format: eml}
+    site: swan_lake_dlb
+    date: 2022-08-12
+    platform: DJI P4 Multispectral
+    instruments: [P4M]
+    positioning: [rtk, gcp]
+    files:
+      - {path: Swan_Lake_DLB_MP64_P4_MultiSpectral_12Aug2022_WGS84_UTM_Zone_3N_10cm.tif, product: multispectral,
+         bands: [blue, green, red, rededge, nir], unit: reflectance}
+      - {path: Swan_Lake_DLB_MP64_12August2022_P4_Multispectral_Pix4D_Report.pdf, role: report, attach_to: [multispectral]}
+
+  - folder: arcticdata/doi_10.18739_A2H12V896
+    doi: doi:10.18739/A2H12V896
+    record: {path: metadata.xml, format: eml}
+    site: swan_lake_dlb
+    date: 2023-08-02
+    platform: DJI P4 Multispectral
+    instruments: [P4M]
+    positioning: [rtk, gcp]
+    files:
+      - {path: Swan_Lake_DLB_MP64_P4_MultiSpectral_02August2023_WGS84_UTM_Zone_3N_10cm.tif, product: multispectral,
+         bands: [blue, green, red, rededge, nir], unit: reflectance}
+      - {path: Swan_Lake_DLB_MP64_02August2023_P4_Multispectral_Pix4D_Report.pdf, role: report, attach_to: [multispectral]}
+
+  # ABON 2024: nine sites in one dataset; only the Swan Lake files were downloaded.
+  - folder: arcticdata/doi_10.18739_A22R3NZ98
+    doi: doi:10.18739/A22R3NZ98
+    record: {path: metadata.xml, format: eml}
+    download_filter: ^Swan_Lake_DLB_
+    site: swan_lake_dlb
+    date: 2024-08-04
+    platform: DJI Mavic 3 Multispectral
+    instruments: [M3M]
+    positioning: [rtk, gcp]
+    notes: ["EML attribute descriptions are shifted between files (the DSM is described as multispectral,
+             the multispectral as RGB, the RGB as elevation); bands below follow the methods text"]
+    files:
+      - {path: Swan_Lake_DLB_M3_Orthomosaic_RGB_04August2024_WGS84_UTM_Zone_3N_5cm.tif, product: orthomosaic}
+      - {path: Swan_Lake_DLB_M3_Digital_Surface_Model_04August2024_WGS84_UTM_Zone_3N_Ellipsoid_Height_10cm.tif,
+         product: dsm, vertical_datum: WGS 84 ellipsoidal height}
+      - {path: Swan_Lake_DLB_M3_Multispectral_Bands_04August2024_WGS84_UTM_Zone_3N_10cm.tif, product: multispectral,
+         bands: [green, red, rededge, nir], unit: reflectance}

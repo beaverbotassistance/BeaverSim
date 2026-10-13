@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import pystac
-import rasterio
 from pystac.extensions.eo import Band, EOExtension
 from pystac.extensions.file import FileExtension
 from pystac.extensions.projection import ProjectionExtension
@@ -21,16 +20,6 @@ MULTIHASH = {"md5": "d510", "sha256": "1220"}
 
 def multihash(algorithm: str, hexdigest: str) -> str:
     return MULTIHASH[algorithm.lower().replace("-", "")] + hexdigest.lower()
-
-
-def raster_info(path: Path) -> Dict[str, Any]:
-    """Header-only facts about a raster: CRS, bounds, shape, transform, resolution, bands."""
-    with rasterio.open(path) as d:
-        return {"epsg": d.crs.to_epsg() if d.crs else None, "wkt": d.crs.to_wkt() if d.crs else None,
-                "bounds": tuple(d.bounds), "shape": [d.height, d.width], "transform": list(d.transform)[:6],
-                "resolution": tuple(abs(r) for r in d.res), "count": d.count, "dtypes": list(d.dtypes),
-                "nodata": d.nodata, "colorinterp": [c.name for c in d.colorinterp],
-                "overviews": d.overviews(1)}
 
 
 def footprint(info: Dict[str, Any]) -> (Dict[str, Any], List[float]):
@@ -49,7 +38,7 @@ def raster_item(item_id: str, path: Path, info: Dict[str, Any], date: datetime.d
                 checksum: Optional[str] = None, title: Optional[str] = None) -> pystac.Item:
     """Item with one raster asset, footprint from the raster bounds, and proj/raster/eo/file fields.
 
-    ``info`` comes from :func:`raster_info`. ``bands`` is one dict per band:
+    ``info`` comes from :func:`data_acquisition.readers.geotiff.info`. ``bands`` is one dict per band:
     ``{"name": ..., "common_name": ...}`` (common_name may be None).
     ``date`` has day precision: ``datetime`` is midnight UTC of that day.
     """

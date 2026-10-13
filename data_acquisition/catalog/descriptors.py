@@ -1,8 +1,14 @@
 """The ``beaver:`` descriptors (pipeline_design.md §3.1).
 
 Each descriptor is stored as a STAC property ``beaver:<field>``. Where its value came from is
-stored in ``beaver:origin`` as ``{field: {"source": "auto" | "repository" | "manual", ...}}``;
-manual entries also carry who entered them and when. A field whose value is ``None`` is missing.
+stored in ``beaver:origin`` as ``{field: {"source": ..., ...}}``:
+
+- ``auto``: derived from the data by code;
+- ``repository``: read from the source's standard metadata record;
+- ``claude``: written by Claude in a dataset summary not yet reviewed (never counts as confirmed);
+- ``manual``: entered or checked by a person.
+
+``manual`` and ``claude`` entries also carry who and when. A field whose value is ``None`` is missing.
 """
 import datetime
 from typing import Any, Dict, List, Optional
@@ -10,7 +16,7 @@ from typing import Any, Dict, List, Optional
 import pystac
 
 PREFIX = "beaver:"
-SOURCES = ("auto", "repository", "manual")
+SOURCES = ("auto", "repository", "claude", "manual")
 
 FIELDS = {
     "site": "site slug",
@@ -32,8 +38,8 @@ def set_field(item: pystac.Item, field: str, value: Any, source: str,
         raise KeyError(f"unknown descriptor {field!r}")
     if source not in SOURCES:
         raise ValueError(f"source must be one of {SOURCES}, got {source!r}")
-    if source == "manual" and not by:
-        raise ValueError(f"manual value for {field!r} needs the name of who entered it")
+    if source in ("manual", "claude") and not by:
+        raise ValueError(f"{source} value for {field!r} needs who entered it")
     item.properties[PREFIX + field] = value
     origin = {"source": source}
     origin.update({k: v for k, v in (("by", by), ("date", date), ("note", note)) if v})
