@@ -13,6 +13,7 @@ products that exist now. See ``docs/dataset/describing_a_dataset.md``.
 import argparse
 import ast
 from pathlib import Path
+from typing import List
 
 import yaml
 
@@ -36,7 +37,7 @@ def _modules(folder: Path) -> str:
 PROMPT = """# Intake of a new dataset: `{dataset}`
 
 You are taking a newly arrived dataset into the BeaverSim dataset pipeline, in a Claude Code session.
-Source: **{url}**. Data root: `{root}`.
+Source: {url}. Data root: `{root}`.
 
 The pipeline is generic: code is organised by access protocol (`sources/`), data type and metadata
 standard (`readers/`); everything specific to a dataset or site goes in its summary file, as data.
@@ -136,7 +137,16 @@ def _sites() -> str:
     return registry_lines()
 
 
-def write_prompt(url: str, root: Path, dataset: str, out_dir: Path) -> Path:
+def _sources_text(urls: List[str]) -> str:
+    if len(urls) == 1:
+        return f"**{urls[0]}**"
+    return (f"{len(urls)} records that together form one dataset (one summary, one group per record):\n\n"
+            + "\n".join(f"- {u}" for u in urls) + "\n")
+
+
+def write_prompt(url, root: Path, dataset: str, out_dir: Path) -> Path:
+    """``url``: one link, or a list of links whose records form one dataset."""
+    url = _sources_text([url] if isinstance(url, str) else list(url))
     out_dir.mkdir(parents=True, exist_ok=True)
     records = "\n".join(f"- `{name}`: saved as `{spec['file']}`, read by `{spec['read'].__module__}`"
                         for name, spec in RECORDS.items())
@@ -149,7 +159,8 @@ def write_prompt(url: str, root: Path, dataset: str, out_dir: Path) -> Path:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    parser.add_argument("--url", required=True, help="DOI or landing page of the dataset")
+    parser.add_argument("--url", required=True, action="append",
+                        help="DOI or landing page of the dataset; repeat for several records forming one dataset")
     parser.add_argument("--root", required=True, type=Path, help="data root (e.g. the open_datasets folder)")
     parser.add_argument("--dataset", required=True, help="dataset slug, e.g. zenodo_red_canyon")
     parser.add_argument("--out", type=Path, default=None, help="folder for the prompt")
