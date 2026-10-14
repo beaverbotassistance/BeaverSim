@@ -170,7 +170,8 @@ FILE_SCHEMA = _obj({
     "table": _obj({"skip": {"type": "integer", "description": "lines above the column names"},
                    "x": _str("x/easting/longitude column, \"\" if the file is not a table of points"),
                    "y": _str("y/northing/latitude column"), "z": _str("height column, else \"\""),
-                   "delimiter": _str("\"\" for comma")}),
+                   "delimiter": _str("\"\" for comma"),
+                   "rows_only": {"type": "boolean", "description": "true for a table without coordinates"}}),
     "fields": _obj({"time": _str("column with each row's date, else \"\""),
                     "id": _list({"type": "string"}, "columns identifying a feature across rows, else []"),
                     "group": _str("column grouping rows (e.g. a watershed name), else \"\""),
@@ -242,7 +243,9 @@ Rules:
 - A new site that is an area holding several sites (e.g. a set of watersheds) gets `level: region` and
   `contains: [...]` (registry slugs inside it, checked against footprints) in `sites.yaml`.
 - A raster without a CRS (`has_crs: false`) needs `crs` from the record or its text. A CSV of points becomes a
-  point layer with `table` (lines to skip above the column names, coordinate columns) and `crs`.
+  point layer with `table` (lines to skip above the column names, coordinate columns) and `crs`. A CSV without
+  coordinates (e.g. model results per stream reach) takes `table: {{skip}}` alone: a non-spatial item, with
+  `fields: {{id: ...}}` naming the column it would join on.
 - Land status, governance and colonies are decided by people. You may give hints with their source.
 - Write every value out in full where it applies. Do not use YAML anchors or aliases (`&name`, `*name`), even
   when several sites or files share the same text: reviewers edit them one by one.
@@ -277,8 +280,9 @@ def _to_summary(out: Dict[str, Any], dataset: str, source_kind: str, evidence: D
             if f["layers"]["pattern"]:
                 entry["layers"] = {"pattern": f["layers"]["pattern"],
                                    "date_precision": f["layers"]["date_precision"] or "year"}
-            if f["table"]["x"]:
-                entry["table"] = {k: v for k, v in f["table"].items() if v not in ("", None)} | {"skip": f["table"]["skip"]}
+            if f["table"]["x"] or f["table"]["rows_only"]:
+                entry["table"] = ({k: v for k, v in f["table"].items() if v not in ("", None) and k != "rows_only"}
+                                  | {"skip": f["table"]["skip"]})
             for k in ("product", "role", "attach_to", "site", "date", "date_precision", "start_date", "end_date",
                       "bands", "unit", "vertical_datum", "crs", "notes"):
                 if f[k] and not (k == "date_precision" and f[k] == "day"):

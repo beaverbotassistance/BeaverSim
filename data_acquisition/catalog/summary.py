@@ -62,8 +62,11 @@ Attribute columns with a meaning: ``fields: {time, id, group, value}`` (each a c
 list), for vector files whose rows carry their own time or grouping (e.g. one row per dam per image, with
 its date and watershed). The item stays one; the declaration tells later steps how to filter it.
 
-Tables of points (CSV): ``table: {skip, x, y[, z, delimiter]}`` gives the lines to skip above the column
-names and the coordinate columns; with ``crs`` (or the site CRS), the rows become a point layer.
+Tables (CSV): ``table: {skip[, x, y, z, delimiter]}`` gives the lines to skip above the column names and,
+for tables of points, the coordinate columns; with ``crs`` (or the site CRS), the rows become a point layer.
+Without ``x``/``y`` the table is non-spatial (e.g. model results per stream reach whose geometry is
+elsewhere): an item with its columns and row count and no footprint, its site set by the summary; declare
+the key it would join on with ``fields: {id: ...}``.
 
 A report or metadata file attaches to items of its own group; when its group has none of the products in
 ``attach_to`` (e.g. a group holding only a time series), it attaches to matching items of any group.
@@ -214,9 +217,9 @@ def check(s: Dict[str, Any], sites: Optional[Dict[str, Dict[str, Any]]] = None) 
                     for v in fld.values())):
                 p.append(f"{fw}: fields must be {{time, id, group, value}}, each a column name (id may be a list)")
             tbl = merged.get("table")
-            if tbl is not None and not (isinstance(tbl, dict) and tbl.get("x") and tbl.get("y")
+            if tbl is not None and not (isinstance(tbl, dict) and bool(tbl.get("x")) == bool(tbl.get("y"))
                                         and set(tbl) <= {"skip", "x", "y", "z", "delimiter"}):
-                p.append(f"{fw}: table must be {{skip, x, y[, z, delimiter]}}")
+                p.append(f"{fw}: table must be {{skip[, x, y, z, delimiter]}} (x and y together, or neither)")
             if f.get("product"):
                 if merged.get("site") not in sites:
                     p.append(f"{fw}: site {merged.get('site')!r} is not in data_acquisition/sites.yaml")

@@ -99,29 +99,25 @@ def data_item(s: Dict[str, Any], f: Dict[str, Any], path: Path, rel: str, group:
     checksum = stac.multihash(algorithm, digest) if algorithm in stac.MULTIHASH and not archive else None
 
     flags = []
-    if f.get("table"):          # a CSV of points; the CRS comes from the summary (or the site)
+    if f.get("table"):          # a CSV: points (CRS from the summary or the site), or rows without geometry
         crs = f.get("crs") or s["sites"][site]["crs"]
         layers = table.info(path, f["table"], crs)
         item = stac.vector_item(item_id, path, layers, start, end, product, ["data"], checksum, title=path.name)
         item.assets[product].media_type = "text/csv"
         item.properties["beaver:table"] = f["table"]
-        item.properties["beaver:crs_from_summary"] = crs
-        flags.append(("crs_from_summary", f"the table states no CRS; {crs} from the "
-                                          f"{'summary' if f.get('crs') else 'site'}", "build"))
+        if layers.get("spatial", True):
+            item.properties["beaver:crs_from_summary"] = crs
+            flags.append(("crs_from_summary", f"the table states no CRS; {crs} from the "
+                                              f"{'summary' if f.get('crs') else 'site'}", "build"))
+        else:
+            flags.append(("non_spatial", f"a table of {layers['features']} rows without coordinates; no footprint, "
+                                         "site from the summary", "build"))
     elif vector.is_vector(path):
         layers = one_layer(_vector_info(path), layer) if layer else _vector_info(path)
         item = stac.vector_item(item_id, path, layers, start, end, product, ["data"], checksum,
                                 title=f"{path.name}, layer {layer}" if layer else path.name)
         if layer:
             item.properties["beaver:layer"] = layer
-        if f.get("fields"):
-            item.properties["beaver:fields"] = f["fields"]
-            columns = {c for l in layers["layers"] for c in l["fields"]}
-            named = [c for v in f["fields"].values() for c in ([v] if isinstance(v, str) else v)]
-            absent = [c for c in named if c not in columns]
-            if absent:
-                flags.append(("fields_missing", f"declared columns {absent} are not in the file "
-                                                f"(columns: {sorted(columns)})", "build"))
         if layers["vertical_crs"]:
             item.properties["beaver:vertical_crs"] = layers["vertical_crs"]
     else:
@@ -141,6 +137,14 @@ def data_item(s: Dict[str, Any], f: Dict[str, Any], path: Path, rel: str, group:
         if path.suffix.lower() not in geotiff.EXTENSIONS:
             item.assets[product].media_type = None      # not a GeoTIFF; the GDAL driver is recorded instead
             item.assets[product].extra_fields["beaver:driver"] = header["driver"]
+    if f.get("fields") and (f.get("table") or vector.is_vector(path)):    # meaning of attribute columns
+        item.properties["beaver:fields"] = f["fields"]
+        columns = {c for l in layers["layers"] for c in l["fields"]}
+        named = [c for v in f["fields"].values() for c in ([v] if isinstance(v, str) else v)]
+        absent = [c for c in named if c not in columns]
+        if absent:
+            flags.append(("fields_missing", f"declared columns {absent} are not in the file "
+                                            f"(columns: {sorted(columns)})", "build"))
     for flag, detail, flag_source in flags:
         add_quality(item, flag, detail, source=flag_source)
 

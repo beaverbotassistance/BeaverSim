@@ -97,7 +97,8 @@ def check_vector(item: pystac.Item, key: str, site: Dict[str, Any], verify: bool
         return
     try:
         spec = item.properties.get("beaver:table")
-        info = table.info(path, spec, item.properties["beaver:crs_from_summary"]) if spec else vector.info(path)
+        info = (table.info(path, spec, item.properties.get("beaver:crs_from_summary") or site["crs"]) if spec
+                else vector.info(path))
         if item.properties.get("beaver:layer"):        # an item for one layer of the file: check that layer
             from data_acquisition.catalog.build import one_layer
             info = one_layer(info, item.properties["beaver:layer"])
@@ -109,7 +110,9 @@ def check_vector(item: pystac.Item, key: str, site: Dict[str, Any], verify: bool
         add_quality(item, "empty_layers", f"{len(empty)} of {len(info['layers'])} layers have no features: "
                                           f"{', '.join(empty[:10])}{'…' if len(empty) > 10 else ''}")
     expected = int(site["crs"].split(":")[1])
-    if not info["crs"]:
+    if info.get("spatial") is False:
+        pass                    # a non-spatial table: no CRS to check
+    elif not info["crs"]:
         add_quality(item, "crs_mixed", "layers have different CRSs (or none); each is reprojected on its own")
     elif info["epsg"] != expected:
         add_quality(item, "crs_differs", f"{'EPSG:' + str(info['epsg']) if info['epsg'] else 'a CRS without EPSG code'}"
@@ -171,8 +174,10 @@ def curate_item(item: pystac.Item, summary: Dict[str, Any], verify: bool = False
 
     if site.get("confirmed"):
         _set_entered(item, "site", site["confirmed"], slug)
-    lat = (item.bbox[1] + item.bbox[3]) / 2
-    if item.datetime is not None:
+    lat = (item.bbox[1] + item.bbox[3]) / 2 if item.bbox else None
+    if lat is None:            # no footprint (a non-spatial table): no hemisphere, so no season
+        set_field(item, "season", "unknown", "auto", note="no footprint")
+    elif item.datetime is not None:
         date = item.datetime.date()
         set_field(item, "season", descriptors.season(date, lat), "auto")
         if abs(lat) >= SNOW_LATITUDE and date.month in ((11, 12, 1, 2, 3, 4) if lat > 0 else (5, 6, 7, 8, 9, 10)):
