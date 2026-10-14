@@ -102,7 +102,8 @@ sites:
     governance: null
     level: region
     contains: [glacier_creek, grouse_creek, kotz_3, kotz_b_east, kotz_b_south, kotz_b_west,
-               south_fork_serpentine_river, swan_lake_creek, swan_lake_dlb_mp64, upper_nome_river]
+               south_fork_serpentine_river, swan_lake_creek, swan_lake_dlb_mp64, upper_nome_river,
+               willow_creek]                    # willow_creek 59% inside; ptarmigan_creek outside every watershed
   eeager_western_us:
     name: EEAGER dam-mapping regions in Oregon, Washington, Nevada, Montana, Wyoming and Colorado, western USA
     crs: EPSG:5070                      # NAD83 / CONUS Albers: the regions span UTM zones 10 to 13
@@ -143,3 +144,15 @@ sites:
     governance: null
     level: region
     contains: []                        # no registry site lies in Ontario
+  willow_creek:
+    name: Willow Creek beaver dams and ponds, Seward Peninsula, Alaska
+    crs: EPSG:32603
+    colonies: null
+    land_status: null
+    governance: null
+  ptarmigan_creek:
+    name: Ptarmigan Creek failed beaver dam, Seward Peninsula, Alaska
+    crs: EPSG:32603
+    colonies: null
+    land_status: null
+    governance: null

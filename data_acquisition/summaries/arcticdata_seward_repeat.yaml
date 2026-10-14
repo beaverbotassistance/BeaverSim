@@ -1,0 +1,992 @@
+# Drafted by Claude in a Claude Code session (intake + describe prompts), reviewed by Federico Oliva.
+schema: 1
+dataset: arcticdata_seward_repeat
+title: Repeat drone surveys of beaver dams and ponds at ten sites on the Seward and Baldwin Peninsulas, Alaska,
+  2021-2024 (orthomosaics, DSMs, multispectral; Jones and Tape, NSF Arctic Data Center)
+authored:
+  by: claude
+  model: claude-opus-5-5
+  date: 2026-10-14
+  note: Claude Code session, from evidence.json
+reviewed:
+  by: Federico Oliva
+  date: 2026-10-14
+source:
+  kind: dataone
+  provider: NSF Arctic Data Center
+  url: https://arcticdata.io
+  api: https://arcticdata.io/metacat/d1/mn/v2     # the coordinating node returned 404 for these data objects
+  log: downloads.csv
+# Sites are defined once in data_acquisition/sites.yaml (name, CRS, land status, governance, colonies);
+# here only this dataset's hints for them.
+sites:
+  upper_nome_river:
+    hints:
+      land_status: 'Not stated in any EML record. beaver_open_datasets.md (A1 ''Watch out'' and Notes) says the Alaska sites may be on Alaska Native corporation lands; to check against land records.'
+      governance: 'All 27 EML records give CC0-1.0, which settles copyright only (beaver_open_datasets.md, Notes). No data-use or Indigenous data governance terms are stated in the records.'
+  glacier_creek:
+    hints:
+      land_status: 'Not stated in any EML record. beaver_open_datasets.md (A1 ''Watch out'' and Notes) says the Alaska sites may be on Alaska Native corporation lands; to check against land records.'
+      governance: 'All 27 EML records give CC0-1.0, which settles copyright only (beaver_open_datasets.md, Notes). No data-use or Indigenous data governance terms are stated in the records.'
+  south_fork_serpentine_river:
+    hints:
+      land_status: 'Not stated in any EML record. beaver_open_datasets.md (A1 ''Watch out'' and Notes) says the Alaska sites may be on Alaska Native corporation lands; to check against land records.'
+      governance: 'All 27 EML records give CC0-1.0, which settles copyright only (beaver_open_datasets.md, Notes). No data-use or Indigenous data governance terms are stated in the records.'
+  swan_lake_creek:
+    hints:
+      land_status: 'Not stated in any EML record. beaver_open_datasets.md (A1 ''Watch out'' and Notes) says the Alaska sites may be on Alaska Native corporation lands; to check against land records.'
+      governance: 'All 27 EML records give CC0-1.0, which settles copyright only (beaver_open_datasets.md, Notes). No data-use or Indigenous data governance terms are stated in the records.'
+  willow_creek:
+    hints:
+      land_status: 'Not stated in any EML record. beaver_open_datasets.md (A1 ''Watch out'' and Notes) says the Alaska sites may be on Alaska Native corporation lands; to check against land records.'
+      governance: 'All 27 EML records give CC0-1.0, which settles copyright only (beaver_open_datasets.md, Notes). No data-use or Indigenous data governance terms are stated in the records.'
+  ptarmigan_creek:
+    hints:
+      land_status: 'Not stated in any EML record. beaver_open_datasets.md (A1 ''Watch out'' and Notes) says the Alaska sites may be on Alaska Native corporation lands; to check against land records.'
+      governance: 'All 27 EML records give CC0-1.0, which settles copyright only (beaver_open_datasets.md, Notes). No data-use or Indigenous data governance terms are stated in the records.'
+      colonies: 'EML title calls the feature a ''Failed Beaver Dam''; no colony information in the record.'
+  kotz_3:
+    hints:
+      land_status: 'Not stated in any EML record. beaver_open_datasets.md (A1 ''Watch out'' and Notes) says the Alaska sites may be on Alaska Native corporation lands; to check against land records.'
+      governance: 'All 27 EML records give CC0-1.0, which settles copyright only (beaver_open_datasets.md, Notes). No data-use or Indigenous data governance terms are stated in the records.'
+  kotz_b_east:
+    hints:
+      land_status: 'Not stated in any EML record. beaver_open_datasets.md (A1 ''Watch out'' and Notes) says the Alaska sites may be on Alaska Native corporation lands; to check against land records.'
+      governance: 'All 27 EML records give CC0-1.0, which settles copyright only (beaver_open_datasets.md, Notes). No data-use or Indigenous data governance terms are stated in the records.'
+  kotz_b_south:
+    hints:
+      land_status: 'Not stated in any EML record. beaver_open_datasets.md (A1 ''Watch out'' and Notes) says the Alaska sites may be on Alaska Native corporation lands; to check against land records.'
+      governance: 'All 27 EML records give CC0-1.0, which settles copyright only (beaver_open_datasets.md, Notes). No data-use or Indigenous data governance terms are stated in the records.'
+  kotz_b_west:
+    hints:
+      land_status: 'Not stated in any EML record. beaver_open_datasets.md (A1 ''Watch out'' and Notes) says the Alaska sites may be on Alaska Native corporation lands; to check against land records.'
+      governance: 'All 27 EML records give CC0-1.0, which settles copyright only (beaver_open_datasets.md, Notes). No data-use or Indigenous data governance terms are stated in the records.'
+groups:
+- folder: arcticdata/doi_10.18739_A2599Z35K
+  doi: doi:10.18739/A2599Z35K
+  record:
+    path: metadata.xml
+    format: eml
+  site: upper_nome_river
+  date: 2021-08-04
+  platform: DJI Phantom 4 RTK Multispectral
+  positioning:
+  - rtk
+  evidence:
+  - 'doi: folder name doi_10.18739_A2599Z35K'
+  - 'site: file names (Upper_Nome_River_MP31) and EML title (Upper Nome River (MP31)); GeoTIFF footprint overlaps the upper_nome_river rasters of arcticdata_abon_2024 (100% of this raster''s box)'
+  - 'date: file names (04August2021 / 04Aug2021), EML title, EML dates and methods text'
+  - 'platform: methods text (DJI Phantom 4 Real-Time Kinematic (DJI P4RTK) Multispectral quadcopter); file names say P4_MultiSpectral'
+  - 'positioning: methods text names a DJI D-RTK 2 Mobile Base Station -> rtk; the methods also say a Leica Viva differential GPS provided ground control, but the Pix4D report states ''Georeferencing: yes, no 3D GCP'', so gcp is not set (see open questions)'
+  - 'product multispectral: file name (P4_MultiSpectral), EML title (Multispectral Orthomosaic Image), 5-band float32 GeoTIFF at 10 cm'
+  - 'bands: EML entity attributes (Blue, Green, Red, Red Edge, Near Infrared); the GeoTIFF header does not declare them (gray + undefined)'
+  - 'unit: methods text (MicaSense calibrated reflectance panel, radiometric calibration in the Pix4D Index Calculator)'
+  - 'report: file name (P4_Multispectral_Pix4D_report), same date and sensor as the multispectral file'
+  files:
+  - path: Upper_Nome_River_MP31_P4_MultiSpectral_04Aug2021_WGS84_UTM_Zone_3N_10cm.tif
+    product: multispectral
+    bands: [blue, green, red, rededge, nir]
+    unit: reflectance
+  - path: Upper_Nome_River_MP31_04August2021_P4_Multispectral_Pix4D_report.pdf
+    role: report
+    attach_to: [multispectral]
+- folder: arcticdata/doi_10.18739_A2SF2MD49
+  doi: doi:10.18739/A2SF2MD49
+  record:
+    path: metadata.xml
+    format: eml
+  site: upper_nome_river
+  date: 2022-08-11
+  platform: DJI Phantom 4 RTK Multispectral
+  positioning:
+  - rtk
+  notes:
+  - 'The methods text says the images were acquired on 04 August 2021 over around 25 ha, copied from the 2021 record (doi:10.18739/A2599Z35K). The EML title, EML dates, file names and the Pix4D report (processed 2022-08-22) all give 11 August 2022, which is used.'
+  evidence:
+  - 'doi: folder name doi_10.18739_A2SF2MD49'
+  - 'site: file names (Upper_Nome_River_MP31) and EML title (Upper Nome River (MP31)); GeoTIFF footprint overlaps the upper_nome_river rasters of arcticdata_abon_2024 (97% of this raster''s box)'
+  - 'date: file names (11August2022 / 11Aug2022), EML title and EML dates; the methods text disagrees (04 August 2021, see notes)'
+  - 'platform: methods text (DJI Phantom 4 Real-Time Kinematic (DJI P4RTK) Multispectral quadcopter); file names say P4_MultiSpectral'
+  - 'positioning: methods text names a DJI D-RTK 2 Mobile Base Station -> rtk; the methods also say a Leica Viva differential GPS provided ground control, but the Pix4D report states ''Georeferencing: yes, no 3D GCP'', so gcp is not set (see open questions)'
+  - 'product multispectral: file name (P4_MultiSpectral), EML title (Multispectral Orthomosaic Image), 5-band float32 GeoTIFF at 10 cm'
+  - 'bands: EML entity attributes (Blue, Green, Red, Red Edge, Near Infrared); the GeoTIFF header does not declare them (gray + undefined)'
+  - 'unit: methods text (MicaSense calibrated reflectance panel, radiometric calibration in the Pix4D Index Calculator)'
+  - 'report: file name (P4_Multispectral_Pix4D_report), same date and sensor as the multispectral file'
+  files:
+  - path: Upper_Nome_River_MP31_P4_MultiSpectral_11Aug2022_WGS84_UTM_Zone_3N_10cm.tif
+    product: multispectral
+    bands: [blue, green, red, rededge, nir]
+    unit: reflectance
+  - path: Upper_Nome_River_MP31_11August2022_P4_Multispectral_Pix4D_report.pdf
+    role: report
+    attach_to: [multispectral]
+- folder: arcticdata/doi_10.18739_A2MS3K344
+  doi: doi:10.18739/A2MS3K344
+  record:
+    path: metadata.xml
+    format: eml
+  site: upper_nome_river
+  date: 2023-08-02
+  platform: DJI Phantom 4 RTK Multispectral
+  positioning:
+  - rtk
+  evidence:
+  - 'doi: folder name doi_10.18739_A2MS3K344'
+  - 'site: file names (Upper_Nome_River_MP31) and EML title (Upper Nome River (MP31)); GeoTIFF footprint overlaps the upper_nome_river rasters of arcticdata_abon_2024 (100% of this raster''s box)'
+  - 'date: file names (02August2023 / 02Aug2023), EML title, EML dates and methods text'
+  - 'platform: methods text (DJI Phantom 4 Real-Time Kinematic (DJI P4RTK) Multispectral quadcopter); file names say P4_MultiSpectral'
+  - 'positioning: methods text names a DJI D-RTK 2 Mobile Base Station -> rtk; the methods also say a Leica Viva differential GPS provided ground control, but the Pix4D report states ''Georeferencing: yes, no 3D GCP'', so gcp is not set (see open questions)'
+  - 'product multispectral: file name (P4_MultiSpectral), EML title (Multispectral Orthomosaic Image), 5-band float32 GeoTIFF at 10 cm'
+  - 'bands: EML entity attributes (Blue, Green, Red, Red Edge, Near Infrared); the GeoTIFF header does not declare them (gray + undefined)'
+  - 'unit: methods text (MicaSense calibrated reflectance panel, radiometric calibration in the Pix4D Index Calculator)'
+  - 'report: file name (P4_Multispectral_Pix4D_report), same date and sensor as the multispectral file'
+  files:
+  - path: Upper_Nome_River_MP31_P4_MultiSpectral_02Aug2023_WGS84_UTM_Zone_3N_10cm.tif
+    product: multispectral
+    bands: [blue, green, red, rededge, nir]
+    unit: reflectance
+  - path: Upper_Nome_River_MP31_02August2023_P4_Multispectral_Pix4D_report.pdf
+    role: report
+    attach_to: [multispectral]
+- folder: arcticdata/doi_10.18739_A2JS9H935
+  doi: doi:10.18739/A2JS9H935
+  record:
+    path: metadata.xml
+    format: eml
+  site: glacier_creek
+  date: 2021-08-09
+  platform: DJI Phantom 4 RTK Multispectral
+  positioning:
+  - rtk
+  notes:
+  - 'The EML geographic coverage gives north = 66.46, which is a typo: the rasters lie at 64.654..64.660 N (GeoTIFF bbox) and the record''s south bound is 64.652.'
+  evidence:
+  - 'doi: folder name doi_10.18739_A2JS9H935'
+  - 'site: file names (Glacier_Creek_Road) and EML title (Glacier Creek Road); GeoTIFF footprint overlaps the glacier_creek rasters of arcticdata_abon_2024 (81% of this raster''s box)'
+  - 'date: file names (09August2021), EML title, EML dates and methods text'
+  - 'platform: methods text (DJI Phantom 4 Real-Time Kinematic (DJI P4RTK) Multispectral quadcopter); file names say P4_MultiSpectral'
+  - 'positioning: methods text names a DJI D-RTK 2 Mobile Base Station -> rtk; the methods also say a Leica Viva differential GPS provided ground control, but the Pix4D report states ''Georeferencing: yes, no 3D GCP'', so gcp is not set (see open questions)'
+  - 'product multispectral: file name (P4_MultiSpectral), EML title (Multispectral Orthomosaic Image), 5-band float32 GeoTIFF at 10 cm'
+  - 'bands: EML entity attributes (Blue, Green, Red, Red Edge, Near Infrared); the GeoTIFF header does not declare them (gray + undefined)'
+  - 'unit: methods text (MicaSense calibrated reflectance panel, radiometric calibration in the Pix4D Index Calculator)'
+  - 'report: file name (P4_Multispectral_Pix4D_report), same date and sensor as the multispectral file'
+  files:
+  - path: Glacier_Creek_Road_P4_MultiSpectral_09August2021_WGS84_UTM_Zone_3N_10cm.tif
+    product: multispectral
+    bands: [blue, green, red, rededge, nir]
+    unit: reflectance
+  - path: Glacier_Creek_Road_09August2021_P4_Multispectral_Pix4D_report.pdf
+    role: report
+    attach_to: [multispectral]
+- folder: arcticdata/doi_10.18739_A2PK0737V
+  doi: doi:10.18739/A2PK0737V
+  record:
+    path: metadata.xml
+    format: eml
+  site: glacier_creek
+  date: 2022-08-14
+  platform: DJI Phantom 4 RTK Multispectral
+  positioning:
+  - rtk
+  notes:
+  - 'The EML geographic coverage gives north = 66.46, which is a typo: the rasters lie at 64.654..64.660 N (GeoTIFF bbox) and the record''s south bound is 64.652.'
+  - 'The data file is named Glacier_Creek (without Road), the report Glacier_Creek_Road; the Pix4D project inside the report is named Snake_River_MultiSpec. The GeoTIFF footprint matches the other Glacier Creek Road rasters, so the site is the same.'
+  evidence:
+  - 'doi: folder name doi_10.18739_A2PK0737V'
+  - 'site: file names (Glacier_Creek_Road) and EML title (Glacier Creek Road); GeoTIFF footprint overlaps the glacier_creek rasters of arcticdata_abon_2024 (79% of this raster''s box)'
+  - 'date: file names (14August2022), EML title, EML dates and methods text'
+  - 'platform: methods text (DJI Phantom 4 Real-Time Kinematic (DJI P4RTK) Multispectral quadcopter); file names say P4_MultiSpectral'
+  - 'positioning: methods text names a DJI D-RTK 2 Mobile Base Station -> rtk; the methods also say a Leica Viva differential GPS provided ground control, but the Pix4D report states ''Georeferencing: yes, no 3D GCP'', so gcp is not set (see open questions)'
+  - 'product multispectral: file name (P4_MultiSpectral), EML title (Multispectral Orthomosaic Image), 5-band float32 GeoTIFF at 10 cm'
+  - 'bands: EML entity attributes (Blue, Green, Red, Red Edge, Near Infrared); the GeoTIFF header does not declare them (gray + undefined)'
+  - 'unit: methods text (MicaSense calibrated reflectance panel, radiometric calibration in the Pix4D Index Calculator)'
+  - 'report: file name (P4_Multispectral_Pix4D_report), same date and sensor as the multispectral file'
+  - 'Pix4D project name: report text (Project Snake_River_MultiSpec)'
+  files:
+  - path: Glacier_Creek_P4_MultiSpectral_14August2022_WGS84_UTM_Zone_3N_10cm.tif
+    product: multispectral
+    bands: [blue, green, red, rededge, nir]
+    unit: reflectance
+  - path: Glacier_Creek_Road_14August2022_P4_Multispectral_Pix4D_report.pdf
+    role: report
+    attach_to: [multispectral]
+- folder: arcticdata/doi_10.18739_A2F18SG9Q
+  doi: doi:10.18739/A2F18SG9Q
+  record:
+    path: metadata.xml
+    format: eml
+  site: glacier_creek
+  date: 2023-08-04
+  platform: DJI Phantom 4 RTK Multispectral
+  positioning:
+  - rtk
+  notes:
+  - 'The EML geographic coverage gives north = 66.46, which is a typo: the rasters lie at 64.654..64.660 N (GeoTIFF bbox) and the record''s south bound is 64.652.'
+  evidence:
+  - 'doi: folder name doi_10.18739_A2F18SG9Q'
+  - 'site: file names (Glacier_Creek_Road) and EML title (Glacier Creek Road); GeoTIFF footprint overlaps the glacier_creek rasters of arcticdata_abon_2024 (80% of this raster''s box)'
+  - 'date: file names (04August2023), EML title, EML dates and methods text'
+  - 'platform: methods text (DJI Phantom 4 Real-Time Kinematic (DJI P4RTK) Multispectral quadcopter); file names say P4_MultiSpectral'
+  - 'positioning: methods text names a DJI D-RTK 2 Mobile Base Station -> rtk; the methods also say a Leica Viva differential GPS provided ground control, but the Pix4D report states ''Georeferencing: yes, no 3D GCP'', so gcp is not set (see open questions)'
+  - 'product multispectral: file name (P4_MultiSpectral), EML title (Multispectral Orthomosaic Image), 5-band float32 GeoTIFF at 10 cm'
+  - 'bands: EML entity attributes (Blue, Green, Red, Red Edge, Near Infrared); the GeoTIFF header does not declare them (gray + undefined)'
+  - 'unit: methods text (MicaSense calibrated reflectance panel, radiometric calibration in the Pix4D Index Calculator)'
+  - 'report: file name (P4_Multispectral_Pix4D_report), same date and sensor as the multispectral file'
+  files:
+  - path: Glacier_Creek_Road_P4_MultiSpectral_04August2023_WGS84_UTM_Zone_3N_10cm.tif
+    product: multispectral
+    bands: [blue, green, red, rededge, nir]
+    unit: reflectance
+  - path: Glacier_Creek_Road_04August2023_P4_Multispectral_Pix4D_report.pdf
+    role: report
+    attach_to: [multispectral]
+- folder: arcticdata/doi_10.18739_A2Z31NQ6F
+  doi: doi:10.18739/A2Z31NQ6F
+  record:
+    path: metadata.xml
+    format: eml
+  site: south_fork_serpentine_river
+  date: 2022-08-15
+  platform: DJI Phantom 4 RTK Multispectral
+  positioning:
+  - rtk
+  notes:
+  - 'The EML temporal coverage gives 2023-08-15; the EML title, methods text, file names and the Pix4D report (processed 2022-08-15) give 15 August 2022, which is used.'
+  evidence:
+  - 'doi: folder name doi_10.18739_A2Z31NQ6F'
+  - 'site: file names (South_Fork_Serpentine_River) and EML title (South Fork Serpentine River); GeoTIFF footprint overlaps the south_fork_serpentine_river rasters of arcticdata_abon_2024 (97% of this raster''s box)'
+  - 'date: file names (15August2022), EML title, methods text and report processing date; the EML dates disagree (2023-08-15, see notes)'
+  - 'platform: methods text (DJI Phantom 4 Real-Time Kinematic (DJI P4RTK) Multispectral quadcopter); file names say P4_MultiSpectral'
+  - 'positioning: methods text names a DJI D-RTK 2 Mobile Base Station -> rtk; the methods also say a Leica Viva differential GPS provided ground control, but the Pix4D report states ''Georeferencing: yes, no 3D GCP'', so gcp is not set (see open questions)'
+  - 'product multispectral: file name (P4_MultiSpectral), EML title (Multispectral Orthomosaic Image), 5-band float32 GeoTIFF at 10 cm'
+  - 'bands: EML entity attributes (Blue, Green, Red, Red Edge, Near Infrared); the GeoTIFF header does not declare them (gray + undefined)'
+  - 'unit: methods text (MicaSense calibrated reflectance panel, radiometric calibration in the Pix4D Index Calculator)'
+  - 'report: file name (P4_Multispectral_Pix4D_report), same date and sensor as the multispectral file'
+  files:
+  - path: South_Fork_Serpentine_River_P4_MultiSpectral_15August2022_WGS84_UTM_Zone_3N_10cm.tif
+    product: multispectral
+    bands: [blue, green, red, rededge, nir]
+    unit: reflectance
+  - path: South_Fork_Serpentine_River_15August2022_P4_MultiSpectral_Pix4D_report.pdf
+    role: report
+    attach_to: [multispectral]
+- folder: arcticdata/doi_10.18739_A27H1DP19
+  doi: doi:10.18739/A27H1DP19
+  record:
+    path: metadata.xml
+    format: eml
+  site: swan_lake_creek
+  date: 2022-08-12
+  platform: DJI Phantom 4 RTK Multispectral
+  positioning:
+  - rtk
+  evidence:
+  - 'doi: folder name doi_10.18739_A27H1DP19'
+  - 'site: file names (Swan_Lake_Creek) and EML title (Swan Lake Creek); GeoTIFF footprint overlaps the swan_lake_creek rasters of arcticdata_abon_2024 (100% of this raster''s box)'
+  - 'date: file names (12August2022), EML title, EML dates and methods text'
+  - 'platform: methods text (DJI Phantom 4 Real-Time Kinematic (DJI P4RTK) Multispectral quadcopter); file names say P4_MultiSpectral'
+  - 'positioning: methods text names a DJI D-RTK 2 Mobile Base Station -> rtk; the methods also say a Leica Viva differential GPS provided ground control, but the Pix4D report states ''Georeferencing: yes, no 3D GCP'', so gcp is not set (see open questions)'
+  - 'product multispectral: file name (P4_MultiSpectral), EML title (Multispectral Orthomosaic Image), 5-band float32 GeoTIFF at 10 cm'
+  - 'bands: EML entity attributes (Blue, Green, Red, Red Edge, Near Infrared); the GeoTIFF header does not declare them (gray + undefined)'
+  - 'unit: methods text (MicaSense calibrated reflectance panel, radiometric calibration in the Pix4D Index Calculator)'
+  - 'report: file name (P4_Multispectral_Pix4D_report), same date and sensor as the multispectral file'
+  files:
+  - path: Swan_Lake_Creek_P4_MultiSpectral_12August2022_WGS84_UTM_Zone_3N_10cm.tif
+    product: multispectral
+    bands: [blue, green, red, rededge, nir]
+    unit: reflectance
+  - path: Swan_Lake_Creek_12August2022_P4_MultiSpectral_Pix4D_report.pdf
+    role: report
+    attach_to: [multispectral]
+- folder: arcticdata/doi_10.18739_A23R0PV81
+  doi: doi:10.18739/A23R0PV81
+  record:
+    path: metadata.xml
+    format: eml
+  site: swan_lake_creek
+  date: 2023-08-02
+  platform: DJI Phantom 4 RTK Multispectral
+  positioning:
+  - rtk
+  notes:
+  - 'The Pix4D project inside the report is named Koug_TK_04August2023; the title, EML dates, methods text and file names all give 02 August 2023, which is used.'
+  evidence:
+  - 'doi: folder name doi_10.18739_A23R0PV81'
+  - 'site: file names (Swan_Lake_Creek) and EML title (Swan Lake Creek); GeoTIFF footprint overlaps the swan_lake_creek rasters of arcticdata_abon_2024 (100% of this raster''s box)'
+  - 'date: file names (02August2023), EML title, EML dates and methods text'
+  - 'platform: methods text (DJI Phantom 4 Real-Time Kinematic (DJI P4RTK) Multispectral quadcopter); file names say P4_MultiSpectral'
+  - 'positioning: methods text names a DJI D-RTK 2 Mobile Base Station -> rtk; the methods also say a Leica Viva differential GPS provided ground control, but the Pix4D report states ''Georeferencing: yes, no 3D GCP'', so gcp is not set (see open questions)'
+  - 'product multispectral: file name (P4_MultiSpectral), EML title (Multispectral Orthomosaic Image), 5-band float32 GeoTIFF at 10 cm'
+  - 'bands: EML entity attributes (Blue, Green, Red, Red Edge, Near Infrared); the GeoTIFF header does not declare them (gray + undefined)'
+  - 'unit: methods text (MicaSense calibrated reflectance panel, radiometric calibration in the Pix4D Index Calculator)'
+  - 'report: file name (P4_Multispectral_Pix4D_report), same date and sensor as the multispectral file'
+  files:
+  - path: Swan_Lake_Creek_P4_MultiSpectral_02August2023_WGS84_UTM_Zone_3N_10cm.tif
+    product: multispectral
+    bands: [blue, green, red, rededge, nir]
+    unit: reflectance
+  - path: Swan_Lake_Creek_02August2023_P4_MultiSpectral_Pix4D_report.pdf
+    role: report
+    attach_to: [multispectral]
+- folder: arcticdata/doi_10.18739_A21Z41V3Q
+  doi: doi:10.18739/A21Z41V3Q
+  record:
+    path: metadata.xml
+    format: eml
+  site: upper_nome_river
+  date: 2021-08-04
+  platform: DJI Phantom 4 RTK
+  positioning:
+  - rtk
+  evidence:
+  - 'doi: folder name doi_10.18739_A21Z41V3Q; also listed in beaver_open_datasets.md (A2, Upper Nome MP31 Aug 2021)'
+  - 'site: file names (Upper_Nome_River_MP31) and EML title (Upper Nome River (MP31)); GeoTIFF footprint overlaps the upper_nome_river rasters of arcticdata_abon_2024 (76% of this raster''s box)'
+  - 'date: file names (04August2021 / 04Aug2021), EML title, EML dates and methods text'
+  - 'platform: methods text (DJI Phantom 4 Real-Time Kinematic (DJI P4RTK) quadcopter); file names say P4RTK'
+  - 'positioning: methods text names a DJI D-RTK 2 Mobile Base Station -> rtk; the methods also say a Leica Viva differential GPS provided ground control, but the Pix4D report states ''Georeferencing: yes, no 3D GCP'', so gcp is not set (see open questions)'
+  - 'products: file names (Orthomosaic 5cm, Digital_Surface_Model 10cm), EML title and entity attributes; GeoTIFF band counts (3 uint8, 1 float32)'
+  - 'vertical_datum: methods text (WGS84 UTM Zone 3 North in Ellipsoid Heights (meters)), EML entity (Elevation units are Ellipsoid Height (meters)) and file name (Ellipsoid_Height)'
+  - 'report: file name (P4RTK report), same date and platform as both data files'
+  files:
+  - path: Upper_Nome_River_MP31_P4RTK_04Aug2021_Orthomosaic_WGS84_UTM_Zone_3N_5cm.tif
+    product: orthomosaic
+    notes:
+    - 'The GeoTIFF header declares bands red, green, blue; the EML record describes them as Blue, Green, Red. The header order is used.'
+  - path: Upper_Nome_River_MP31_P4RTK_04Aug2021_Digital_Surface_Model_WGS84_UTM_Zone_3N_Ellipsoid_Height_10cm.tif
+    product: dsm
+    vertical_datum: WGS84 ellipsoid
+    notes:
+    - 'Elevation over waterbodies is noisy and does not represent the water surface (methods text).'
+  - path: Upper_Nome_River_MP31_04August2021_P4RTK_report.pdf
+    role: report
+    attach_to: [orthomosaic, dsm]
+- folder: arcticdata/doi_10.18739_A2V97ZT1H
+  doi: doi:10.18739/A2V97ZT1H
+  record:
+    path: metadata.xml
+    format: eml
+  site: upper_nome_river
+  date: 2022-03-26
+  platform: DJI Phantom 4 RTK
+  positioning:
+  - rtk
+  notes:
+  - 'March flight; per beaver_open_datasets.md (A2) March flights show snow-covered terrain.'
+  - 'Dates disagree within the record: EML title, EML dates and both data file names give 26 March 2022; the report file name says 27March2022 and the methods text says 26 August 2022. 26 March 2022 is used, so the report attaches by the group date.'
+  evidence:
+  - 'doi: folder name doi_10.18739_A2V97ZT1H'
+  - 'site: file names (Upper_Nome_River_MP31) and EML title (Upper Nome River (MP31)); GeoTIFF footprint overlaps the upper_nome_river rasters of arcticdata_abon_2024 (53% of this raster''s box)'
+  - 'date: data file names (26March2022), EML title and EML dates; the report name (27March2022) and the methods text (26 August 2022) disagree (see notes)'
+  - 'platform: methods text (DJI Phantom 4 Real-Time Kinematic (DJI P4RTK) quadcopter); file names say P4RTK'
+  - 'positioning: methods text names a DJI D-RTK 2 Mobile Base Station -> rtk; the methods also say a Leica Viva differential GPS provided ground control, but the Pix4D report states ''Georeferencing: yes, no 3D GCP'', so gcp is not set (see open questions)'
+  - 'products: file names (Orthomosaic 5cm, Digital_Surface_Model 10cm), EML title and entity attributes; GeoTIFF band counts (3 uint8, 1 float32)'
+  - 'vertical_datum: methods text (WGS84 UTM Zone 3 North in Ellipsoid Heights (meters)), EML entity (Elevation units are Ellipsoid Height (meters)) and file name (Ellipsoid_Height)'
+  - 'report: file name (P4RTK report), same date and platform as both data files'
+  - 'snow note: beaver_open_datasets.md A2 (Fit), not the record itself'
+  files:
+  - path: Upper_Nome_River_MP31_P4RTK_26March2022_Orthomosaic_WGS84_UTM_Zone_3N.tif
+    product: orthomosaic
+    notes:
+    - '4-band GeoTIFF (red, green, blue, alpha; nodata 255) without the resolution in its name, unlike the other orthomosaics (3 bands, no nodata); the header gives 5 cm. The EML record describes 3 bands (Blue, Green, Red). The header order is used.'
+  - path: Upper_Nome_River_MP31_P4RTK_26March2022_Digital_Surface_Model_WGS84_UTM_Zone_3N_Ellipsoid_Height_10cm.tif
+    product: dsm
+    vertical_datum: WGS84 ellipsoid
+    notes:
+    - 'Elevation over waterbodies is noisy and does not represent the water surface (methods text).'
+  - path: Upper_Nome_River_MP31_27March2022_P4RTK_report.pdf
+    role: report
+    attach_to: [orthomosaic, dsm]
+- folder: arcticdata/doi_10.18739_A25Q4RN60
+  doi: doi:10.18739/A25Q4RN60
+  record:
+    path: metadata.xml
+    format: eml
+  site: upper_nome_river
+  date: 2022-08-11
+  platform: DJI Phantom 4 RTK
+  positioning:
+  - rtk
+  notes:
+  - 'Larger flight than the other MP31 surveys (around 125 ha, methods text); the orthomosaic box is slightly larger than the DSM box (GeoTIFF bboxes).'
+  evidence:
+  - 'doi: folder name doi_10.18739_A25Q4RN60'
+  - 'site: file names (Upper_Nome_River_MP31) and EML title (Upper Nome River (MP31)); GeoTIFF footprint overlaps the upper_nome_river rasters of arcticdata_abon_2024 (28-31% of this raster''s box)'
+  - 'date: file names (11August2022 / 11Aug2022), EML title, EML dates and methods text'
+  - 'platform: methods text (DJI Phantom 4 Real-Time Kinematic (DJI P4RTK) quadcopter); file names say P4RTK'
+  - 'positioning: methods text names a DJI D-RTK 2 Mobile Base Station -> rtk; the methods also say a Leica Viva differential GPS provided ground control, but the Pix4D report states ''Georeferencing: yes, no 3D GCP'', so gcp is not set (see open questions)'
+  - 'products: file names (Orthomosaic 5cm, Digital_Surface_Model 10cm), EML title and entity attributes; GeoTIFF band counts (3 uint8, 1 float32)'
+  - 'vertical_datum: methods text (WGS84 UTM Zone 3 North in Ellipsoid Heights (meters)), EML entity (Elevation units are Ellipsoid Height (meters)) and file name (Ellipsoid_Height)'
+  - 'report: file name (P4RTK report), same date and platform as both data files'
+  files:
+  - path: Upper_Nome_River_MP31_P4RTK_11Aug2022_Orthomosaic_WGS84_UTM_Zone_3N_5cm.tif
+    product: orthomosaic
+    notes:
+    - 'The GeoTIFF header declares bands red, green, blue; the EML record describes them as Blue, Green, Red. The header order is used.'
+  - path: Upper_Nome_River_MP31_P4RTK_11Aug2022_Digital_Surface_Model_WGS84_UTM_Zone_3N_Ellipsoid_Height_10cm.tif
+    product: dsm
+    vertical_datum: WGS84 ellipsoid
+    notes:
+    - 'Elevation over waterbodies is noisy and does not represent the water surface (methods text).'
+  - path: Upper_Nome_River_MP31_11August2022_P4RTK_report.pdf
+    role: report
+    attach_to: [orthomosaic, dsm]
+- folder: arcticdata/doi_10.18739_A29882P6F
+  doi: doi:10.18739/A29882P6F
+  record:
+    path: metadata.xml
+    format: eml
+  site: glacier_creek
+  date: 2021-08-09
+  platform: DJI Phantom 4 RTK
+  positioning:
+  - rtk
+  notes:
+  - 'The EML geographic coverage gives north = 66.46, which is a typo: the rasters lie at 64.654..64.660 N (GeoTIFF bbox) and the record''s south bound is 64.652.'
+  evidence:
+  - 'doi: folder name doi_10.18739_A29882P6F; also listed in beaver_open_datasets.md (A2, Glacier Creek Aug 2021)'
+  - 'site: file names (Glacier_Creek_Road) and EML title (Glacier Creek Road); GeoTIFF footprint overlaps the glacier_creek rasters of arcticdata_abon_2024 (82% of this raster''s box)'
+  - 'date: file names (09August2021), EML title, EML dates and methods text'
+  - 'platform: methods text (DJI Phantom 4 Real-Time Kinematic (DJI P4RTK) quadcopter); file names say P4RTK'
+  - 'positioning: methods text names a DJI D-RTK 2 Mobile Base Station -> rtk; the methods also say a Leica Viva differential GPS provided ground control, but the Pix4D report states ''Georeferencing: yes, no 3D GCP'', so gcp is not set (see open questions)'
+  - 'products: file names (Orthomosaic 5cm, Digital_Surface_Model 10cm), EML title and entity attributes; GeoTIFF band counts (3 uint8, 1 float32)'
+  - 'vertical_datum: methods text (WGS84 UTM Zone 3 North in Ellipsoid Heights (meters)), EML entity (Elevation units are Ellipsoid Height (meters)) and file name (Ellipsoid_Height)'
+  - 'report: file name (P4RTK report), same date and platform as both data files'
+  files:
+  - path: Glacier_Creek_Road_P4RTK_09August2021_Orthomosaic_WGS84_UTM_Zone3N_5cm.tif
+    product: orthomosaic
+    notes:
+    - 'The GeoTIFF header declares bands red, green, blue; the EML record describes them as Blue, Green, Red. The header order is used.'
+  - path: Glacier_Creek_Road_P4RTK_09August2021_Digital_Surface_Model_WGS84_UTM_Zone3N_Ellipsoid_Height_10cm.tif
+    product: dsm
+    vertical_datum: WGS84 ellipsoid
+    notes:
+    - 'Elevation over waterbodies is noisy and does not represent the water surface (methods text).'
+  - path: Glacier_Creek_Road_09August2021_P4RTK_Pix4D_report.pdf
+    role: report
+    attach_to: [orthomosaic, dsm]
+- folder: arcticdata/doi_10.18739_A22V2CC0N
+  doi: doi:10.18739/A22V2CC0N
+  record:
+    path: metadata.xml
+    format: eml
+  site: south_fork_serpentine_river
+  date: 2022-03-31
+  platform: DJI Phantom 4 RTK
+  positioning:
+  - rtk
+  notes:
+  - 'March flight; per beaver_open_datasets.md (A2) March flights show snow-covered terrain.'
+  evidence:
+  - 'doi: folder name doi_10.18739_A22V2CC0N; also listed in beaver_open_datasets.md (A2, South Fork Serpentine Mar 2022)'
+  - 'site: file names (South_Fork_Serpentine_River) and EML title (South Fork Serpentine River); GeoTIFF footprint overlaps the south_fork_serpentine_river rasters of arcticdata_abon_2024 (79% of this raster''s box)'
+  - 'date: file names (31March2022), EML title, EML dates and methods text'
+  - 'platform: methods text (DJI Phantom 4 Real-Time Kinematic (DJI P4RTK) quadcopter); file names say P4RTK'
+  - 'positioning: methods text names a DJI D-RTK 2 Mobile Base Station -> rtk; the methods also say a Leica Viva differential GPS provided ground control, but the Pix4D report states ''Georeferencing: yes, no 3D GCP'', so gcp is not set (see open questions)'
+  - 'products: file names (Orthomosaic 5cm, Digital_Surface_Model 10cm), EML title and entity attributes; GeoTIFF band counts (3 uint8, 1 float32)'
+  - 'vertical_datum: methods text (WGS84 UTM Zone 3 North in Ellipsoid Heights (meters)), EML entity (Elevation units are Ellipsoid Height (meters)) and file name (Ellipsoid_Height)'
+  - 'report: file name (P4RTK report), same date and platform as both data files'
+  - 'snow note: beaver_open_datasets.md A2 (Fit), not the record itself'
+  files:
+  - path: South_Fork_Serpentine_River_P4RTK_31March2022_Orthomosaic_WGS84_UTM_Zone3N_5cm.tif
+    product: orthomosaic
+    notes:
+    - 'The GeoTIFF header declares bands red, green, blue; the EML record describes them as Blue, Green, Red. The header order is used.'
+  - path: South_Fork_Serpentine_River_P4RTK_31March2022_Digital_Surface_Model_WGS84_UTM_Zone3N_Ellipsoid_Height_10cm.tif
+    product: dsm
+    vertical_datum: WGS84 ellipsoid
+    notes:
+    - 'Elevation over waterbodies is noisy and does not represent the water surface (methods text).'
+  - path: South_Fork_Serpentine_River_31March2022_P4RTK_Pix4D_report.pdf
+    role: report
+    attach_to: [orthomosaic, dsm]
+- folder: arcticdata/doi_10.18739_A26H4CS12
+  doi: doi:10.18739/A26H4CS12
+  record:
+    path: metadata.xml
+    format: eml
+  site: south_fork_serpentine_river
+  date: 2022-08-13
+  platform: DJI Phantom 4 RTK
+  positioning:
+  - rtk
+  evidence:
+  - 'doi: folder name doi_10.18739_A26H4CS12'
+  - 'site: file names (South_Fork_Serpentine_River) and EML title (South Fork Serpentine River); GeoTIFF footprint overlaps the south_fork_serpentine_river rasters of arcticdata_abon_2024 (79% of this raster''s box)'
+  - 'date: file names (13August2022), EML title, EML dates and methods text'
+  - 'platform: methods text (DJI Phantom 4 Real-Time Kinematic (DJI P4RTK) quadcopter); file names say P4RTK'
+  - 'positioning: methods text names a DJI D-RTK 2 Mobile Base Station -> rtk; the methods also say a Leica Viva differential GPS provided ground control, but the Pix4D report states ''Georeferencing: yes, no 3D GCP'', so gcp is not set (see open questions)'
+  - 'products: file names (Orthomosaic 5cm, Digital_Surface_Model 10cm), EML title and entity attributes; GeoTIFF band counts (3 uint8, 1 float32)'
+  - 'vertical_datum: methods text (WGS84 UTM Zone 3 North in Ellipsoid Heights (meters)), EML entity (Elevation units are Ellipsoid Height (meters)) and file name (Ellipsoid_Height)'
+  - 'report: file name (P4RTK report), same date and platform as both data files'
+  files:
+  - path: South_Fork_Serpentine_River_P4RTK_13August2022_Orthomosaic_WGS84_UTM_Zone3N_5cm.tif
+    product: orthomosaic
+    notes:
+    - 'The GeoTIFF header declares bands red, green, blue; the EML record describes them as Blue, Green, Red. The header order is used.'
+  - path: South_Fork_Serpentine_River_P4RTK_13August2022_Digital_Surface_Model_WGS84_UTM_Zone3N_Ellipsoid_Height_10cm.tif
+    product: dsm
+    vertical_datum: WGS84 ellipsoid
+    notes:
+    - 'Elevation over waterbodies is noisy and does not represent the water surface (methods text).'
+  - path: South_Fork_Serpentine_River_13August2022_P4RTK_Pix4D_report.pdf
+    role: report
+    attach_to: [orthomosaic, dsm]
+- folder: arcticdata/doi_10.18739_A2TB0XX29
+  doi: doi:10.18739/A2TB0XX29
+  record:
+    path: metadata.xml
+    format: eml
+  site: south_fork_serpentine_river
+  date: 2023-03-31
+  platform: DJI Phantom 4 RTK
+  positioning:
+  - rtk
+  notes:
+  - 'March flight; per beaver_open_datasets.md (A2) March flights show snow-covered terrain.'
+  evidence:
+  - 'doi: folder name doi_10.18739_A2TB0XX29'
+  - 'site: file names (South_Fork_Serpentine_River) and EML title (South Fork Serpentine River); GeoTIFF footprint overlaps the south_fork_serpentine_river rasters of arcticdata_abon_2024 (81% of this raster''s box)'
+  - 'date: file names (31March2023), EML title, EML dates and methods text'
+  - 'platform: methods text (DJI Phantom 4 Real-Time Kinematic (DJI P4RTK) quadcopter); file names say P4RTK'
+  - 'positioning: methods text names a DJI D-RTK 2 Mobile Base Station -> rtk; the methods also say a Leica Viva differential GPS provided ground control, but the Pix4D report states ''Georeferencing: yes, no 3D GCP'', so gcp is not set (see open questions)'
+  - 'products: file names (Orthomosaic 5cm, Digital_Surface_Model 10cm), EML title and entity attributes; GeoTIFF band counts (3 uint8, 1 float32)'
+  - 'vertical_datum: methods text (WGS84 UTM Zone 3 North in Ellipsoid Heights (meters)), EML entity (Elevation units are Ellipsoid Height (meters)) and file name (Ellipsoid_Height)'
+  - 'report: file name (P4RTK report), same date and platform as both data files'
+  - 'snow note: beaver_open_datasets.md A2 (Fit), not the record itself'
+  files:
+  - path: South_Fork_Serpentine_River_P4RTK_31March2023_Orthomosaic_WGS84_UTM_Zone3N_5cm.tif
+    product: orthomosaic
+    notes:
+    - 'The GeoTIFF header declares bands red, green, blue; the EML record describes them as Blue, Green, Red. The header order is used.'
+  - path: South_Fork_Serpentine_River_P4RTK_31March2023_Digital_Surface_Model_WGS84_UTM_Zone3N_Ellipsoid_Height_10cm.tif
+    product: dsm
+    vertical_datum: WGS84 ellipsoid
+    notes:
+    - 'Elevation over waterbodies is noisy and does not represent the water surface (methods text).'
+  - path: South_Fork_Serpentine_River_31March2023_P4RTK_Pix4D_report.pdf
+    role: report
+    attach_to: [orthomosaic, dsm]
+- folder: arcticdata/doi_10.18739_A2000023H
+  doi: doi:10.18739/A2000023H
+  record:
+    path: metadata.xml
+    format: eml
+  site: swan_lake_creek
+  date: 2022-03-27
+  platform: DJI Phantom 4 RTK
+  positioning:
+  - rtk
+  notes:
+  - 'March flight; per beaver_open_datasets.md (A2) March flights show snow-covered terrain.'
+  evidence:
+  - 'doi: folder name doi_10.18739_A2000023H'
+  - 'site: file names (Swan_Lake_Creek) and EML title (Swan Lake Creek); GeoTIFF footprint overlaps the swan_lake_creek rasters of arcticdata_abon_2024 (32% of this raster''s box)'
+  - 'date: file names (27March2022), EML title, EML dates and methods text'
+  - 'platform: methods text (DJI Phantom 4 Real-Time Kinematic (DJI P4RTK) quadcopter); file names say P4RTK'
+  - 'positioning: methods text names a DJI D-RTK 2 Mobile Base Station -> rtk; the methods also say a Leica Viva differential GPS provided ground control, but the Pix4D report states ''Georeferencing: yes, no 3D GCP'', so gcp is not set (see open questions)'
+  - 'products: file names (Orthomosaic 5cm, Digital_Surface_Model 10cm), EML title and entity attributes; GeoTIFF band counts (3 uint8, 1 float32)'
+  - 'vertical_datum: methods text (WGS84 UTM Zone 3 North in Ellipsoid Heights (meters)), EML entity (Elevation units are Ellipsoid Height (meters)) and file name (Ellipsoid_Height)'
+  - 'report: file name (P4RTK report), same date and platform as both data files'
+  - 'snow note: beaver_open_datasets.md A2 (Fit), not the record itself'
+  files:
+  - path: Swan_Lake_Creek_P4RTK_27March2022_Orthomosaic_WGS84_UTM_Zone3N_5cm.tif
+    product: orthomosaic
+    notes:
+    - 'The GeoTIFF header declares bands red, green, blue; the EML record describes them as Blue, Green, Red. The header order is used.'
+  - path: Swan_Lake_Creek_P4RTK_27March2022_Digital_Surface_Model_WGS84_UTM_Zone3N_Ellipsoid_Height_10cm.tif
+    product: dsm
+    vertical_datum: WGS84 ellipsoid
+    notes:
+    - 'Elevation over waterbodies is noisy and does not represent the water surface (methods text).'
+  - path: Swan_Lake_Creek_27March2022_P4RTK_Pix4D_report.pdf
+    role: report
+    attach_to: [orthomosaic, dsm]
+- folder: arcticdata/doi_10.18739_A2C824G5F
+  doi: doi:10.18739/A2C824G5F
+  record:
+    path: metadata.xml
+    format: eml
+  site: swan_lake_creek
+  date: 2022-08-12
+  platform: DJI Phantom 4 RTK
+  positioning:
+  - rtk
+  evidence:
+  - 'doi: folder name doi_10.18739_A2C824G5F; also listed in beaver_open_datasets.md (A2, Swan Lake Creek Aug 2022)'
+  - 'site: file names (Swan_Lake_Creek) and EML title (Swan Lake Creek); GeoTIFF footprint overlaps the swan_lake_creek rasters of arcticdata_abon_2024 (34% of this raster''s box)'
+  - 'date: file names (12August2022), EML title, EML dates and methods text'
+  - 'platform: methods text (DJI Phantom 4 Real-Time Kinematic (DJI P4RTK) quadcopter); file names say P4RTK'
+  - 'positioning: methods text names a DJI D-RTK 2 Mobile Base Station -> rtk; the methods also say a Leica Viva differential GPS provided ground control, but the Pix4D report states ''Georeferencing: yes, no 3D GCP'', so gcp is not set (see open questions)'
+  - 'products: file names (Orthomosaic 5cm, Digital_Surface_Model 10cm), EML title and entity attributes; GeoTIFF band counts (3 uint8, 1 float32)'
+  - 'vertical_datum: methods text (Ellipsoid Heights (meters)) and EML entity (Elevation units are Ellipsoid Height (meters)); this DSM file name omits Ellipsoid_Height'
+  - 'report: file name (P4RTK report), same date and platform as both data files'
+  files:
+  - path: Swan_Lake_Creek_P4RTK_12August2022_Orthomosaic_WGS84_UTM_Zone3N_5cm.tif
+    product: orthomosaic
+    notes:
+    - 'The GeoTIFF header declares bands red, green, blue; the EML record describes them as Blue, Green, Red. The header order is used.'
+  - path: Swan_Lake_Creek_P4RTK_12August2022_Digital_Surface_Model_WGS84_UTM_Zone3N_10cm.tif
+    product: dsm
+    vertical_datum: WGS84 ellipsoid
+    notes:
+    - 'Elevation over waterbodies is noisy and does not represent the water surface (methods text).'
+    - 'File name omits ''Ellipsoid_Height'', unlike the other DSMs; the EML entity and methods text say ellipsoid heights.'
+  - path: Swan_Lake_Creek_12August2022_P4RTK_Pix4D_report.pdf
+    role: report
+    attach_to: [orthomosaic, dsm]
+- folder: arcticdata/doi_10.18739_A2KS6J62X
+  doi: doi:10.18739/A2KS6J62X
+  record:
+    path: metadata.xml
+    format: eml
+  site: willow_creek
+  date: 2021-08-10
+  platform: DJI Phantom 4 RTK
+  positioning:
+  - rtk
+  notes:
+  - 'Willow Creek, Seward Peninsula, Alaska; not the Willow Creek site in Montana (beaver_open_datasets.md A2).'
+  evidence:
+  - 'doi: folder name doi_10.18739_A2KS6J62X; also listed in beaver_open_datasets.md (A2, Willow Creek Aug 2021)'
+  - 'site: file names (Willow_Creek) and EML title (Willow Creek); no registry site overlaps the GeoTIFF footprint'
+  - 'date: file names (10August2021), EML title, EML dates and methods text'
+  - 'platform: methods text (DJI Phantom 4 Real-Time Kinematic (DJI P4RTK) quadcopter); file names say P4RTK'
+  - 'positioning: methods text names a DJI D-RTK 2 Mobile Base Station -> rtk; the methods also say a Leica Viva differential GPS provided ground control, but the Pix4D report states ''Georeferencing: yes, no 3D GCP'', so gcp is not set (see open questions)'
+  - 'products: file names (Orthomosaic 5cm, Digital_Surface_Model 10cm), EML title and entity attributes; GeoTIFF band counts (3 uint8, 1 float32)'
+  - 'vertical_datum: methods text (WGS84 UTM Zone 3 North in Ellipsoid Heights (meters)), EML entity (Elevation units are Ellipsoid Height (meters)) and file name (Ellipsoid_Height)'
+  - 'report: file name (P4RTK report), same date and platform as both data files'
+  files:
+  - path: Willow_Creek_P4RTK_10August2021_Orthomosaic_WGS84_UTM_Zone3N_5cm.tif
+    product: orthomosaic
+    notes:
+    - 'The GeoTIFF header declares bands red, green, blue; the EML record describes them as Blue, Green, Red. The header order is used.'
+  - path: Willow_Creek_P4RTK_10August2021_Digital_Surface_Model_WGS84_UTM_Zone3N_Ellipsoid_Height_10cm.tif
+    product: dsm
+    vertical_datum: WGS84 ellipsoid
+    notes:
+    - 'Elevation over waterbodies is noisy and does not represent the water surface (methods text).'
+  - path: Willow_Creek_10August2021_P4RTK_Pix4D_report.pdf
+    role: report
+    attach_to: [orthomosaic, dsm]
+- folder: arcticdata/doi_10.18739_A2G15TC8G
+  doi: doi:10.18739/A2G15TC8G
+  record:
+    path: metadata.xml
+    format: eml
+  site: willow_creek
+  date: 2022-03-25
+  platform: DJI Phantom 4 RTK
+  positioning:
+  - rtk
+  notes:
+  - 'March flight; per beaver_open_datasets.md (A2) March flights show snow-covered terrain.'
+  evidence:
+  - 'doi: folder name doi_10.18739_A2G15TC8G'
+  - 'site: file names (Willow_Creek) and EML title (Willow Creek); no registry site overlaps the GeoTIFF footprint'
+  - 'date: file names (25March2022), EML title, EML dates and methods text'
+  - 'platform: methods text (DJI Phantom 4 Real-Time Kinematic (DJI P4RTK) quadcopter); file names say P4RTK'
+  - 'positioning: methods text names a DJI D-RTK 2 Mobile Base Station -> rtk; the methods also say a Leica Viva differential GPS provided ground control, but the Pix4D report states ''Georeferencing: yes, no 3D GCP'', so gcp is not set (see open questions)'
+  - 'products: file names (Orthomosaic 5cm, Digital_Surface_Model 10cm), EML title and entity attributes; GeoTIFF band counts (3 uint8, 1 float32)'
+  - 'vertical_datum: methods text (WGS84 UTM Zone 3 North in Ellipsoid Heights (meters)), EML entity (Elevation units are Ellipsoid Height (meters)) and file name (Ellipsoid_Height)'
+  - 'report: file name (P4RTK report), same date and platform as both data files'
+  - 'snow note: beaver_open_datasets.md A2 (Fit), not the record itself'
+  files:
+  - path: Willow_Creek_P4RTK_25March2022_Orthomosaic_WGS84_UTM_Zone3N_5cm.tif
+    product: orthomosaic
+    notes:
+    - 'The GeoTIFF header declares bands red, green, blue; the EML record describes them as Blue, Green, Red. The header order is used.'
+  - path: Willow_Creek_P4RTK_25March2022_Digital_Surface_Model_WGS84_UTM_Zone3N_Ellipsoid_Height_10cm.tif
+    product: dsm
+    vertical_datum: WGS84 ellipsoid
+    notes:
+    - 'Elevation over waterbodies is noisy and does not represent the water surface (methods text).'
+  - path: Willow_Creek_25March2022_P4RTK_Pix4D_report.pdf
+    role: report
+    attach_to: [orthomosaic, dsm]
+- folder: arcticdata/doi_10.18739_A2QJ7807J
+  doi: doi:10.18739/A2QJ7807J
+  record:
+    path: metadata.xml
+    format: eml
+  site: willow_creek
+  date: 2022-08-15
+  platform: DJI Phantom 4 RTK
+  positioning:
+  - rtk
+  evidence:
+  - 'doi: folder name doi_10.18739_A2QJ7807J'
+  - 'site: file names (Willow_Creek) and EML title (Willow Creek); no registry site overlaps the GeoTIFF footprint'
+  - 'date: file names (15August2022), EML title, EML dates and methods text'
+  - 'platform: methods text (DJI Phantom 4 Real-Time Kinematic (DJI P4RTK) quadcopter); file names say P4RTK'
+  - 'positioning: methods text names a DJI D-RTK 2 Mobile Base Station -> rtk; the methods also say a Leica Viva differential GPS provided ground control, but the Pix4D report states ''Georeferencing: yes, no 3D GCP'', so gcp is not set (see open questions)'
+  - 'products: file names (Orthomosaic 5cm, Digital_Surface_Model 10cm), EML title and entity attributes; GeoTIFF band counts (3 uint8, 1 float32)'
+  - 'vertical_datum: methods text (WGS84 UTM Zone 3 North in Ellipsoid Heights (meters)), EML entity (Elevation units are Ellipsoid Height (meters)) and file name (Ellipsoid_Height)'
+  - 'report: file name (P4RTK report), same date and platform as both data files'
+  files:
+  - path: Willow_Creek_P4RTK_15August2022_Orthomosaic_WGS84_UTM_Zone3N_5cm.tif
+    product: orthomosaic
+    notes:
+    - 'The GeoTIFF header declares bands red, green, blue; the EML record describes them as Blue, Green, Red. The header order is used.'
+  - path: Willow_Creek_P4RTK_15August2022_Digital_Surface_Model_WGS84_UTM_Zone3N_Ellipsoid_Height_10cm.tif
+    product: dsm
+    vertical_datum: WGS84 ellipsoid
+    notes:
+    - 'Elevation over waterbodies is noisy and does not represent the water surface (methods text).'
+  - path: Willow_Creek_15August2022_P4RTK_Pix4D_report.pdf
+    role: report
+    attach_to: [orthomosaic, dsm]
+- folder: arcticdata/doi_10.18739_A2B853K4Q
+  doi: doi:10.18739/A2B853K4Q
+  record:
+    path: metadata.xml
+    format: eml
+  site: ptarmigan_creek
+  date: 2022-08-15
+  platform: DJI Phantom 4 RTK
+  positioning:
+  - rtk
+  notes:
+  - 'The EML geographic coverage (-165.714..-165.664 E, 64.586..64.605 N) is that of the Willow Creek records, copied by mistake: the rasters lie at -164.920..-164.893 E, 65.237..65.253 N (GeoTIFF bbox), north-west of Swan Lake Creek. The site is placed by the rasters.'
+  evidence:
+  - 'doi: folder name doi_10.18739_A2B853K4Q'
+  - 'site: file names (Ptarmigan_Creek) and EML title (Failed Beaver Dam at Ptarmigan Creek); no registry site overlaps the GeoTIFF footprint'
+  - 'date: file names (15August2022), EML title, EML dates and methods text'
+  - 'platform: methods text (DJI Phantom 4 Real-Time Kinematic (DJI P4RTK) quadcopter); file names say P4RTK'
+  - 'positioning: methods text names a DJI D-RTK 2 Mobile Base Station -> rtk; the methods also say a Leica Viva differential GPS provided ground control, but the Pix4D report states ''Georeferencing: yes, no 3D GCP'', so gcp is not set (see open questions)'
+  - 'products: file names (Orthomosaic 5cm, Digital_Surface_Model 10cm), EML title and entity attributes; GeoTIFF band counts (3 uint8, 1 float32)'
+  - 'vertical_datum: methods text (WGS84 UTM Zone 3 North in Ellipsoid Heights (meters)), EML entity (Elevation units are Ellipsoid Height (meters)) and file name (Ellipsoid_Height)'
+  - 'report: file name (P4RTK report), same date and platform as both data files'
+  - 'site location: GeoTIFF lonlat bbox, not the EML bounds (see notes)'
+  files:
+  - path: Ptarmigan_Creek_P4RTK_15August2022_Orthomosaic_WGS84_UTM_Zone3N_5cm.tif
+    product: orthomosaic
+    notes:
+    - 'The GeoTIFF header declares bands red, green, blue; the EML record describes them as Blue, Green, Red. The header order is used.'
+  - path: Ptarmigan_Creek_P4RTK_15August2022_Digital_Surface_Model_WGS84_UTM_Zone3N_Ellipsoid_Height_10cm.tif
+    product: dsm
+    vertical_datum: WGS84 ellipsoid
+    notes:
+    - 'Elevation over waterbodies is noisy and does not represent the water surface (methods text).'
+  - path: Ptarmigan_Creek_15August2022_P4RTK_Pix4D_report.pdf
+    role: report
+    attach_to: [orthomosaic, dsm]
+- folder: arcticdata/doi_10.18739_A2RJ48W9B
+  doi: doi:10.18739/A2RJ48W9B
+  record:
+    path: metadata.xml
+    format: eml
+  site: kotz_3
+  date: 2023-08-08
+  platform: DJI Phantom 4 RTK
+  positioning:
+  - rtk
+  evidence:
+  - 'doi: folder name doi_10.18739_A2RJ48W9B'
+  - 'site: file names (Kotz3 / Kotz_3) and EML title (Kotzebue 3); GeoTIFF footprint overlaps the kotz_3 rasters of arcticdata_abon_2024 (65% of this raster''s box)'
+  - 'date: file names (08August2023), EML title, EML dates and methods text'
+  - 'platform: methods text (DJI Phantom 4 Real-Time Kinematic (DJI P4RTK) quadcopter); file names say P4RTK'
+  - 'positioning: methods text names a DJI D-RTK 2 Mobile Base Station -> rtk; the methods also say a Leica Viva differential GPS provided ground control, but the Pix4D report states ''Georeferencing: yes, no 3D GCP'', so gcp is not set (see open questions)'
+  - 'products: file names (Orthomosaic 5cm, Digital_Surface_Model 10cm), EML title and entity attributes; GeoTIFF band counts (3 uint8, 1 float32)'
+  - 'vertical_datum: methods text (Ellipsoid Heights (meters)), EML entity (Elevation in ellipsoid heights) and file name (Ellipsoid_Heights)'
+  - 'report: file name (P4RTK report), same date and platform as both data files'
+  files:
+  - path: Kotz3_P4RTK_08August2023_Orthomosaic_WGS84_UTM_Zone3N_5cm.tif
+    product: orthomosaic
+    notes:
+    - 'The GeoTIFF header declares bands red, green, blue; the EML entity names the bands after the file (_1, _2, _3) with definitions blue, green, red. The header order is used.'
+  - path: Kotz3_P4RTK_08August2023_Digital_Surface_Model_WGS84_UTM_Zone3N_Ellipsoid_Heights_10cm.tif
+    product: dsm
+    vertical_datum: WGS84 ellipsoid
+    notes:
+    - 'Elevation over waterbodies is noisy and does not represent the water surface (methods text).'
+  - path: Kotz_3_08August2023_P4RTK_report.pdf
+    role: report
+    attach_to: [orthomosaic, dsm]
+- folder: arcticdata/doi_10.18739_A20Z70Z6X
+  doi: doi:10.18739/A20Z70Z6X
+  record:
+    path: metadata.xml
+    format: eml
+  site: kotz_b_east
+  date: 2023-08-07
+  platform: DJI Phantom 4 RTK
+  positioning:
+  - rtk
+  evidence:
+  - 'doi: folder name doi_10.18739_A20Z70Z6X; also listed in beaver_open_datasets.md (A2, Kotzebue B East Aug 2023)'
+  - 'site: file names (Kotz_BEast / Kotz_East) and EML title (Kotzebue B East); GeoTIFF footprint overlaps the kotz_b_east rasters of arcticdata_abon_2024 (55% of this raster''s box)'
+  - 'date: file names (07August2023), EML title, EML dates and methods text'
+  - 'platform: methods text (DJI Phantom 4 Real-Time Kinematic (DJI P4RTK) quadcopter); file names say P4RTK'
+  - 'positioning: methods text names a DJI D-RTK 2 Mobile Base Station -> rtk; the methods also say a Leica Viva differential GPS provided ground control, but the Pix4D report states ''Georeferencing: yes, no 3D GCP'', so gcp is not set (see open questions)'
+  - 'products: file names (Orthomosaic 5cm, Digital_Surface_Model 10cm), EML title and entity attributes; GeoTIFF band counts (3 uint8, 1 float32)'
+  - 'vertical_datum: methods text (Ellipsoid Heights (meters)), EML entity (Elevation in ellipsoid heights) and file name (Ellipsoid_Heights)'
+  - 'report: file name (P4RTK report), same date and platform as both data files'
+  files:
+  - path: Kotz_BEast_P4RTK_07August2023_Orthomosaic_WGS84_UTM_Zone3N_5cm.tif
+    product: orthomosaic
+    notes:
+    - 'The GeoTIFF header declares bands red, green, blue; the EML entity names the bands after the file (_1, _2, _3) with definitions blue, green, red. The header order is used.'
+  - path: Kotz_BEast_P4RTK_07August2023_Digital_Surface_Model_WGS84_UTM_Zone3N_Ellipsoid_Heights_10cm.tif
+    product: dsm
+    vertical_datum: WGS84 ellipsoid
+    notes:
+    - 'Elevation over waterbodies is noisy and does not represent the water surface (methods text).'
+  - path: Kotz_East_07August2023_P4RTK_report.pdf
+    role: report
+    attach_to: [orthomosaic, dsm]
+- folder: arcticdata/doi_10.18739_A2W950Q2M
+  doi: doi:10.18739/A2W950Q2M
+  record:
+    path: metadata.xml
+    format: eml
+  site: kotz_b_south
+  date: 2023-08-08
+  platform: DJI Phantom 4 RTK
+  positioning:
+  - rtk
+  notes:
+  - 'The EML entity attribute names say 07August2023; the file names, EML title, EML dates and methods text give 08 August 2023, which is used.'
+  evidence:
+  - 'doi: folder name doi_10.18739_A2W950Q2M'
+  - 'site: file names (Kotz_BSouth / Kotz_South) and EML title (Kotzebue B South); GeoTIFF footprint overlaps the kotz_b_south rasters of arcticdata_abon_2024 (88% of this raster''s box)'
+  - 'date: file names (08August2023), EML title, EML dates and methods text'
+  - 'platform: methods text (DJI Phantom 4 Real-Time Kinematic (DJI P4RTK) quadcopter); file names say P4RTK'
+  - 'positioning: methods text names a DJI D-RTK 2 Mobile Base Station -> rtk; the methods also say a Leica Viva differential GPS provided ground control, but the Pix4D report states ''Georeferencing: yes, no 3D GCP'', so gcp is not set (see open questions)'
+  - 'products: file names (Orthomosaic 5cm, Digital_Surface_Model 10cm), EML title and entity attributes; GeoTIFF band counts (3 uint8, 1 float32)'
+  - 'vertical_datum: methods text (Ellipsoid Heights (meters)), EML entity (Elevation in ellipsoid heights) and file name (Ellipsoid_Heights)'
+  - 'report: file name (P4RTK report), same date and platform as both data files'
+  files:
+  - path: Kotz_BSouth_P4RTK_08August2023_Orthomosaic_WGS84_UTM_Zone3N_5cm.tif
+    product: orthomosaic
+    notes:
+    - 'The GeoTIFF header declares bands red, green, blue; the EML entity names the bands after the file (_1, _2, _3) with definitions blue, green, red. The header order is used.'
+  - path: Kotz_BSouth_P4RTK_08August2023_Digital_Surface_Model_WGS84_UTM_Zone3N_Ellipsoid_Heights_10cm.tif
+    product: dsm
+    vertical_datum: WGS84 ellipsoid
+    notes:
+    - 'Elevation over waterbodies is noisy and does not represent the water surface (methods text).'
+  - path: Kotz_South_08August2023_P4RTK_report.pdf
+    role: report
+    attach_to: [orthomosaic, dsm]
+- folder: arcticdata/doi_10.18739_A24Q7QR96
+  doi: doi:10.18739/A24Q7QR96
+  record:
+    path: metadata.xml
+    format: eml
+  site: kotz_b_west
+  date: 2023-08-07
+  platform: DJI Phantom 4 RTK
+  positioning:
+  - rtk
+  evidence:
+  - 'doi: folder name doi_10.18739_A24Q7QR96'
+  - 'site: file names (Kotz_BWest / Kotz_West) and EML title (Kotzebue B West); GeoTIFF footprint overlaps the kotz_b_west rasters of arcticdata_abon_2024 (69% of this raster''s box)'
+  - 'date: file names (07August2023), EML title, EML dates and methods text'
+  - 'platform: methods text (DJI Phantom 4 Real-Time Kinematic (DJI P4RTK) quadcopter); file names say P4RTK'
+  - 'positioning: methods text names a DJI D-RTK 2 Mobile Base Station -> rtk; the methods also say a Leica Viva differential GPS provided ground control, but the Pix4D report states ''Georeferencing: yes, no 3D GCP'', so gcp is not set (see open questions)'
+  - 'products: file names (Orthomosaic 5cm, Digital_Surface_Model 10cm), EML title and entity attributes; GeoTIFF band counts (3 uint8, 1 float32)'
+  - 'vertical_datum: methods text (Ellipsoid Heights (meters)), EML entity (Elevation in ellipsoid heights) and file name (Ellipsoid_Heights)'
+  - 'report: file name (P4RTK report), same date and platform as both data files'
+  files:
+  - path: Kotz_BWest_P4RTK_07August2023_Orthomosaic_WGS84_UTM_Zone3N_5cm.tif
+    product: orthomosaic
+    notes:
+    - 'The GeoTIFF header declares bands red, green, blue; the EML entity names the bands after the file (_1, _2, _3) with definitions blue, green, red. The header order is used.'
+  - path: Kotz_BWest_P4RTK_07August2023_Digital_Surface_Model_WGS84_UTM_Zone3N_Ellipsoid_Heights_10cm.tif
+    product: dsm
+    vertical_datum: WGS84 ellipsoid
+    notes:
+    - 'Elevation over waterbodies is noisy and does not represent the water surface (methods text).'
+  - path: Kotz_West_07August2023_P4RTK_report.pdf
+    role: report
+    attach_to: [orthomosaic, dsm]
+- folder: arcticdata/doi_10.18739_A29C6S30W
+  doi: doi:10.18739/A29C6S30W
+  record:
+    path: metadata.xml
+    format: eml
+  platform: DJI Phantom 4 RTK
+  positioning:
+  - rtk
+  notes:
+  - 'One record holding three sites flown in April 2024: Kotzebue 3 on 02 April, Kotzebue B East and B West on 09 April. Site and date are set per file. No Kotzebue B South flight is in the record.'
+  - 'Methods text: elevation represents snow-covered surfaces.'
+  evidence:
+  - 'doi: folder name doi_10.18739_A29C6S30W; also listed in beaver_open_datasets.md (A2, northern Baldwin spring 2024)'
+  - 'sites: file names (Kotz3, Kotz_BEast, Kotz_BWest); GeoTIFF footprints overlap the arcticdata_abon_2024 rasters of kotz_3 (66%), kotz_b_east (54%) and kotz_b_west (78%)'
+  - 'dates: file names (02April2024 for Kotz3, 09April2024 for Kotz_BEast and Kotz_BWest), within EML dates 2024-04-02..2024-04-09; the methods text says only April 2024; each report''s Pix4D project name repeats the site and date'
+  - 'platform: methods text (DJI Phantom 4 Real-Time Kinematic (DJI P4RTK) quadcopter); file names say P4RTK'
+  - 'positioning: methods text names a DJI D-RTK 2 Mobile Base Station -> rtk; the methods also say a Leica Viva differential GPS provided ground control, but the Pix4D report states ''Georeferencing: yes, no 3D GCP'', so gcp is not set (see open questions)'
+  - 'products: file names (Orthomosaic 5cm, Digital_Surface_Model 10cm), EML entity attributes; GeoTIFF band counts (3 uint8, 1 float32)'
+  - 'vertical_datum: methods text (Ellipsoid Heights (meters)), EML entities (Elevation units are Ellipsoid Height (meters)) and file names (Ellipsoid_Heights)'
+  - 'snow note: methods text (Elevation information represents snow-covered surfaces)'
+  - 'reports: file names (<site>_<date>_report), one per site and date'
+  files:
+  - path: Kotz3_P4RTK_02April2024_Orthomosaic_WGS84_UTM_Zone3N_5cm.tif
+    product: orthomosaic
+    site: kotz_3
+    date: 2024-04-02
+    notes:
+    - 'The GeoTIFF header declares bands red, green, blue; the EML entity names them band 1, band 2, band 3 with definitions blue, green, red. The header order is used.'
+    - 'Snow-covered terrain (methods text).'
+  - path: Kotz3_P4RTK_02April2024_Digital_Surface_Model_WGS84_UTM_Zone3N_Ellipsoid_Heights_10cm.tif
+    product: dsm
+    site: kotz_3
+    date: 2024-04-02
+    vertical_datum: WGS84 ellipsoid
+    notes:
+    - 'Elevation represents snow-covered surfaces (methods text).'
+  - path: Kotz3_02April2024_report.pdf
+    role: report
+    site: kotz_3
+    date: 2024-04-02
+    attach_to: [orthomosaic, dsm]
+  - path: Kotz_BEast_P4RTK_09April2024_Orthomosaic_WGS84_UTM_Zone3N_5cm.tif
+    product: orthomosaic
+    site: kotz_b_east
+    date: 2024-04-09
+    notes:
+    - 'The GeoTIFF header declares bands red, green, blue; the EML entity names them band 1, band 2, band 3 with definitions blue, green, red. The header order is used.'
+    - 'Snow-covered terrain (methods text).'
+  - path: Kotz_BEast_P4RTK_09April2024_Digital_Surface_Model_WGS84_UTM_Zone3N_Ellipsoid_Heights_10cm.tif
+    product: dsm
+    site: kotz_b_east
+    date: 2024-04-09
+    vertical_datum: WGS84 ellipsoid
+    notes:
+    - 'Elevation represents snow-covered surfaces (methods text).'
+  - path: Kotz_BEast_09April2024_report.pdf
+    role: report
+    site: kotz_b_east
+    date: 2024-04-09
+    attach_to: [orthomosaic, dsm]
+  - path: Kotz_BWest_P4RTK_09April2024_Orthomosaic_WGS84_UTM_Zone3N_5cm.tif
+    product: orthomosaic
+    site: kotz_b_west
+    date: 2024-04-09
+    notes:
+    - 'The GeoTIFF header declares bands red, green, blue; the EML entity names them band 1, band 2, band 3 with definitions blue, green, red. The header order is used.'
+    - 'Snow-covered terrain (methods text).'
+  - path: Kotz_BWest_P4RTK_09April2024_Digital_Surface_Model_WGS84_UTM_Zone3N_Ellipsoid_Heights_10cm.tif
+    product: dsm
+    site: kotz_b_west
+    date: 2024-04-09
+    vertical_datum: WGS84 ellipsoid
+    notes:
+    - 'Elevation represents snow-covered surfaces (methods text).'
+  - path: Kotz_BWest_09April2024_report.pdf
+    role: report
+    site: kotz_b_west
+    date: 2024-04-09
+    attach_to: [orthomosaic, dsm]
+open_questions:
+- 'Positioning: every methods text names both a D-RTK 2 base (rtk) and Leica Viva ground control, but all 29 Pix4D reports state ''Georeferencing: yes, no 3D GCP''. Only rtk is set here. Was the Leica survey used to fix the base station, or as check points? The reviewed arcticdata_seward summary sets [rtk, gcp] for the same team and workflow; the two should be made consistent.'
+- 'RGB band order: every orthomosaic header declares red, green, blue, while the EML records say blue, green, red. The header order is used; check one file visually.'
+- 'unit: reflectance is inferred from the radiometric calibration described in the methods; the value scale (0-1 or percent) is not stated. Check on a sample.'
+- 'Ptarmigan Creek: the EML bounds are the Willow Creek ones (see group notes); the rasters place it at -164.92 to
+  -164.89 E, 65.24 to 65.25 N, outside every searched watershed of seward_baldwin_watersheds (willow_creek is 59%
+  inside and was added to that region). Confirm the location.'
+- 'Dates corrected from conflicting record fields: A2SF2MD49 (methods text 04 August 2021), A2Z31NQ6F (EML dates 2023-08-15), A2V97ZT1H (report name 27 March, methods 26 August 2022). Check against image EXIF if needed.'
+- 'Swan Lake Creek RTK flights (60 ha) overlap the ABON 2024 swan_lake_creek rasters by only about a third of their box; the multispectral flights fall wholly inside. Same site, larger flight area, assumed.'
+- 'Vertical datum: the records say ellipsoid heights with WGS84 horizontal datum; the ellipsoid realisation (e.g. WGS84 vs ITRF/NAD83 via the Leica survey) is not stated.'
+- 'Land status and Indigenous data governance of all ten sites are not stated in any record (see site hints).'
