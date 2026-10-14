@@ -1,0 +1,141 @@
+# Drafted by Claude in a Claude Code session (intake + describe prompts), reviewed by Federico Oliva.
+schema: 1
+dataset: ontario_beaver_dams
+title: Beaver dams of Ontario as line features, Land Information Ontario "Beaver Dam" data class (Ontario Ministry of
+  Natural Resources and Forestry, retired 2014; Open Government Portal)
+authored:
+  by: claude
+  model: claude-opus-5-5
+  date: 2026-10-14
+  note: Claude Code session, from evidence.json
+reviewed:
+  by: Federico Oliva
+  date: 2026-10-14
+source:
+  kind: ckan
+  provider: Open Government Portal (Government of Canada), record federated from the Government of Ontario
+  url: https://open.canada.ca/data/en/dataset/b44984f7-9ba6-45aa-b25b-a6dc596afea5
+  api: https://open.canada.ca/data/api/3/action
+  log: downloads.csv
+# Sites are defined once in data_acquisition/sites.yaml (name, CRS, land status, governance, colonies);
+# here only this dataset's hints for them.
+sites:
+  ontario_province:
+    hints:
+      colonies: Not stated. The file holds 182,062 individual dam lines (one per dam), not colonies or lodges.
+      land_status: Not stated in the record or the files (the only attributes are OGF_ID, AREA_LEN, GEO_UPD_DT,
+        EFF_DATE). The dams span -95.15 to -74.39 E, 42.33 to 51.61 N, i.e. southern and central Ontario across
+        Crown, private, protected and First Nations lands; land status must be checked area by area.
+      governance: 'The record gives the Open Government Licence – Ontario (licence_id on-oglo, "restrictions:
+        unrestricted"); the zip holds its text (Data Licence - Open Data.pdf, version 1.0): use including commercial,
+        attribution required ("Contains information licensed under the Open Government Licence – Ontario" when the
+        provider gives no specific statement), no warranty, no right to use personal information or third-party
+        rights. Provider: Ministry of Natural Resources and Forestry, LIO (lio@ontario.ca). The record says the data
+        is no longer updated and is best suited for historical research and analysis.'
+groups:
+- folder: open_canada/id_b44984f7-9ba6-45aa-b25b-a6dc596afea5
+  record:
+    path: package.json
+    format: ckan_json
+  site: ontario_province
+  positioning: [none]
+  date_precision: unknown
+  start_date: 1900-01-01
+  end_date: 2004-12-07
+  notes:
+  - 'The record''s box (-95.15 to -74.3 E, 41.67 to 56.85 N) is the whole province; the dams reach only 51.61 N (file
+    bounds -95.15 to -74.39 E, 42.33 to 51.61 N), so the Far North of Ontario (north of about 51.6 N) has no dams in
+    this inventory: absence there is not evidence of no dams.'
+  - 'Attributes AREA_LEN (system-calculated length) and GEO_UPD_DT (geometry update date) are empty for all 182,062
+    features; EFF_DATE is 2004-12-07 for every feature.'
+  - The record's reference_system_information is "unknown"; the shapefile declares NAD83 (EPSG:4269).
+  evidence:
+  - 'doi: none; the record (package.json, CKAN package_show) has no DOI, hence the folder id_<package id>; Open
+    Government Portal package b44984f7-9ba6-45aa-b25b-a6dc596afea5, version (metadata_modified)
+    2026-10-07T13:37:24'
+  - 'product annotations: record notes ("linear features constructed by beavers ... captured to scale on single line
+    rivers, lakes, double line rivers") and Data Description.pdf (BEAVER_DAM_FT, "A linear features constructed by
+    beavers"); mapped features, not a survey or model'
+  - 'site ontario_province: shapefile bounds (-95.15427 to -74.38911 E, 42.32909 to 51.6112 N), inside Ontario and far
+    from every registry site; crs EPSG:3161 (NAD83 / Ontario MNR Lambert) chosen because the dams span UTM zones 15
+    to 18, not taken from the record (whose reference system is "unknown")'
+  - 'crs: shapefile .prj (NAD83, EPSG:4269), declared by the file'
+  - 'positioning: none; how the lines were captured (photo interpretation, field, base-map compilation) is not stated
+    in the record or documents'
+  - 'platform, instruments: not stated anywhere'
+  - 'date_precision unknown: no acquisition date in the record (time_period_coverage_start is the CKAN placeholder
+    0001-01-01, no end) or in the files'
+  - 'end_date 2004-12-07: EFF_DATE of every feature; Data Description.pdf defines EFFECTIVE_DATETIME as the
+    "Date/time the record was created or last modified in the source database", so the features existed by then.
+    It is a database load date, not an acquisition date'
+  - 'start_date 1900-01-01: a wide placeholder, NOT supported by any evidence; no earliest capture date is given (the
+    change history in Documentation.docx starts in 2000 with the data class, which bounds the database class, not the
+    mapping). To replace once the capture dates are known (see open questions)'
+  - 'fields id OGF_ID: Data Description.pdf ("A unique numeric provincial identifier assigned to each object"); 182,062
+    distinct values for 182,062 features'
+  - 'archive: the record lists only the zip; BEAVRDAM/ was extracted from it with data_acquisition.sources.archives
+    (CRC-32 verified); the zip''s folder name LIO-2014-07-25 matches the 2014 retirement in the change history'
+  files:
+  - path: BEAVRDAM.zip
+    role: archive
+    attach_to: [annotations]
+    notes:
+    - 'The data download package as linked by the record (BEAVRDAM.zip, served from ws.gisetl.lrc.gov.on.ca, last
+      modified 2014-07-25). No checksum is published by the record or the server: verified by its served size
+      (24,487,239 bytes) and every member''s CRC-32 (download log verified_by), then extracted with
+      data_acquisition.sources.archives (CRC-32 verified).'
+  - path: BEAVRDAM/LIO-2014-07-25/BEAVER_DAM.shp
+    product: annotations
+    archive: BEAVRDAM.zip
+    fields:
+      id: OGF_ID
+    notes:
+    - 'Shapefile, NAD83, one layer BEAVER_DAM of 182,062 LineString features, one per dam; fields OGF_ID, AREA_LEN,
+      GEO_UPD_DT, EFF_DATE (short names of OGF_ID, SYSTEM_CALC_METRIC, GEOMETRY_UPDATE_DATETIME,
+      EFFECTIVE_DATETIME in Data Description.pdf).'
+    - 'Line lengths (computed during drafting in EPSG:3161, not in the evidence): median 55 m, quartiles 37 to 82 m,
+      1 m to 1.8 km.'
+    - 'No dam status (active, abandoned, breached), no height and no observation date per feature.'
+  - path: BEAVRDAM/Data Licence - Open Data.pdf
+    role: metadata
+    attach_to: [annotations]
+    archive: BEAVRDAM.zip
+    notes:
+    - Text of the Open Government Licence – Ontario, version 1.0, shipped in the data package.
+  - path: Beaver Dam - Data Description.pdf
+    role: report
+    attach_to: [annotations]
+    notes:
+    - 'LIO Data Description (Ministry of Natural Resources, 2012): table BEAVER_DAM_FT, its definition ("a layered
+      construction, consisting of sticks, mud and stones") and the meaning of each column.'
+  - path: Beaver Dam - Documentation.docx
+    role: report
+    attach_to: [annotations]
+    notes:
+    - 'LIO Warehouse data class documentation (MNRF, 2015-07-27; text not extracted by the evidence code, read during
+      drafting). Change history: 2000 new info-only data class (short name BEAVRDA), 2003 table Beaver_Dam_BT added,
+      2008 description changed (received from BDI), 2014 retired, no longer maintained or supported.'
+  - path: package.json
+    role: metadata
+    attach_to: [annotations]
+    notes:
+    - 'Open Government Portal record (CKAN), federated from data.ontario.ca (published 2020-01-11 per date_published;
+      metadata_modified 2026-10-07). Seven resources: the three files here, two GeoHub landing pages (English,
+      French) and two data.ontario.ca metadata pages, not downloaded.'
+open_questions:
+- 'Acquisition dates: none in the record or the files. The end limit is EFF_DATE 2004-12-07 (database load date, same
+  for every feature); start_date 1900-01-01 is a placeholder with no evidence behind it. How and when were the dams captured (e.g. Ontario Base Map
+  compilation from aerial photography, Forest Resource Inventory, field reports)? Ask LIO (lio@ontario.ca) or look for
+  the data class''s original description ("received from BDI", 2008).'
+- 'Capture method, platform and positioning are not stated; the record''s "captured to scale on single line rivers,
+  lakes, double line rivers" suggests compilation against the provincial hydrography, which would tie dam positions to
+  that base map''s accuracy. To confirm.'
+- 'Coverage: no dams north of 51.61 N. Is the Far North not mapped, or mapped without dams? This decides whether the
+  inventory can be read as presence/absence.'
+- 'Site crs EPSG:3161 (Ontario MNR Lambert) is my choice for a province-wide region, not from the record; confirm.
+  Should the region be split (e.g. by ecoregion or watershed) into smaller sites for BeaverSim?'
+- 'Verification: BEAVRDAM.zip has no published checksum; it was accepted on its served size and the zip''s CRC-32 with
+  --no-md5-ok (approved for this intake). The documents were verified against the MD5 their server states.'
+- 'Downloads: the three files are served by Ontario government servers (publicdocs.mnr.gov.on.ca,
+  ws.gisetl.lrc.gov.on.ca) that the record links to, not by open.canada.ca itself.'
+- Land status, governance and colonies are not stated (see site hints).

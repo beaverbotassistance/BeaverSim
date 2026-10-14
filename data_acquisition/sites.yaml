@@ -127,3 +127,11 @@ sites:
     governance: null
     level: region
     contains: [wyoming_dam_traces]      # Pole Mountain / Happy Jack dams inside the Medicine Bow dam extent
+  ontario_province:
+    name: Province of Ontario (extent of the LIO Beaver Dam inventory, southern and central Ontario), Canada
+    crs: EPSG:3161                      # NAD83 / Ontario MNR Lambert: the dams span UTM zones 15 to 18
+    colonies: null
+    land_status: null
+    governance: null
+    level: region
+    contains: []                        # no registry site lies in Ontario
