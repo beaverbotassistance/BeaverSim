@@ -54,8 +54,9 @@ groups:
     orthorectification), no ground control or GNSS, hence none'
   - 'product annotations: EML samplingDescription (dams manually mapped at 1:1,000 as point features in each
     image), point layers named Kotz_beaver_dams_<year>'
-  - 'start_date, end_date: EML temporalCoverage (2002-08-22 to 2019-07-08); years of the layers: layer names and
-    EML abstract/studyExtent (2002, 2007-2014, 2017-2019)'
+  - 'dates: one item per layer, dated by the year in its name (layers rule); EML abstract/studyExtent list the same
+    years (2002, 2007-2014, 2017-2019); EML temporalCoverage 2002-08-22 to 2019-07-08 gives only the first and last
+    image dates'
   - 'crs: the geodatabase declares WGS 84 (EPSG:4326) with an EGM96 height vertical part, read with pyogrio;
     evidence.json reports epsg null because the CRS is compound'
   - 'archive: the record lists only the zip; the .gdb folder was extracted from it with
@@ -70,8 +71,7 @@ groups:
   - path: Kotzebue_Study_Area_Beaver_Dams_2002_2019.gdb
     product: annotations
     archive: Kotzebue_Study_Area_Beaver_Dams_2002_2019.zip
-    start_date: 2002-08-22
-    end_date: 2019-07-08
+    layers: {pattern: '_(\d{4})$', date_precision: year}   # one item per year layer (Kotz_beaver_dams_<year>)
     notes:
     - 'File Geodatabase with one point layer per mapped year, 472 features in all: Kotz_beaver_dams_2002 (2),
       2007 (6), 2008 (7), 2009 (10), 2010 (15), 2011 (31), 2012 (34), 2013 (42), 2014 (55), 2017 (79), 2018 (93),
@@ -91,9 +91,6 @@ groups:
     notes:
     - EML record (abstract, methods, sampling, CC-BY-4.0 licence, NSF award 1850578).
 open_questions:
-- The geodatabase is one item spanning 2002-2019 (start_date/end_date). Should the catalog split it into one item
-  per year layer, so each year can be matched with imagery of that year? That needs a per-layer date field, which
-  the schema does not have.
 - 'Site: kotzebue_study_area is a new 100 km² site that contains the kotz_3 and part of the kotz_b_west drone
   footprints. Keep it separate (as drafted), or relate the drone sites to it in the registry?'
 - 'Site crs EPSG:32603 chosen to match the other Baldwin Peninsula sites; the data themselves are in EPSG:4326.'
