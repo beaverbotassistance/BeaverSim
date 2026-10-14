@@ -27,6 +27,7 @@ import rasterio
 from data_acquisition.catalog import descriptors, stac
 from data_acquisition.catalog import summary as summaries
 from data_acquisition.readers import geotiff, table, vector
+from data_acquisition.sources import checksums
 from data_acquisition.sources.archives import verify_member
 from data_acquisition.sources.dataone import file_hash
 from data_acquisition.catalog.descriptors import add_quality, get_field, set_field
@@ -133,8 +134,22 @@ def _verify(item: pystac.Item, asset: pystac.Asset, path: Path) -> None:
             item.properties["beaver:provenance"] = prov
         else:
             add_quality(item, "checksum_mismatch", f"differs from its member in {Path(archive).name}")
-    elif not checksum:
-        add_quality(item, "checksum_unknown", "no repository checksum to verify against")
+    elif not checksum:      # a record checksum that is not a plain digest (e.g. a multipart ETag), or none
+        prov = get_field(item, "provenance") or {}
+        verdict, against = None, None
+        if prov.get("checksum"):
+            algorithm, value = prov["checksum"].split(":", 1)
+            verdict, against = checksums.check(path, algorithm, value), f"record {algorithm}"
+        if verdict is None and prov.get("download_checksum"):
+            algorithm, value = prov["download_checksum"].split(":", 1)
+            verdict = checksums.digest(path, algorithm) == value
+            against = f"{algorithm} recorded at download ({prov.get('download_verified_by')})"
+        if verdict is None:
+            add_quality(item, "checksum_unknown", "no checksum to verify against")
+        elif not verdict:
+            add_quality(item, "checksum_mismatch", f"differs from the {against}")
+        else:
+            item.properties["beaver:provenance"] = {**prov, "verified": f"{datetime.date.today().isoformat()} ({against})"}
     else:
         algorithm = {v: k for k, v in stac.MULTIHASH.items()}[checksum[:4]]
         if file_hash(path, algorithm) != checksum[4:]:

@@ -10,6 +10,8 @@ resource has no files of its own; its members are returned as ``parts`` (resourc
 """
 import json
 import re
+
+from data_acquisition.sources import checksums
 from typing import Any, Dict
 
 LICENCES = {"creativecommons.org/licenses/by/4.0": "CC-BY-4.0", "creativecommons.org/licenses/by-nc/4.0": "CC-BY-NC-4.0",
@@ -41,7 +43,8 @@ def read(text: str) -> Dict[str, Any]:
     for f in d.get("files") or []:
         name = f["url"].split("/data/contents/", 1)[-1]
         entities[name] = {"url": f["url"], "pid": f["url"], "size": f.get("size"),
-                          "checksum": ("md5", f["checksum"].lower()) if f.get("checksum") else None,
+                          # plain MD5 for older files, an S3 multipart ETag (<hex>-<parts>) for newer ones
+                          "checksum": checksums.parse("md5", f["checksum"]) if f.get("checksum") else None,
                           "media_type": f.get("content_type"), "attributes": []}
     return {"package_id": f"doi:{doi.group(1)}" if doi else None, "title": m.get("title", ""),
             "licence": _licence(rights.get("url")), "rights": rights.get("statement", ""),

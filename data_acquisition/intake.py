@@ -85,7 +85,10 @@ Contract for a source client:
   (e.g. `hs:<id>`): never make up a DOI.
 - Downloads with the standard library only (`urllib`); resumes partial `.part` files where the server
   supports ranges; retries temporary errors with a growing wait.
-- Verifies every file against the repository's checksum when it gives one; raises on a mismatch.
+- Verifies every file with `data_acquisition.sources.checksums.check` against the repository's checksum when it
+  gives one (it understands plain digests and S3 multipart ETags `<hex>-<n>`); raises on a mismatch. When the
+  check is undecided (a multipart ETag whose part size is unknown) or there is no checksum, verifies against the
+  MD5 the storage states when serving the file, and logs which in the `verified_by` column.
 - Makes every downloaded file read-only; never deletes or overwrites a downloaded file.
 - If the repository publishes archives (zip), extracts them with `data_acquisition.sources.archives.extract`
   (CRC-checked, read-only, never overwrites) after verifying the archive; never extract any other way.

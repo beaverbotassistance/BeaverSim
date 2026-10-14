@@ -185,6 +185,9 @@ def data_item(s: Dict[str, Any], f: Dict[str, Any], path: Path, rel: str, group:
         "creators": record["creators"] if record else None, "path": rel,
         "url": (entity or {}).get("url") or dl.get("url"), "downloaded": dl.get("downloaded"),
         "checksum": f"{algorithm}:{digest}" if algorithm and not archive else None,
+        **({"download_checksum": f"{dl['checksum_algorithm'].lower()}:{dl['checksum']}",
+            "download_verified_by": dl.get("verified_by") or "record checksum"}
+           if dl.get("checksum") and not archive else {}),
         **({"archive": f"{group['folder']}/{archive}",
             "archive_checksum": f"{algorithm}:{digest}" if algorithm else None,
             "extracted": "CRC-32 verified against the archive (data_acquisition.sources.archives)"} if archive else {}),

@@ -5,7 +5,9 @@ HydroShare serves a resource's science metadata and its file list (with MD5s) fr
 both responses are saved, unchanged, in ``resource.json`` (see :mod:`data_acquisition.readers.hydroshare`).
 A collection resource has no files of its own: its record is saved in its folder and each member
 resource (its own DOI) is downloaded into its own folder. A HydroShare resource id names one
-version (a new version is a new resource), so the DOI given is the version downloaded. Files are
+version (a new version is a new resource), so the DOI given is the version downloaded. Checksums: the record's when it can be
+checked (plain MD5, or an S3 multipart ETag of known part size), else the MD5 the cloud storage states
+when serving the file; the download log says which. Files are
 served from cloud storage through redirects; temporary errors are retried with a growing wait, and
 a partial ``.part`` file is resumed.
 
@@ -13,6 +15,7 @@ a partial ``.part`` file is resumed.
         --doi 10.4211/hs.7c4ae80863174acfb571ccf8bdac8968 --list
 """
 import argparse
+import base64
 import datetime
 import json
 import os
@@ -25,8 +28,8 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
 from data_acquisition.readers import hydroshare
-from data_acquisition.sources import dataset_folder
-from data_acquisition.sources.dataone import file_hash, log
+from data_acquisition.sources import checksums, dataset_folder
+from data_acquisition.sources.dataone import log
 
 API = "https://www.hydroshare.org"
 METADATA = API + "/hsapi2/resource/{id}/json/"
@@ -51,6 +54,25 @@ def _retry(action: Callable[[], Any]) -> Any:
 def _get(url: str) -> bytes:
     with urllib.request.urlopen(url, timeout=120) as r:
         return r.read()
+
+
+def storage_md5(headers) -> Optional[str]:
+    """The whole file's MD5 as the storage serving it states it (``x-goog-hash: md5=``, ``Content-MD5``, or a
+    plain ETag), or None. These describe the stored object even when a byte range was requested."""
+    for value in headers.get_all("x-goog-hash") or []:
+        if value.strip().lower().startswith("md5="):
+            return base64.b64decode(value.split("=", 1)[1].strip()).hex()
+    if headers.get("Content-MD5"):
+        return base64.b64decode(headers["Content-MD5"]).hex()
+    etag = (headers.get("ETag") or "").strip('"').lower()
+    return etag if re.fullmatch(r"[0-9a-f]{32}", etag) else None
+
+
+def _stored_md5(url: str) -> Optional[str]:
+    """Ask the storage for a file's MD5 with a one-byte request (headers only matter)."""
+    req = urllib.request.Request(url, headers={"Range": "bytes=0-0"})
+    with urllib.request.urlopen(req, timeout=120) as r:
+        return storage_md5(r.headers)
 
 
 def _fetch(url: str, dest: Path, size: Optional[int]) -> None:
@@ -125,14 +147,26 @@ def download(root: Path, doi: str, name_filter: Optional[str] = None) -> List[Di
             path.parent.mkdir(parents=True, exist_ok=True)
             _retry(lambda: _fetch(_https(e["url"]), path, e["size"]))
         algorithm, expected = e["checksum"] or ("", "")
-        actual = file_hash(path, algorithm) if algorithm else ""
-        if expected and actual != expected:
-            raise IOError(f"{name}: {algorithm} mismatch")
+        verdict = checksums.check(path, algorithm, expected) if expected else None
+        if verdict is False:
+            raise IOError(f"{name}: {algorithm} {expected} mismatch")
+        if verdict:
+            verified_by = f"record {checksums.parse(algorithm, expected)[0]}"
+        else:
+            # no record checksum, or a multipart ETag whose part size is unknown: check the storage's own MD5
+            stored = _retry(lambda: _stored_md5(_https(e["url"])))
+            if not stored:
+                raise IOError(f"{name}: the record checksum cannot be checked and the storage states no MD5")
+            if checksums.digest(path, "md5") != stored:
+                raise IOError(f"{name}: differs from the MD5 the storage states")
+            verified_by = "storage md5" + (f" (record {expected} not checkable)" if expected else "")
+        actual = checksums.digest(path, "md5")
         path.chmod(path.stat().st_mode & ~(stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH))
-        print(f"  ok {name}")
+        print(f"  ok {name} ({verified_by})")
         rows.append({"source": "hydroshare", "doi": record["package_id"], "file": name,
                      "path": os.path.relpath(path, root).replace(os.sep, "/"), "bytes": path.stat().st_size,
-                     "checksum_algorithm": algorithm.upper(), "checksum": actual, "licence": record["licence"],
+                     "checksum_algorithm": "MD5", "checksum": actual, "verified_by": verified_by,
+                     "licence": record["licence"],
                      "dataset_title": record["title"], "downloaded": datetime.date.today().isoformat(),
                      "url": e["url"]})
     return rows

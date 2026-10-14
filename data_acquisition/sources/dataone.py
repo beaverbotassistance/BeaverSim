@@ -30,7 +30,7 @@ CHUNK = 8 * 1024 * 1024
 # member-node API (a member node is closer to the data and supports resumed downloads)
 COORDINATING_NODE = "https://cn.dataone.org/cn/v2"
 LOG_FIELDS = ["source", "doi", "file", "path", "bytes", "checksum_algorithm", "checksum", "licence",
-              "dataset_title", "downloaded", "url"]
+              "dataset_title", "downloaded", "url", "verified_by"]     # verified_by: which checksum the file matched
 
 
 def _get(url: str, timeout: int = 120) -> bytes:
@@ -95,7 +95,7 @@ def log(path: Path, rows: List[Dict[str, Any]]) -> None:
     old = list(csv.DictReader(open(path, newline=""))) if path.exists() else []
     keep = [r for r in old if r["path"] not in {x["path"] for x in rows}]
     with open(path, "w", newline="") as f:
-        w = csv.DictWriter(f, LOG_FIELDS)
+        w = csv.DictWriter(f, LOG_FIELDS, restval="")       # older rows have no verified_by
         w.writeheader()
         w.writerows(keep + rows)
 
