@@ -86,6 +86,14 @@ sites:
     governance: null
     level: region
     contains: [kotz_3]                  # kotz_b_west only 23% inside the dam extent
+  northern_baldwin_peninsula:
+    name: Northern Baldwin Peninsula study region (430 km²), Alaska
+    crs: EPSG:32603
+    colonies: null
+    land_status: null
+    governance: null
+    level: region
+    contains: [kotz_3, kotz_b_east, kotz_b_south, kotz_b_west, kotzebue_study_area]   # drone sites fully inside the dam extent; kotzebue_study_area 77%
   seward_baldwin_watersheds:
     name: 89 beaver-occupied watersheds, Seward Peninsula and Baldwin Peninsula, Alaska
     crs: EPSG:3338                      # Alaska Albers: the watersheds span UTM zones 3 and 4

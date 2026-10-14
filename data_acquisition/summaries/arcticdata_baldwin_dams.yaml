@@ -1,0 +1,106 @@
+# Drafted by Claude in a Claude Code session (intake + describe prompts), reviewed by Federico Oliva.
+schema: 1
+dataset: arcticdata_baldwin_dams
+title: Beaver dam locations in a 430 km² study region encompassing the northern Baldwin Peninsula, Alaska, for
+  2010, 2013 and 2019, digitised from sub-metre satellite imagery (Jones, Tape, Clark, Nitze, Grosse, Disbrow; NSF
+  Arctic Data Center)
+doi: doi:10.18739/A2CZ3253W
+authored:
+  by: claude
+  model: claude-opus-5-5
+  date: 2026-10-14
+  note: Claude Code session, from evidence.json
+reviewed:
+  by: Federico Oliva
+  date: 2026-10-14
+source:
+  kind: dataone
+  provider: NSF Arctic Data Center
+  url: https://arcticdata.io
+  api: https://arcticdata.io/metacat/d1/mn/v2
+  log: downloads.csv
+# Sites are defined once in data_acquisition/sites.yaml (name, CRS, land status, governance, colonies);
+# here only this dataset's hints for them.
+sites:
+  northern_baldwin_peninsula:
+    hints:
+      land_status: Not stated in the EML record. beaver_open_datasets.md (A1 'Watch out' and Notes) says the Alaska
+        sites may be on Alaska Native corporation lands; to check against land records.
+      governance: The EML record gives CC-BY-4.0 (attribution required), which settles copyright only
+        (beaver_open_datasets.md, Notes); no data-use or Indigenous data governance terms are stated.
+      colonies: Not stated. The record maps apparently active dams per year (94 in 2010, 174 in 2013, 409 in 2019),
+        not colonies or lodges.
+groups:
+- folder: arcticdata/doi_10.18739_A2CZ3253W
+  doi: doi:10.18739/A2CZ3253W
+  record:
+    path: metadata.xml
+    format: eml
+  site: northern_baldwin_peninsula
+  platform: DigitalGlobe satellites (sensors not named)
+  instruments: [panchromatic imagery, 40-70 cm]
+  positioning: [none]
+  evidence:
+  - 'doi: EML packageId and folder name doi_10.18739_A2CZ3253W'
+  - 'site: EML abstract (430 square kilometer study area encompassing the entire northern Baldwin Peninsula),
+    geographicDescription (430 square kilometer region encompassing the northern Baldwin Peninsula, Alaska) and
+    bounding box (-162.659 to -161.963 E, 66.689 to 66.947 N); the dams span -162.584 to -162.039 E, 66.695 to
+    66.945 N (evidence.json). Not one of the registry sites: checked against the catalog footprints, the ABON 2024
+    drone footprints of kotz_3, kotz_b_east, kotz_b_south and kotz_b_west lie wholly inside the convex hull of the
+    dams (392 km²; 8, 5, 12 and 12 of the 2019 dams inside each), and 77% of the kotzebue_study_area footprint does.
+    New site northern_baldwin_peninsula, level region; crs EPSG:32603 as for the other Baldwin Peninsula sites
+    (UTM zone 3N at -162.3 E)'
+  - 'platform, instruments: EML methods (high-resolution satellite imagery from the DigitalGlobe Inc. archive,
+    panchromatic, 40 to 70 cm resolution)'
+  - 'positioning: EML methods (orthorectified on the USGS NED 2 arc-second DEM; dam positions taken from the 2019
+    orthorectification), no ground control or GNSS, hence none'
+  - 'product annotations: EML samplingDescription (dams manually mapped at 1:1,000 as point features in each
+    image), point layers named Northern_Baldwin_Peninsula_Dams_<year>'
+  - 'dates: one item per layer, dated by the year in its name (layers rule); EML abstract and samplingDescription
+    give the same years (2010, 2013, 2019); EML temporalCoverage gives only 2010 to 2019, no image dates'
+  - 'crs: the geodatabase declares WGS 84 (EPSG:4326), read with pyogrio; the EML physical description says
+    unprojected WGS84 (GCS_WGS_1984)'
+  - 'archive: the record lists only the zip; the .gdb folder was extracted from it with
+    data_acquisition.sources.archives (54 members, CRC-32 verified)'
+  - 'overlap with arcticdata_kotzebue_dams: compared with geopandas (EPSG:32603), every dam of Kotz_beaver_dams_2010
+    (15), _2013 (42) and _2019 (98) lies within 1 m of a dam of the same year here'
+  files:
+  - path: Northern_Baldwin_Peninsula_Study_Area_Beaver_Dams_2010_2013_2019_gdb.zip
+    role: archive
+    attach_to: [annotations]
+    notes:
+    - The archive as published (SHA-1 verified on download); Northern_Baldwin_Peninsula_Study_Area_Beaver_Dams_2010_2013_2019.gdb
+      was extracted from it with data_acquisition.sources.archives (CRC-32 verified).
+  - path: Northern_Baldwin_Peninsula_Study_Area_Beaver_Dams_2010_2013_2019.gdb
+    product: annotations
+    archive: Northern_Baldwin_Peninsula_Study_Area_Beaver_Dams_2010_2013_2019_gdb.zip
+    layers: {pattern: '_(\d{4})$', date_precision: year}   # one item per year layer (Northern_Baldwin_Peninsula_Dams_<year>)
+    notes:
+    - 'File Geodatabase with one point layer per mapped year, 677 features in all: Northern_Baldwin_Peninsula_Dams_2010
+      (94), 2013 (174), 2019 (409). Fields Long, Lat (decimal degrees; EML attributes also list OBJECTID).'
+    - Each layer holds the apparently active dams of that year's image; a dam that failed or was abandoned is
+      dropped from later years unless re-established (EML samplingDescription). The same dam therefore appears in
+      several layers with the same coordinates; there is no dam identifier across years.
+    - Only the years are known per layer; the EML gives no image dates (temporalCoverage 2010 to 2019).
+    - 'Superset of arcticdata_kotzebue_dams for 2010, 2013 and 2019: all 155 dams of those Kotzebue layers are here at
+      the same positions (within 1 m). The two datasets count the same dams twice for those years if combined.'
+  - path: metadata.xml
+    role: metadata
+    attach_to: [annotations]
+    notes:
+    - EML record (abstract, methods, sampling, CC-BY-4.0 licence, NSF award 1850578).
+open_questions:
+- 'Site: northern_baldwin_peninsula is a new region that contains the four ABON 2024 Kotz drone sites and 77% of the
+  kotzebue_study_area footprint (itself a region). Is a region inside a region acceptable in contains, or should
+  kotzebue_study_area be left out of it?'
+- 'Overlap: the 2010, 2013 and 2019 Kotzebue layers (arcticdata_kotzebue_dams) are a subset of this dataset. Should
+  later steps prefer one source for those years (e.g. this one for the region, Kotzebue for its 12-year series), or
+  flag the duplicates?'
+- 'Site crs EPSG:32603 chosen to match the other Baldwin Peninsula sites; the data themselves are in EPSG:4326.'
+- 'The EML bounding box (-162.659 to -161.963 E, 66.689 to 66.947 N) is wider than the dams (-162.584 to -162.039 E);
+  it is presumably the study-region outline, which is not included in the dataset. The 430 km² area cannot be
+  checked: the dams'' convex hull is 392 km².'
+- 'Licence CC-BY-4.0 requires attribution to Jones, Tape, Clark, Nitze, Grosse and Disbrow (Arctic Data Center,
+  doi:10.18739/A2CZ3253W) wherever the dams are used.'
+- 'beaver_open_datasets.md B1b also links an AWI APGC copy of this dataset (bdl-si-rs-2010-2019-n-bp-alaska); not
+  compared.'
