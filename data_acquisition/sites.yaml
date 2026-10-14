@@ -95,3 +95,17 @@ sites:
     level: region
     contains: [glacier_creek, grouse_creek, kotz_3, kotz_b_east, kotz_b_south, kotz_b_west,
                south_fork_serpentine_river, swan_lake_creek, swan_lake_dlb_mp64, upper_nome_river]
+  eeager_western_us:
+    name: EEAGER dam-mapping regions in Oregon, Washington, Nevada, Montana, Wyoming and Colorado, western USA
+    crs: EPSG:5070                      # NAD83 / CONUS Albers: the regions span UTM zones 10 to 13
+    colonies: null
+    land_status: null
+    governance: null
+    level: region
+    contains: []                        # its 12 mapped regions are KMZ layers, not registry sites
+  wyoming_dam_traces:
+    name: Wyoming dam traces area (Fairfax 2025), southeastern Wyoming, USA
+    crs: EPSG:32613
+    colonies: null
+    land_status: null
+    governance: null

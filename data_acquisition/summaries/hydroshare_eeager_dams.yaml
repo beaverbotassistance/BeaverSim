@@ -1,0 +1,133 @@
+# Drafted by Claude in a Claude Code session (intake + describe prompts), reviewed by Federico Oliva.
+schema: 1
+dataset: hydroshare_eeager_dams
+title: Beaver dam outlines mapped from imagery for EEAGER (Fairfax et al. 2023) in 12 western US regions, and a
+  supplemental set of dams and ponds in southeastern Wyoming (Fairfax, HydroShare, 2025)
+authored:
+  by: claude
+  model: claude-opus-5-5
+  date: 2026-10-14
+  note: Claude Code session, from evidence.json
+reviewed:
+  by: Federico Oliva
+  date: 2026-10-14
+source:
+  kind: hydroshare
+  provider: CUAHSI HydroShare
+  url: https://www.hydroshare.org
+  api: https://www.hydroshare.org/hsapi
+  log: downloads.csv
+# Sites are defined once in data_acquisition/sites.yaml (name, CRS, land status, governance, colonies);
+# here only this dataset's hints for them.
+sites:
+  eeager_western_us:
+    hints:
+      colonies: Not stated. The file holds individual dam outlines (1,262 in 12 regional layers), not colonies;
+        beaver_open_datasets.md (F1) says EEAGER detects beaver complexes, which the dams could be grouped into.
+      land_status: Not stated in the record. The regions span six western states (layer names OR, WA, NV, MT, WY,
+        CO); beaver_open_datasets.md (C3 'Watch out', Notes) warns that US imagery covers tribal lands too, so land
+        status must be checked region by region.
+      governance: The record gives CC BY-NC 4.0 (copyright, non-commercial use only); beaver_open_datasets.md (B2)
+        says the resource has no active owner (questions go to CUAHSI). No other data-use terms are stated.
+  wyoming_dam_traces:
+    hints:
+      colonies: Not stated. The record calls the file "beaver dams and ponds" (720 numbered dams, each with a length
+        and an area layer); no colonies or lodges.
+      land_status: Not stated in the record. The area is about 13 by 18 km around -105.44 to -105.29 E, 41.15 to
+        41.31 N (KMZ bounds); land status to check against land records.
+      governance: The record gives CC BY-NC 4.0 (copyright, non-commercial use only); beaver_open_datasets.md (B2)
+        says the resource has no active owner (questions go to CUAHSI). No other data-use terms are stated.
+groups:
+- folder: hydroshare/id_hs_f078d94b1f99460f8f374dbe018a01bc
+  record:
+    path: resource.json
+    format: hydroshare_json
+  positioning: [none]
+  date_precision: unknown
+  start_date: 1990-01-01
+  notes:
+  - 'The record''s box (-126.83 to -99.58 E, 30.65 to 48.38 N, "Western United States") does not match the files:
+    together they span -121.77 to -105.29 E, 38.86 to 48.93 N, so the record box is much wider to the west, south
+    and east, and the EEAGER file reaches 0.55° further north than the record''s north limit.'
+  - 'Both KMZ files have no attributes beyond the KML defaults (Name, and empty description, timestamp, begin, end):
+    no image date, image source or dam status per feature.'
+  evidence:
+  - 'doi: none; the record (resource.json) has no DOI (package_id null), hence the folder id_hs_...; resource
+    f078d94b1f99460f8f374dbe018a01bc, citation "Fairfax, E. (2025). Beaver Dam Locations: Cluster + Surface Water"'
+  - 'product annotations: record "File Information" (outlines of beaver dams mapped for Fairfax et al 2023; a
+    supplemental dataset of beaver dams and ponds in Wyoming), features drawn by people on imagery'
+  - 'variant: file names (EEAGER_DamTraces, Wyoming_DamTraces)'
+  - 'site eeager_western_us: KMZ bounds (-121.77 to -105.66 E, 38.86 to 48.93 N) and layer names (OR, WA, NV, MT, WY,
+    CO): a new region holding 12 mapped regions; crs EPSG:5070 (CONUS Albers) because they span UTM zones 10 to 13'
+  - 'site wyoming_dam_traces: KMZ bounds (-105.44 to -105.29 E, 41.15 to 41.31 N), a single area in UTM zone 13N
+    (EPSG:32613), outside the EEAGER file''s bounds and 3.2° east of red_canyon_creek (-108.67 E, 42.68 N), so not
+    that site'
+  - 'crs: KMZ headers (EPSG:4326), declared by the files'
+  - 'positioning: none; the record and beaver_open_datasets.md (B2, F1) describe outlines mapped on imagery, no field
+    survey'
+  - 'platform, instruments: not stated for the traces; beaver_open_datasets.md (F1, C3) says only that EEAGER works on
+    aerial and satellite imagery of the NAIP kind'
+  - 'date_precision unknown: no acquisition or image date in the record (its dates list is empty) or in the files (the
+    KML timestamp, begin and end fields are empty)'
+  - 'start_date 1990-01-01: a placeholder, NOT supported by any evidence; the record and the context document give no
+    earliest imagery date. To replace once the source imagery is known (see open questions)'
+  - 'end_date EEAGER_DamTraces: 2023-12-31, end of the year of Fairfax et al. 2023 (record "File Information": mapped
+    originally for Fairfax et al 2023; beaver_open_datasets.md F1: JGR Biogeosciences, doi:10.1029/2022JG007196); the
+    traces existed by that publication'
+  - 'end_date Wyoming_DamTraces: 2025-05-05, the record''s creation date (resource.json created 2025-05-05T19:04Z),
+    the latest the traces can date from; the record''s creation is not the acquisition date'
+  files:
+  - path: EEAGER_DamTraces.kmz
+    product: annotations
+    variant: eeager_dams
+    site: eeager_western_us
+    end_date: 2023-12-31
+    notes:
+    - 'KMZ, WGS 84, 13 layers, 1,274 features (geometry type not read by the evidence code). 12 dam layers, features
+      named 1, 2, 3, ...: ORFireDams (87), COSuperAlpineDams (133), COForestDams (29), COForest2Dams (8),
+      CODamageddonDams (350), CORiverineDams (78), COFoothillDams (61), WACascadeDams (43), MTDams (193),
+      WYHillDams (189), NVRiverDams (19), CORiverDams (72): 1,262 dams. Layer TestPolygonsMapped holds 12 named
+      polygons (e.g. OregonFireScar, ColoradoSuperAlpine, ColoradoForest), likely the outlines of the mapped regions.'
+    - 'The 12 regions match the 12 held-out evaluation regions of EEAGER in beaver_open_datasets.md (F1), not its
+      13,344 training dams; this is an inference from the counts, not stated on the record.'
+    - Layers are regions, not epochs, so the file stays one item.
+  - path: Wyoming_DamTraces.kmz
+    product: annotations
+    variant: wyoming_dams
+    site: wyoming_dam_traces
+    end_date: 2025-05-05
+    notes:
+    - 'KMZ, WGS 84, 1,441 layers of one feature each (geometry type not read by the evidence code): DamNLength for
+      N = 1 to 720 and DamNArea for every N but 36, plus Damn36Area (a misspelt Dam36Area) and a second
+      Dam720Area ("Dam720Area.kmz (#2)", besides the first layer Dam720Area.kmz). So 720 dams, each with a length
+      (likely the dam crest line) and an area (likely the pond), per the record''s "beaver dams and ponds"; which
+      geometry each layer holds is not stated.'
+    - Each layer is one dam, not an epoch, so the file stays one item.
+  - path: resource.json
+    role: metadata
+    attach_to: [annotations]
+    notes:
+    - 'HydroShare record (CompositeResource, created 2025-05-05) by Emily Fairfax (CSU Channel Islands), contributors
+      Luwen Wan and Katharine Maher (Stanford). Abstract: beaver dam locations used to develop cluster / complex
+      detection algorithms and evaluate surface water accumulation. No related publication or DOI is linked
+      (relations empty).'
+open_questions:
+- 'Acquisition dates: neither the record nor the files give image dates. start_date 1990-01-01 is a placeholder with
+  no evidence behind it; the end limits are the 2023 paper (EEAGER) and the record creation (Wyoming). Check Fairfax et
+  al. 2023 (doi:10.1029/2022JG007196) for the imagery source and years of the EEAGER regions, and the authors for the
+  Wyoming set.'
+- 'Platform and instruments: the imagery the dams were traced on (NAIP, Google Earth, other) is not stated; check the
+  paper.'
+- 'Geometry types: the evidence reports "Unknown" for every layer; confirm whether the dam outlines are lines or
+  polygons, and in Wyoming whether DamNLength is the dam line and DamNArea the pond polygon.'
+- 'Wyoming duplicates and gaps: Dam720Area appears twice and Dam36Area is named Damn36Area; confirm which Dam720Area to
+  keep and that Damn36Area is dam 36.'
+- 'EEAGER regions: confirm that TestPolygonsMapped are the outlines of the 12 mapped regions and that these are the 12
+  held-out evaluation regions of the paper. Check whether any registry site (e.g. red_canyon_creek, inside the file''s
+  bounds) lies inside a mapped region, to fill contains of eeager_western_us; and whether the region should instead be
+  split into 12 sites.'
+- 'Site crs of eeager_western_us is set to EPSG:5070 (CONUS Albers) by analogy with the Alaska Albers region, not from
+  the record; confirm.'
+- 'Record bounds (-126.83 to -99.58 E, 30.65 to 48.38 N) disagree with the file bounds; the record box may cover the
+  study as a whole rather than these two files.'
+- Land status, governance and colonies of both sites are not stated (see site hints).
