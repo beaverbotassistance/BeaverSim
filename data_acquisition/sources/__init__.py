@@ -3,11 +3,17 @@ import re
 from pathlib import Path
 
 
-def dataset_folder(root: Path, repository: str, doi: str) -> Path:
-    """``<root>/<repository>/doi_<doi>/``, the folder every client downloads a dataset into.
+DOI = re.compile(r"^(https?://(dx\.)?doi\.org/|doi:)?(10\.\d{4,}/\S+)$", re.I)
 
-    ``doi`` is the identifier of the exact version downloaded (for versioned repositories such as
-    Zenodo, the version DOI, not the concept DOI), given as ``doi:10.x/y``, ``10.x/y`` or a doi.org link.
+
+def dataset_folder(root: Path, repository: str, identifier: str) -> Path:
+    """The folder every client downloads a dataset into: ``<root>/<repository>/doi_<doi>/`` for a DOI,
+    ``<root>/<repository>/id_<identifier>/`` for anything else (e.g. ``hs:<id>`` for an unpublished
+    HydroShare resource), so a folder name never claims a DOI the dataset does not have.
+
+    ``identifier`` names the exact version downloaded (for versioned repositories such as Zenodo, the
+    version DOI, not the concept DOI); a DOI may be given as ``doi:10.x/y``, ``10.x/y`` or a doi.org link.
     """
-    bare = re.sub(r"^(https?://(dx\.)?doi\.org/|doi:)", "", doi.strip(), flags=re.I)
-    return root / repository / re.sub(r"[^A-Za-z0-9._-]+", "_", f"doi:{bare}")
+    m = DOI.match(identifier.strip())
+    name = f"doi:{m.group(3)}" if m else f"id:{identifier.strip()}"
+    return root / repository / re.sub(r"[^A-Za-z0-9._-]+", "_", name)

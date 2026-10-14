@@ -165,6 +165,8 @@ def data_item(s: Dict[str, Any], f: Dict[str, Any], path: Path, rel: str, group:
     item.common_metadata.instruments = f.get("instruments")
     if (f.get("date_precision") or "day") != "day":
         item.properties["beaver:date_precision"] = f["date_precision"]
+    if f.get("date_precision") == "unknown":
+        add_quality(item, "date_unknown", f"acquisition date not known; only its limits {start}..{end}", source="build")
     if f.get("vertical_datum"):
         item.properties["beaver:vertical_datum"] = f["vertical_datum"]
     set_field(item, "site", site, source, **who)

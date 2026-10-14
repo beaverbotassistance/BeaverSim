@@ -81,7 +81,8 @@ Contract for a source client:
   gives, unchanged. When a repository serves one record from several endpoints (e.g. metadata and file
   list separately, or in pages), save every response as served, each labelled with its URL, in that one file. Dataset folder: `data_acquisition.sources.dataset_folder(root, "<repository>", doi)`, with
   the identifier of the exact version downloaded (for versioned repositories, the version DOI, not the
-  concept DOI; log the version DOI too).
+  concept DOI; log the version DOI too). A dataset without a DOI keeps the repository's own identifier
+  (e.g. `hs:<id>`): never make up a DOI.
 - Downloads with the standard library only (`urllib`); resumes partial `.part` files where the server
   supports ranges; retries temporary errors with a growing wait.
 - Verifies every file against the repository's checksum when it gives one; raises on a mismatch.

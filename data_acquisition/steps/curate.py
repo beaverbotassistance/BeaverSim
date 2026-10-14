@@ -165,7 +165,9 @@ def curate_item(item: pystac.Item, summary: Dict[str, Any], verify: bool = False
     else:   # a time span: one season only if it stays within one; else several epochs, or not known
         start, end = (item.common_metadata.start_datetime.date(), item.common_metadata.end_datetime.date())
         seasons = {descriptors.season(start, lat), descriptors.season(end, lat)}
-        if len(seasons) == 1 and (end - start).days <= 92:
+        if item.properties.get("beaver:date_precision") == "unknown":
+            value = "unknown"
+        elif len(seasons) == 1 and (end - start).days <= 92:
             value = seasons.pop()
         else:
             value = "unknown" if item.properties.get("beaver:date_precision") else "multiple"

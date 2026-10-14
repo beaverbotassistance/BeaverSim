@@ -32,6 +32,10 @@ Time of a data file, one of:
     date + date_precision: month | year       only the month or year is known (e.g. a lidar composite);
                                               with year, ``date: 2017`` is enough
     start_date + end_date                     a product spanning two epochs (e.g. a DEM of difference)
+    date_precision: unknown + start_date + end_date
+                                              the date is not known; start and end are the limits the evidence
+                                              supports (e.g. "no later than the record's creation"), each
+                                              with its source in the evidence
 
 A report or metadata file (``role``) attaches to the items of its group whose product is in
 ``attach_to`` and whose date matches its own; without a date (its own or the group's) it attaches to
@@ -85,7 +89,7 @@ SITES = HERE.parent / "sites.yaml"          # the site registry
 SCHEMA = 1
 PRODUCTS = {"orthomosaic", "multispectral", "dsm", "dtm", "chm", "dod", "uncertainty", "photos",
             "annotations", "survey_points", "model_output"}
-PRECISIONS = ("day", "month", "year")
+PRECISIONS = ("day", "month", "year", "unknown")
 ROLES = {"report", "metadata", "archive"}
 SIDECARS = (".ovr", ".aux.xml", ".tfw", ".tfwx", ".msk", ".prj")   # GDAL/ArcGIS sidecars of a raster
 POSITIONING = {"rtk", "ppk", "gcp", "gnss", "none"}
@@ -237,6 +241,8 @@ def epoch(f: Dict[str, Any]) -> (datetime.date, datetime.date, str):
 
     The label is used in item ids: ``2018-09-25``, ``2017-09``, ``2017``, ``2017-09-07_2018-09-25``.
     """
+    if f.get("date_precision") == "unknown" and (f.get("start_date") is None or f.get("end_date") is None):
+        raise ValueError("date_precision unknown needs start_date and end_date: the limits the evidence supports")
     if f.get("start_date") is not None or f.get("end_date") is not None:
         start, end = f.get("start_date"), f.get("end_date")
         if not (isinstance(start, datetime.date) and isinstance(end, datetime.date)) or start > end:

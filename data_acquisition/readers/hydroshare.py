@@ -19,7 +19,7 @@ PART = "This resource includes"        # the relation a collection lists its mem
 
 def resource_id(text: str) -> str:
     """The 32-hex resource id in a HydroShare link or DOI (``10.4211/hs.<id>``)."""
-    return re.search(r"(?:hs\.|resource/)([0-9a-f]{32})", text).group(1)
+    return re.search(r"(?:hs[.:]|resource/)([0-9a-f]{32})", text).group(1)
 
 
 def _licence(url: str) -> Any:

@@ -156,8 +156,9 @@ FILE_SCHEMA = _obj({
                        "products of the same group this report or metadata belongs to; [] for data files"),
     "site": _str("site slug if different from the group's, else \"\""),
     "date": _str("YYYY-MM-DD if different from the group's, else \"\""),
-    "date_precision": {"type": "string", "enum": ["", "day", "month", "year"],
-                       "description": "month or year when only that is known (date then gives YYYY-MM-01 or YYYY-01-01)"},
+    "date_precision": {"type": "string", "enum": ["", "day", "month", "year", "unknown"],
+                       "description": "month or year when only that is known (date then gives YYYY-MM-01 or YYYY-01-01); "
+                                      "unknown when no date is known, with start_date/end_date as its known limits"},
     "start_date": _str("for products spanning two epochs (e.g. a DEM of difference): first date, else \"\""),
     "end_date": _str("for products spanning two epochs: last date, else \"\""),
     "bands": _list({"type": "string"}, "band names in file order (blue, green, red, rededge, nir, ...) when the "
@@ -229,7 +230,10 @@ Rules:
   (rtk: real-time kinematic base or network; gcp: surveyed ground control; gnss: consumer GNSS only).
 - Time: give each data file its acquisition `date`; use `date_precision` when only the month or year is known, and
   `start_date`/`end_date` for products comparing two epochs. Files shared by every survey (READMEs, ground
-  control) are listed once, without a date, and attach to every matching item.
+  control) are listed once, without a date, and attach to every matching item. When no acquisition date is known,
+  use `date_precision: unknown` with `start_date`/`end_date` as the limits the evidence supports (e.g. the
+  record's creation date as the latest possible), and say in `evidence` where each limit comes from; never use an
+  upload or publication date as if it were the acquisition date.
 - Name the bands of multi-band rasters in `bands`, including elevation products with extra bands.
 - A vector file whose layers are separate epochs (e.g. one layer of dams per year, the year in the layer name)
   gets `layers: {{pattern, date_precision}}` instead of a date: each layer becomes an item dated by its name.

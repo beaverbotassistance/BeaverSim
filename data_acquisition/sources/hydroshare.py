@@ -106,14 +106,16 @@ def list_files(doi: str, name_filter: Optional[str] = None) -> None:
 
 def download(root: Path, doi: str, name_filter: Optional[str] = None) -> List[Dict[str, Any]]:
     """Download the files of ``doi`` (and, for a collection, of every member); returns log rows."""
-    text, record = record_of(hydroshare.resource_id(doi))
-    folder = dataset_folder(root, "hydroshare", record["package_id"] or doi)
+    resource = hydroshare.resource_id(doi)
+    text, record = record_of(resource)
+    # a published resource has a DOI; an unpublished one only its resource id (no DOI is made up for it)
+    folder = dataset_folder(root, "hydroshare", record["package_id"] or f"hs:{resource}")
     folder.mkdir(parents=True, exist_ok=True)
     (folder / "resource.json").write_text(text)
     rows = []
     for part in record["parts"]:
         print(f"  member {part}")
-        rows += download(root, f"10.4211/hs.{part}", name_filter)
+        rows += download(root, f"hs:{part}", name_filter)
     for name, e in record["entities"].items():
         if name_filter and not re.search(name_filter, name):
             continue
