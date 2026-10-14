@@ -58,6 +58,20 @@ def _bands(product: str, wanted: Optional[List[str]], header: Dict[str, Any],
     return names, flags
 
 
+def _period(dates: List[str]) -> (Optional[str], Optional[str]):
+    """First and last day of a record's dates, which may be years (``2001``) or months (``2024-06``)."""
+    if not dates:
+        return None, None
+    first, last = dates[0], dates[-1]
+    first = first + "-01" * ((10 - len(first)) // 3)
+    if len(last) == 4:
+        last += "-12-31"
+    elif len(last) == 7:
+        import calendar
+        last += f"-{calendar.monthrange(int(last[:4]), int(last[5:7]))[1]:02d}"
+    return first[:10], last[:10]
+
+
 @functools.lru_cache(maxsize=None)
 def _vector_info(path: Path) -> Dict[str, Any]:
     return vector.info(path)        # read once per build, also when one file gives one item per layer
@@ -100,6 +114,14 @@ def data_item(s: Dict[str, Any], f: Dict[str, Any], path: Path, rel: str, group:
                                 title=f"{path.name}, layer {layer}" if layer else path.name)
         if layer:
             item.properties["beaver:layer"] = layer
+        if f.get("fields"):
+            item.properties["beaver:fields"] = f["fields"]
+            columns = {c for l in layers["layers"] for c in l["fields"]}
+            named = [c for v in f["fields"].values() for c in ([v] if isinstance(v, str) else v)]
+            absent = [c for c in named if c not in columns]
+            if absent:
+                flags.append(("fields_missing", f"declared columns {absent} are not in the file "
+                                                f"(columns: {sorted(columns)})", "build"))
         if layers["vertical_crs"]:
             item.properties["beaver:vertical_crs"] = layers["vertical_crs"]
     else:
@@ -129,7 +151,7 @@ def data_item(s: Dict[str, Any], f: Dict[str, Any], path: Path, rel: str, group:
                 and entity["size"] != path.stat().st_size:
             add_quality(item, "size_mismatch", f"record {entity['size']} bytes, file {path.stat().st_size}",
                         source="repository")
-        first, last = (record["dates"][0], record["dates"][-1]) if record["dates"] else (None, None)
+        first, last = _period(record["dates"])
         precise = (f.get("date_precision") or "day") == "day"
         # a precise date (or span) must lie within the record's period; a month or year must only overlap it
         if first and (not first <= start.isoformat() <= end.isoformat() <= last if precise

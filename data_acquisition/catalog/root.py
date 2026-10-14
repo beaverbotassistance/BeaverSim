@@ -49,6 +49,8 @@ def build_root(stac_dir: Path) -> (Path, Dict[str, Any]):
     for slug in sorted(set(registry) | set(datasets)):
         site = registry.get(slug, {})
         index[slug] = {"name": site.get("name"), "crs": site.get("crs"), "in_registry": slug in registry,
+                       "level": site.get("level", "site"), "contains": site.get("contains") or [],
+                       "within": sorted(s for s, v in registry.items() if slug in (v.get("contains") or [])),
                        **{f: site.get(f) for f in ("colonies", "land_status", "governance")},
                        "datasets": {d: {"items": e["items"],
                                         "products": {p: sorted(set(t)) for p, t in sorted(e["products"].items())}}
@@ -68,7 +70,8 @@ def main() -> None:
     for slug, site in index.items():
         missing = [f for f in ("colonies", "land_status", "governance") if site[f] is None]
         datasets = ", ".join(f"{d} ({e['items']})" for d, e in site["datasets"].items()) or "no data yet"
-        print(f"  {slug:30s} {datasets}{'  | missing: ' + ', '.join(missing) if missing else ''}")
+        within = f"  | within: {', '.join(site['within'])}" if site["within"] else ""
+        print(f"  {slug:30s} {datasets}{within}{'  | missing: ' + ', '.join(missing) if missing else ''}")
 
 
 if __name__ == "__main__":

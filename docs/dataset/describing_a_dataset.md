@@ -26,7 +26,9 @@ as READMEs or a ground-control list, are listed once without a date. When two fi
 time and product, each gets a `variant`, for example two DEM-of-difference methods. A raster or table that states no CRS takes `crs: EPSG:<code>` from the record, and a CSV of points
 becomes a point layer with `table` (lines to skip, coordinate columns). A vector file whose layers are
 separate epochs (one layer of dams per year) takes `layers: {pattern, date_precision}`: each layer
-becomes an item dated by its name. A top-level `doi` names the
+becomes an item dated by its name. A vector file whose rows carry
+their own time or group (one row per dam per image) stays one item and declares
+`fields: {time, id, group, value}`. A top-level `doi` names the
 dataset as a whole, e.g. a collection whose member records are the groups. A group's `download_filter`
 also sets which files it covers, so two summaries can share one folder. The full
 layout is in [`summary.py`](../../data_acquisition/catalog/summary.py).
@@ -39,7 +41,9 @@ only a person may enter (colonies, land status, governance), as `{value, by, dat
 `null` until someone has checked them; the pipeline reports them as missing, which is the
 intended reminder. A summary refers to sites by slug and holds only its own `hints` for them. Two
 datasets of the same place (Red Canyon on Zenodo and on HydroShare) share one site entry, so land
-status is entered once for both.
+status is entered once for both. A registry entry can be a `region` (an area holding several
+sites, such as a set of watersheds) with `contains: [...]`, the sites mostly inside its footprint;
+the site index then shows each site's regions.
 
 ## From a link: intake
 

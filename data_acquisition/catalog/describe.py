@@ -170,6 +170,10 @@ FILE_SCHEMA = _obj({
                    "x": _str("x/easting/longitude column, \"\" if the file is not a table of points"),
                    "y": _str("y/northing/latitude column"), "z": _str("height column, else \"\""),
                    "delimiter": _str("\"\" for comma")}),
+    "fields": _obj({"time": _str("column with each row's date, else \"\""),
+                    "id": _list({"type": "string"}, "columns identifying a feature across rows, else []"),
+                    "group": _str("column grouping rows (e.g. a watershed name), else \"\""),
+                    "value": _str("the observed value column, else \"\"")}),
     "layers": _obj({"pattern": _str("regex on layer names with one group capturing the layer's date, when each "
                                     "layer is a separate epoch; else \"\""),
                     "date_precision": {"type": "string", "enum": ["", "day", "month", "year"]}}),
@@ -229,6 +233,10 @@ Rules:
 - Name the bands of multi-band rasters in `bands`, including elevation products with extra bands.
 - A vector file whose layers are separate epochs (e.g. one layer of dams per year, the year in the layer name)
   gets `layers: {{pattern, date_precision}}` instead of a date: each layer becomes an item dated by its name.
+- A vector file whose rows carry their own time or grouping (e.g. one row per dam per image) stays one item and
+  declares `fields: {{time, id, group, value}}` with the column names.
+- A new site that is an area holding several sites (e.g. a set of watersheds) gets `level: region` and
+  `contains: [...]` (registry slugs inside it, checked against footprints) in `sites.yaml`.
 - A raster without a CRS (`has_crs: false`) needs `crs` from the record or its text. A CSV of points becomes a
   point layer with `table` (lines to skip above the column names, coordinate columns) and `crs`.
 - Land status, governance and colonies are decided by people. You may give hints with their source.
@@ -259,6 +267,9 @@ def _to_summary(out: Dict[str, Any], dataset: str, source_kind: str, evidence: D
         files = []
         for f in g["files"]:
             entry = {"path": f["path"]}
+            declared = {k: v for k, v in f["fields"].items() if v}
+            if declared:
+                entry["fields"] = declared
             if f["layers"]["pattern"]:
                 entry["layers"] = {"pattern": f["layers"]["pattern"],
                                    "date_precision": f["layers"]["date_precision"] or "year"}

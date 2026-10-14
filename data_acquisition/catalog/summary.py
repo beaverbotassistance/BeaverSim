@@ -54,6 +54,10 @@ Vector files whose layers are separate epochs (e.g. one layer of dams per year):
 the layer's time (``2012``, ``2012-07`` / ``201207``, ``2012-07-08`` / ``20120708``, as the precision says).
 Each matching layer becomes its own item, dated by its name; layers that do not match are reported.
 
+Attribute columns with a meaning: ``fields: {time, id, group, value}`` (each a column name; ``id`` may be a
+list), for vector files whose rows carry their own time or grouping (e.g. one row per dam per image, with
+its date and watershed). The item stays one; the declaration tells later steps how to filter it.
+
 Tables of points (CSV): ``table: {skip, x, y[, z, delimiter]}`` gives the lines to skip above the column
 names and the coordinate columns; with ``crs`` (or the site CRS), the rows become a point layer.
 
@@ -64,7 +68,9 @@ A report or metadata file attaches to items of its own group; when its group has
 bands are not elevations (e.g. ``[elevation, uncertainty]``).
 
 Sites are defined once, in the registry ``data_acquisition/sites.yaml``: ``{<slug>: {name, crs, colonies,
-land_status, governance[, confirmed]}}``. Manual site fields are ``null`` (unknown) or
+land_status, governance[, confirmed, level, contains]}}``. ``level`` is ``site`` (default: a place surveyed as
+one, e.g. a drone site) or ``region`` (an area holding several sites, e.g. a set of watersheds); ``contains``
+lists the registry sites inside it, checked against footprints. Manual site fields are ``null`` (unknown) or
 ``{value, by, date[, note]}``. A summary refers to sites by slug; :func:`load` fills in each site it uses from
 the registry, so ``summary["sites"][slug]`` has the registry fields plus this summary's ``hints``.
 """
@@ -84,11 +90,13 @@ ROLES = {"report", "metadata", "archive"}
 SIDECARS = (".ovr", ".aux.xml", ".tfw", ".tfwx", ".msk", ".prj")   # GDAL/ArcGIS sidecars of a raster
 POSITIONING = {"rtk", "ppk", "gcp", "gnss", "none"}
 FILE_FIELDS = {"path", "product", "variant", "role", "attach_to", "archive", "site", "date", "date_precision",
-               "start_date", "end_date", "crs", "table", "layers",
+               "start_date", "end_date", "crs", "table", "layers", "fields",
                "platform", "instruments", "positioning", "bands", "unit", "vertical_datum", "notes"}
 GROUP_FIELDS = FILE_FIELDS - {"path", "product", "variant", "role", "attach_to"} | {"folder", "doi", "record", "download_filter",
                                                                          "files", "evidence"}
 MANUAL_SITE_FIELDS = ("colonies", "land_status", "governance", "confirmed")
+FIELD_ROLES = {"time", "id", "group", "value"}
+LEVELS = ("region", "site")
 
 
 def load(name_or_path: str) -> Dict[str, Any]:
@@ -126,6 +134,11 @@ def check_sites(sites: Dict[str, Dict[str, Any]]) -> List[str]:
             v = site.get(field)
             if v is not None and not (isinstance(v, dict) and v.get("by") and ("value" in v or field == "confirmed")):
                 p.append(f"sites.yaml {slug}: {field} must be null or {{value, by, date}}")
+        if site.get("level", "site") not in LEVELS:
+            p.append(f"sites.yaml {slug}: level must be one of {LEVELS}")
+        unknown = [c for c in site.get("contains") or [] if c not in sites or c == slug]
+        if unknown:
+            p.append(f"sites.yaml {slug}: contains unknown sites {unknown}")
     return p
 
 
@@ -191,6 +204,11 @@ def check(s: Dict[str, Any], sites: Optional[Dict[str, Dict[str, Any]]] = None) 
                 if not (isinstance(lay, dict) and groups == 1 and lay.get("date_precision", "year") in PRECISIONS
                         and set(lay) <= {"pattern", "date_precision"}):
                     p.append(f"{fw}: layers must be {{pattern (a regex with one group), date_precision}}")
+            fld = merged.get("fields")
+            if fld is not None and not (isinstance(fld, dict) and fld and set(fld) <= FIELD_ROLES and all(
+                    isinstance(v, str) or (isinstance(v, list) and all(isinstance(x, str) for x in v))
+                    for v in fld.values())):
+                p.append(f"{fw}: fields must be {{time, id, group, value}}, each a column name (id may be a list)")
             tbl = merged.get("table")
             if tbl is not None and not (isinstance(tbl, dict) and tbl.get("x") and tbl.get("y")
                                         and set(tbl) <= {"skip", "x", "y", "z", "delimiter"}):
