@@ -9,9 +9,10 @@ entities}``, where ``entities`` maps a file name to ``{url, pid, size, checksum:
 None, attributes: [...]}``; optional ``size_exact: False`` when the record rounds sizes, and
 ``concept_id`` when the record is one version of a versioned dataset (e.g. a Zenodo concept DOI).
 """
-from data_acquisition.readers import eml, hydroshare, pangaea, zenodo
+from data_acquisition.readers import ckan, eml, hydroshare, pangaea, zenodo
 
 RECORDS = {
+    "ckan_json": {"read": ckan.read, "file": "package.json", "media": "application/json"},
     "eml": {"read": eml.read, "file": "metadata.xml", "media": "application/xml"},
     "hydroshare_json": {"read": hydroshare.read, "file": "resource.json", "media": "application/json"},
     "pangaea_tab": {"read": pangaea.read, "file": "metadata.tab", "media": "text/tab-separated-values"},
