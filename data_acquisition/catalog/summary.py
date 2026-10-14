@@ -49,6 +49,11 @@ Sidecars of a described raster (``.ovr``, ``.aux.xml``, ``.tfw``, ``.tfwx``, ``.
 CRS a file does not declare: ``crs: EPSG:<code>`` on the file (or group), taken from the record or its text;
 used only when the file has no CRS of its own, and flagged in the catalog as coming from the summary.
 
+Vector files whose layers are separate epochs (e.g. one layer of dams per year):
+``layers: {pattern, date_precision}``, where ``pattern`` is a regex on layer names with one group capturing
+the layer's time (``2012``, ``2012-07`` / ``201207``, ``2012-07-08`` / ``20120708``, as the precision says).
+Each matching layer becomes its own item, dated by its name; layers that do not match are reported.
+
 Tables of points (CSV): ``table: {skip, x, y[, z, delimiter]}`` gives the lines to skip above the column
 names and the coordinate columns; with ``crs`` (or the site CRS), the rows become a point layer.
 
@@ -79,7 +84,7 @@ ROLES = {"report", "metadata", "archive"}
 SIDECARS = (".ovr", ".aux.xml", ".tfw", ".tfwx", ".msk", ".prj")   # GDAL/ArcGIS sidecars of a raster
 POSITIONING = {"rtk", "ppk", "gcp", "gnss", "none"}
 FILE_FIELDS = {"path", "product", "variant", "role", "attach_to", "archive", "site", "date", "date_precision",
-               "start_date", "end_date", "crs", "table",
+               "start_date", "end_date", "crs", "table", "layers",
                "platform", "instruments", "positioning", "bands", "unit", "vertical_datum", "notes"}
 GROUP_FIELDS = FILE_FIELDS - {"path", "product", "variant", "role", "attach_to"} | {"folder", "doi", "record", "download_filter",
                                                                          "files", "evidence"}
@@ -176,6 +181,16 @@ def check(s: Dict[str, Any], sites: Optional[Dict[str, Dict[str, Any]]] = None) 
                 p.append(f"{fw}: role must be one of {sorted(ROLES)} with attach_to")
             if merged.get("crs") is not None and not str(merged["crs"]).startswith("EPSG:"):
                 p.append(f"{fw}: crs must be EPSG:<code>")
+            lay = merged.get("layers")
+            if lay is not None:
+                import re
+                try:
+                    groups = re.compile(lay.get("pattern", "")).groups if isinstance(lay, dict) else 0
+                except re.error:
+                    groups = 0
+                if not (isinstance(lay, dict) and groups == 1 and lay.get("date_precision", "year") in PRECISIONS
+                        and set(lay) <= {"pattern", "date_precision"}):
+                    p.append(f"{fw}: layers must be {{pattern (a regex with one group), date_precision}}")
             tbl = merged.get("table")
             if tbl is not None and not (isinstance(tbl, dict) and tbl.get("x") and tbl.get("y")
                                         and set(tbl) <= {"skip", "x", "y", "z", "delimiter"}):
@@ -184,12 +199,16 @@ def check(s: Dict[str, Any], sites: Optional[Dict[str, Dict[str, Any]]] = None) 
                 if merged.get("site") not in sites:
                     p.append(f"{fw}: site {merged.get('site')!r} is not in data_acquisition/sites.yaml")
                 try:
+                    if merged.get("layers"):            # dated per layer, by the layer names
+                        raise LookupError
                     key = (merged.get("site"), epoch(merged)[2], f["product"], f.get("variant"))
                     if key in seen:
                         p.append(f"{fw}: same site, time and product as {seen[key]}; give each a variant")
                     seen[key] = f.get("path")
                 except ValueError as e:
                     p.append(f"{fw}: {e}")
+                except LookupError:
+                    pass
                 if set(merged.get("positioning") or []) - POSITIONING:
                     p.append(f"{fw}: positioning must be from {sorted(POSITIONING)}")
     return p
@@ -218,6 +237,28 @@ def epoch(f: Dict[str, Any]) -> (datetime.date, datetime.date, str):
         nxt = datetime.date(d.year + d.month // 12, d.month % 12 + 1, 1)
         return datetime.date(d.year, d.month, 1), nxt - datetime.timedelta(days=1), f"{d.year}-{d.month:02d}"
     return d, d, d.isoformat()
+
+
+def layer_epoch(name: str, spec: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Time fields (``date``, ``date_precision``) for a layer named ``name``, or None if the pattern does not match."""
+    import re
+    m = re.search(spec["pattern"], name)
+    if not m:
+        return None
+    value, precision = m.group(1), spec.get("date_precision", "year")
+    digits = re.sub(r"\D", "", value)
+    parts = {"year": (4,), "month": (4, 2), "day": (4, 2, 2)}[precision]
+    if len(digits) != sum(parts):
+        return None
+    numbers, i = [], 0
+    for n in parts:
+        numbers.append(int(digits[i:i + n]))
+        i += n
+    numbers += [1] * (3 - len(numbers))
+    try:
+        return {"date": datetime.date(*numbers), "date_precision": precision}
+    except ValueError:
+        return None
 
 
 def resolve(group: Dict[str, Any], file: Dict[str, Any]) -> Dict[str, Any]:

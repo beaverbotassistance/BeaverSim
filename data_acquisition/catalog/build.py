@@ -9,6 +9,7 @@ resolved silently. Files on disk that the summary doesn't describe are reported.
     python -m data_acquisition.catalog.build --root "<drive>/open_datasets" --summary arcticdata_seward
 """
 import argparse
+import functools
 import json
 import os
 import re
@@ -57,10 +58,23 @@ def _bands(product: str, wanted: Optional[List[str]], header: Dict[str, Any],
     return names, flags
 
 
+@functools.lru_cache(maxsize=None)
+def _vector_info(path: Path) -> Dict[str, Any]:
+    return vector.info(path)        # read once per build, also when one file gives one item per layer
+
+
+def one_layer(info: Dict[str, Any], name: str) -> Dict[str, Any]:
+    """``info`` restricted to the layer ``name``."""
+    layer = next(l for l in info["layers"] if l["name"] == name)
+    return {"layers": [layer], "crs": layer["crs"], "epsg": layer["epsg"], "bounds": layer["bounds"],
+            "vertical_crs": [layer["vertical_crs"]] if layer["vertical_crs"] else [], "features": layer["features"]}
+
+
 def data_item(s: Dict[str, Any], f: Dict[str, Any], path: Path, rel: str, group: Dict[str, Any],
-              record: Optional[Dict[str, Any]], log: Dict[str, Dict[str, str]]) -> pystac.Item:
-    """Item for a data file (raster or vector): header facts from its reader, the rest from the summary
-    and the record, with flags where they disagree."""
+              record: Optional[Dict[str, Any]], log: Dict[str, Dict[str, str]],
+              layer: Optional[str] = None) -> pystac.Item:
+    """Item for a data file (raster or vector), or for one ``layer`` of a vector file: header facts from its
+    reader, the rest from the summary and the record, with flags where they disagree."""
     source, who = summaries.author(s)
     product, site = f["product"], f["site"]
     start, end, label = summaries.epoch(f)
@@ -81,8 +95,11 @@ def data_item(s: Dict[str, Any], f: Dict[str, Any], path: Path, rel: str, group:
         flags.append(("crs_from_summary", f"the table states no CRS; {crs} from the "
                                           f"{'summary' if f.get('crs') else 'site'}", "build"))
     elif vector.is_vector(path):
-        layers = vector.info(path)
-        item = stac.vector_item(item_id, path, layers, start, end, product, ["data"], checksum, title=path.name)
+        layers = one_layer(_vector_info(path), layer) if layer else _vector_info(path)
+        item = stac.vector_item(item_id, path, layers, start, end, product, ["data"], checksum,
+                                title=f"{path.name}, layer {layer}" if layer else path.name)
+        if layer:
+            item.properties["beaver:layer"] = layer
         if layers["vertical_crs"]:
             item.properties["beaver:vertical_crs"] = layers["vertical_crs"]
     else:
@@ -155,7 +172,8 @@ def data_item(s: Dict[str, Any], f: Dict[str, Any], path: Path, rel: str, group:
 def build(root: Path, s: Dict[str, Any]) -> (pystac.Catalog, Dict[str, List[str]]):
     """Catalog of the files ``s`` describes under ``root``, and a report of problems."""
     log = dataone.read_log(root / s["source"]["log"]) if s["source"].get("log") else {}
-    report = {"missing": [], "undescribed": [], "unsupported": [], "unattached": []}
+    report = {"missing": [], "undescribed": [], "unsupported": [], "unattached": [], "unmatched_layers": []}
+    _vector_info.cache_clear()
     items: Dict[str, pystac.Item] = {}
     placed: Dict[str, tuple] = {}          # item id -> (group index, product, epoch label)
     attachments = []
@@ -175,6 +193,22 @@ def build(root: Path, s: Dict[str, Any]) -> (pystac.Catalog, Dict[str, List[str]
                 continue                    # the group's record is attached to every item already
             elif f.get("role"):
                 attachments.append((gi, f, path))
+            elif f.get("layers") and vector.is_vector(path):    # one item per layer, dated by the layer's name
+                for layer in _vector_info(path)["layers"]:
+                    time = summaries.layer_epoch(layer["name"], f["layers"])
+                    if time is None:
+                        report["unmatched_layers"].append(f"{rel}: {layer['name']}")
+                        continue
+                    lf = {k: v for k, v in f.items() if k not in ("start_date", "end_date")} | time
+                    item = data_item(s, lf, path, rel, g, record, log, layer=layer["name"])
+                    if item.id in items:
+                        raise ValueError(f"two layers for {item.id}: {rel}")
+                    if record is not None:
+                        stac.add_file_asset(item, "metadata", folder / g["record"]["path"], ["metadata"],
+                                            f"{g['record']['format']} record", RECORDS[g["record"]["format"]]["media"])
+                    items[item.id] = item
+                    placed[item.id] = (gi, f["product"], summaries.epoch(lf)[2])
+                continue
             elif f.get("table") or geotiff.is_raster(path) or vector.is_vector(path):
                 try:
                     item = data_item(s, f, path, rel, g, record, log)

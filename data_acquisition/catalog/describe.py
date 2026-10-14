@@ -170,6 +170,9 @@ FILE_SCHEMA = _obj({
                    "x": _str("x/easting/longitude column, \"\" if the file is not a table of points"),
                    "y": _str("y/northing/latitude column"), "z": _str("height column, else \"\""),
                    "delimiter": _str("\"\" for comma")}),
+    "layers": _obj({"pattern": _str("regex on layer names with one group capturing the layer's date, when each "
+                                    "layer is a separate epoch; else \"\""),
+                    "date_precision": {"type": "string", "enum": ["", "day", "month", "year"]}}),
     "notes": _list({"type": "string"}, "inconsistencies or caveats specific to this file"),
 })
 GROUP_SCHEMA = _obj({
@@ -224,6 +227,8 @@ Rules:
   `start_date`/`end_date` for products comparing two epochs. Files shared by every survey (READMEs, ground
   control) are listed once, without a date, and attach to every matching item.
 - Name the bands of multi-band rasters in `bands`, including elevation products with extra bands.
+- A vector file whose layers are separate epochs (e.g. one layer of dams per year, the year in the layer name)
+  gets `layers: {{pattern, date_precision}}` instead of a date: each layer becomes an item dated by its name.
 - A raster without a CRS (`has_crs: false`) needs `crs` from the record or its text. A CSV of points becomes a
   point layer with `table` (lines to skip above the column names, coordinate columns) and `crs`.
 - Land status, governance and colonies are decided by people. You may give hints with their source.
@@ -254,6 +259,9 @@ def _to_summary(out: Dict[str, Any], dataset: str, source_kind: str, evidence: D
         files = []
         for f in g["files"]:
             entry = {"path": f["path"]}
+            if f["layers"]["pattern"]:
+                entry["layers"] = {"pattern": f["layers"]["pattern"],
+                                   "date_precision": f["layers"]["date_precision"] or "year"}
             if f["table"]["x"]:
                 entry["table"] = {k: v for k, v in f["table"].items() if v not in ("", None)} | {"skip": f["table"]["skip"]}
             for k in ("product", "role", "attach_to", "site", "date", "date_precision", "start_date", "end_date",

@@ -97,6 +97,9 @@ def check_vector(item: pystac.Item, key: str, site: Dict[str, Any], verify: bool
     try:
         spec = item.properties.get("beaver:table")
         info = table.info(path, spec, item.properties["beaver:crs_from_summary"]) if spec else vector.info(path)
+        if item.properties.get("beaver:layer"):        # an item for one layer of the file: check that layer
+            from data_acquisition.catalog.build import one_layer
+            info = one_layer(info, item.properties["beaver:layer"])
     except Exception as e:      # GDAL raises several error types for broken vector files
         add_quality(item, "unreadable", f"{type(e).__name__}: {e}")
         return
