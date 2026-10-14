@@ -1,0 +1,131 @@
+# Drafted by Claude in a Claude Code session (intake + describe prompts), reviewed by Federico Oliva.
+schema: 1
+dataset: arcticdata_dam_establishment
+title: Beaver dam establishment and abandonment in 89 watersheds of the Seward and Baldwin Peninsulas, Alaska,
+  2001-2024, traced yearly from sub-metre panchromatic satellite imagery (Glass, Tape; NSF Arctic Data Center)
+doi: doi:10.18739/A2SF2MD9Q
+authored:
+  by: claude
+  model: claude-opus-5-5
+  date: 2026-10-14
+  note: Claude Code session, from evidence.json
+reviewed:
+  by: Federico Oliva
+  date: 2026-10-14
+source:
+  kind: dataone
+  provider: NSF Arctic Data Center
+  url: https://arcticdata.io
+  api: https://arcticdata.io/metacat/d1/mn/v2
+  log: downloads.csv
+# Sites are defined once in data_acquisition/sites.yaml (name, CRS, land status, governance, colonies);
+# here only this dataset's hints for them.
+sites:
+  seward_baldwin_watersheds:
+    hints:
+      land_status: Not stated in the EML record. beaver_open_datasets.md (A1 'Watch out' and Notes) says the Alaska
+        sites may be on Alaska Native corporation lands; to check against land records, watershed by watershed.
+      governance: The EML record gives CC0-1.0 (public domain dedication), which settles copyright only
+        (beaver_open_datasets.md, Notes); no data-use or Indigenous data governance terms are stated.
+      colonies: Not stated. The record tracks 1,545 individual dams (presence/absence per image), not colonies or
+        lodges; the EML methods say all 89 watersheds were occupied by beavers circa 2020-2024.
+groups:
+- folder: arcticdata/doi_10.18739_A2SF2MD9Q
+  doi: doi:10.18739/A2SF2MD9Q
+  record:
+    path: metadata.xml
+    format: eml
+  site: seward_baldwin_watersheds
+  platform: Maxar satellites (WorldView-1, -2, -3, QuickBird, GeoEye-1), via the Polar Geospatial Center
+  instruments: [panchromatic imagery, 31-82 cm]
+  positioning: [none]
+  start_date: 2001-06-17
+  end_date: 2024-06-18
+  evidence:
+  - 'doi: EML packageId and folder name doi_10.18739_A2SF2MD9Q; latest version (system metadata has no obsoletedBy)'
+  - 'site: EML methods (89 watersheds across the Seward and Baldwin Peninsulas occupied by beavers); the searched
+    areas shapefile has 89 polygons, about 1,364 km² in all, spanning -167.70 to -160.62 E, 64.17 to 66.93 N: new
+    region seward_baldwin_watersheds (level region in the registry, containing the 10 registry sites that lie
+    inside searched areas, see the notes of the searched areas file); the watershed of each row is its site field'
+  - 'crs (site): EPSG:3338 (NAD83 / Alaska Albers), the projected CRS of the searched areas file; the area spans UTM
+    zones 3 and 4, so no single UTM zone fits'
+  - 'platform, instruments: EML methods (Maxar panchromatic imagery from WorldView 1-3, QuickBird and GeoEye-1 via the
+    Polar Geospatial Center, 31-82 cm resolution)'
+  - 'positioning: EML methods (dams traced manually on the imagery in ArcGIS Pro); no ground control or GNSS
+    mentioned, hence none'
+  - 'product annotations: EML methods (each intact dam manually traced per scene and given an identifier); point and
+    polygon layers drawn by people'
+  - 'start_date, end_date: earliest and latest values of the date field of the dam histories (read with geopandas),
+    within the EML temporal coverage 2001-2024: the span of the series. Each record has its own image date, declared
+    with fields (time: date), so later steps can filter the one item by year and watershed'
+  - 'archive: the record lists only the two zips; each shapefile was extracted from its zip with
+    data_acquisition.sources.archives (4 members each, CRC-32 verified)'
+  files:
+  - path: Glass_all_dam_histories.zip
+    role: archive
+    attach_to: [annotations]
+    notes:
+    - The archive as published (MD5 verified on download); Glass_all_dam_histories/ was extracted from it with
+      data_acquisition.sources.archives (CRC-32 verified).
+  - path: Glass_all_searched_areas.zip
+    role: archive
+    attach_to: [annotations]
+    notes:
+    - The archive as published (MD5 verified on download); Glass_all_searched_areas/ was extracted from it with
+      data_acquisition.sources.archives (CRC-32 verified).
+  - path: Glass_all_dam_histories/Glass_all_dam_histories.shp
+    product: annotations
+    variant: dam_histories
+    archive: Glass_all_dam_histories.zip
+    fields: {time: date, id: [site, dam], group: site, value: dm_prsn}   # one row per dam per image
+    notes:
+    - 'Point shapefile, WGS 84 (EPSG:4326), 14,031 records: one per dam per image reviewed. Fields site (75
+      watershed names), dam (identifier within the site, stored as a float), date (image date, 2001-06-17 to
+      2024-06-18, May to October only), dm_prsn (EML attribute dam_present). 1,545 dams (site, dam), with 1 to
+      16 records each (median 9); every dam keeps the same coordinates in all its records.'
+    - 'dm_prsn: 3,884 records are 1, 10,147 are 0. The EML attribute definition says 1 = present (intact, with
+      upstream ponding) and 0 = absent (including breached/broken), but the EML code list attached to it gives the
+      opposite labels. The data support the definition: every dam has at least one record equal to 1 (a dam was
+      traced only when seen intact), and the share of 1 rises from 20% at a dam''s first record to 43% at its
+      last. Read 1 as present.'
+    - 'Records per year: 2001 (10), 2005 (456), 2006 (77), 2007 (96), 2008 (525), 2009 (807), 2010 (491), 2011
+      (1,083), 2012 (940), 2013 (825), 2014 (1,148), 2015 (974), 2016 (600), 2017 (958), 2018 (1,155), 2019
+      (1,024), 2020 (528), 2021 (589), 2022 (926), 2023 (609), 2024 (210); none for 2002-2004. At most one scene
+      per watershed per year (the latest cloud-, snow- and ice-free one, EML methods).'
+    - 'Site names differ from the searched areas file for 11 watersheds, which are the ABON drone sites under short
+      names (matched by which polygon contains the dams): Kotz3 = ABON site 1, TK1 = ABON site 2, K64 = ABON site 3,
+      SFS = ABON site 4, BSouth = ABON site 5, BWest = ABON site 6, BEast = ABON site 7, K31 = ABON site 8, K47 =
+      ABON site 9, Willow = ABON site 10, Glacier = ABON site 11. 8 dams (of Willow) lie outside every searched
+      area. 14 searched areas have no dam records (Deep Creek, Dese Creek, North 4, Upper Etchepuk River, Walla
+      Walla Creek, Unk13, Unk34, Unk36-38, Unk43-45, Unk7 (branch 2)); some of these polygons overlap dams named
+      after a neighbouring watershed (e.g. McKinley Creek dams in Unk43).'
+    - 'Breaching was validated with field visits to 11 of the watersheds and multispectral imagery for a subset
+      (EML methods); the scene list is in the Supporting Information of Glass et al. 2026, Global Change Biology
+      Communications (not in this dataset).'
+  - path: Glass_all_searched_areas/Glass_all_searched_areas.shp
+    product: annotations
+    variant: searched_areas
+    archive: Glass_all_searched_areas.zip
+    notes:
+    - 'Polygon shapefile, NAD83 / Alaska Albers (EPSG:3338), 89 watershed polygons (field site): the areas for
+      which all summertime imagery 2001-2024 was reviewed (EML methods). Absence records in the dam histories hold
+      only inside these polygons.'
+    - 'Registry sites inside these polygons (footprints of the other summaries'' STAC items): kotz_3 (ABON site 1),
+      swan_lake_creek (ABON site 2), swan_lake_dlb_mp64 (ABON site 3), south_fork_serpentine_river (ABON site 4,
+      also touching Snowshoe Creek and Teller Creek), kotz_b_south (ABON site 5), kotz_b_west (ABON site 6),
+      kotz_b_east (ABON site 7), upper_nome_river (ABON site 8), grouse_creek (ABON site 9), glacier_creek (ABON
+      site 11). ABON site 10 (Willow, -165.70 to -165.66 E, 64.58 to 64.60 N) matches no registry site.
+      kotzebue_study_area overlaps ABON sites 1 and 6.'
+  - path: metadata.xml
+    role: metadata
+    attach_to: [annotations]
+    notes:
+    - EML record (methods, attribute definitions, CC0-1.0 licence, temporal coverage 2001-2024).
+open_questions:
+- 'Site crs EPSG:3338 (Alaska Albers, the searched areas'' own CRS) because the watersheds span UTM zones 3 and 4;
+  the other Alaska sites in the registry use EPSG:32603.'
+- 'dm_prsn coding: the EML code list contradicts the attribute definition; the draft reads 1 = present based on the
+  data (see notes). Worth confirming with the authors (Glass, Tape).'
+- 'ABON site 10 / Willow (near -165.68 E, 64.59 N) is an ABON drone site with no registry entry; check whether the
+  ABON 2024 record has a Willow Creek site that the arcticdata_abon_2024 summary leaves out.'
+- 'beaver_open_datasets.md B1c lists the licence as unchecked; the EML record gives CC0-1.0.'

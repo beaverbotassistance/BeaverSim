@@ -1,7 +1,8 @@
 # Site registry: every site the dataset summaries use, defined once.
 # name and crs (the site's local UTM zone, or national grid) are facts; colonies, land_status and governance
 # are entered by a person as {value, by, date[, note]} and stay null until someone has checked them.
-# Hints for those fields come from each dataset's summary. Schema: data_acquisition/catalog/summary.py.
+# level is site (default) or region (an area holding several sites); contains lists the registry sites
+# mostly inside a region's footprint. Hints for those fields come from each dataset's summary. Schema: data_acquisition/catalog/summary.py.
 
 schema: 1
 sites:
@@ -83,3 +84,14 @@ sites:
     colonies: null
     land_status: null
     governance: null
+    level: region
+    contains: [kotz_3]                  # kotz_b_west only 23% inside the dam extent
+  seward_baldwin_watersheds:
+    name: 89 beaver-occupied watersheds, Seward Peninsula and Baldwin Peninsula, Alaska
+    crs: EPSG:3338                      # Alaska Albers: the watersheds span UTM zones 3 and 4
+    colonies: null
+    land_status: null
+    governance: null
+    level: region
+    contains: [glacier_creek, grouse_creek, kotz_3, kotz_b_east, kotz_b_south, kotz_b_west,
+               south_fork_serpentine_river, swan_lake_creek, swan_lake_dlb_mp64, upper_nome_river]
