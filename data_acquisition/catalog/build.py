@@ -206,7 +206,7 @@ def build(root: Path, s: Dict[str, Any]) -> (pystac.Catalog, Dict[str, List[str]
     report = {"missing": [], "undescribed": [], "unsupported": [], "unattached": [], "unmatched_layers": []}
     _vector_info.cache_clear()
     items: Dict[str, pystac.Item] = {}
-    placed: Dict[str, tuple] = {}          # item id -> (group index, product, epoch label)
+    placed: Dict[str, tuple] = {}          # item id -> (group index, product, epoch label, site)
     attachments = []
     for gi, g in enumerate(s["groups"]):
         folder = root / g["folder"]
@@ -238,7 +238,7 @@ def build(root: Path, s: Dict[str, Any]) -> (pystac.Catalog, Dict[str, List[str]
                         stac.add_file_asset(item, "metadata", folder / g["record"]["path"], ["metadata"],
                                             f"{g['record']['format']} record", RECORDS[g["record"]["format"]]["media"])
                     items[item.id] = item
-                    placed[item.id] = (gi, f["product"], summaries.epoch(lf)[2])
+                    placed[item.id] = (gi, f["product"], summaries.epoch(lf)[2], f["site"])
                 continue
             elif f.get("table") or geotiff.is_raster(path) or vector.is_vector(path):
                 try:
@@ -252,7 +252,7 @@ def build(root: Path, s: Dict[str, Any]) -> (pystac.Catalog, Dict[str, List[str]
                     stac.add_file_asset(item, "metadata", folder / g["record"]["path"], ["metadata"],
                                         f"{g['record']['format']} record", RECORDS[g["record"]["format"]]["media"])
                 items[item.id] = item
-                placed[item.id] = (gi, f["product"], summaries.epoch(f)[2])
+                placed[item.id] = (gi, f["product"], summaries.epoch(f)[2], f["site"])
             else:
                 report["unsupported"].append(rel)
         if folder.exists():
@@ -274,9 +274,11 @@ def build(root: Path, s: Dict[str, Any]) -> (pystac.Catalog, Dict[str, List[str]
         dated = any(f.get(k) is not None for k in ("date", "start_date"))
         label = summaries.epoch(f)[2] if dated else None
         for product in f["attach_to"]:
-            same_group = [i for i, (g2, p2, l2) in placed.items() if g2 == gi and p2 == product]
-            targets = [items[i] for i, (g2, p2, l2) in placed.items()       # own group first, else any group
-                       if (g2 == gi or not same_group) and p2 == product and (label is None or l2 == label)]
+            site = f.get("site")                # a report of one site attaches only to that site's items
+            same_group = [i for i, (g2, p2, l2, s2) in placed.items() if g2 == gi and p2 == product]
+            targets = [items[i] for i, (g2, p2, l2, s2) in placed.items()   # own group first, else any group
+                       if (g2 == gi or not same_group) and p2 == product and (label is None or l2 == label)
+                       and (site is None or s2 == site)]
             if not targets:
                 report["unattached"].append(f"{path.name} -> {product}{f' {label}' if label else ''}")
             for item in targets:
