@@ -1,0 +1,4 @@
+# Development tools (tests and code checks), on top of requirements.txt
+pytest==9.1.1
+ruff==0.17.0
+vulture==2.16
