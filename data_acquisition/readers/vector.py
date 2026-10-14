@@ -48,6 +48,13 @@ def _split(crs: Optional[str]) -> (Optional[str], Optional[str]):
     return c.to_wkt(), None
 
 
+def _sampled_type(path: Path, layer: str, n: int = 50) -> str:
+    """Geometry type(s) of the first ``n`` features of a layer that declares none, e.g. ``LineString``."""
+    frame = pyogrio.read_dataframe(path, layer=layer, columns=[], max_features=n)
+    types = sorted(set(frame.geom_type.dropna()))
+    return "/".join(types) if types else "Unknown"
+
+
 def info(path: Path, sample_rows: int = 0) -> Dict[str, Any]:
     """Layers of ``path`` (name, geometry type, features, fields, CRS, bounds); optional attribute rows.
 
@@ -66,6 +73,8 @@ def _info(path: Path, sample_rows: int) -> Dict[str, Any]:
     layers: List[Dict[str, Any]] = []
     for name, geom_type in pyogrio.list_layers(path):
         meta = pyogrio.read_info(path, layer=name, force_feature_count=True, force_total_bounds=True)
+        if geom_type in (None, "Unknown") and meta["features"]:     # e.g. KML: the layer does not declare it
+            geom_type = _sampled_type(path, name)
         horizontal, vertical = _split(meta["crs"])
         layer = {"name": name, "geometry_type": geom_type, "features": int(meta["features"]),
                  "fields": list(meta["fields"]), "crs": horizontal, "vertical_crs": vertical,
