@@ -171,6 +171,8 @@ def build(root: Path, s: Dict[str, Any]) -> (pystac.Catalog, Dict[str, List[str]
             rel = os.path.relpath(path, root).replace(os.sep, "/")
             if not path.exists():
                 report["missing"].append(rel)
+            elif f.get("role") and g.get("record") and f["path"] == g["record"]["path"]:
+                continue                    # the group's record is attached to every item already
             elif f.get("role"):
                 attachments.append((gi, f, path))
             elif f.get("table") or geotiff.is_raster(path) or vector.is_vector(path):

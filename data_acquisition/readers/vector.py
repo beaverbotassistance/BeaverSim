@@ -76,10 +76,11 @@ def _info(path: Path, sample_rows: int) -> Dict[str, Any]:
             table = pyogrio.read_dataframe(path, layer=name, read_geometry=False, max_features=sample_rows)
             layer["sample"] = table.astype(str).to_dict(orient="records")
         layers.append(layer)
-    crss = {l["crs"] for l in layers if l["bounds"]}
+    # layers share a CRS when their EPSG codes match (GDAL may write the same CRS as different WKT), else the WKT
+    keys = {f"EPSG:{l['epsg']}" if l["epsg"] else l["crs"] for l in layers if l["bounds"]}
     bounded = [l["bounds"] for l in layers if l["bounds"]]
-    same = bounded and len(crss) == 1
-    crs = crss.pop() if same else None
+    same = bounded and len(keys) == 1
+    crs = next(l["crs"] for l in layers if l["bounds"]) if same else None
     bounds = ([min(b[0] for b in bounded), min(b[1] for b in bounded), max(b[2] for b in bounded),
                max(b[3] for b in bounded)] if same else None)
     verticals = sorted({l["vertical_crs"] for l in layers if l["vertical_crs"]})
