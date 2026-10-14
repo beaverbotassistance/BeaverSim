@@ -1,0 +1,310 @@
+# Drafted by Claude in a Claude Code session (intake + describe prompts), reviewed by Federico Oliva.
+schema: 1
+dataset: hydroshare_wyoming_brat
+title: Beaver Restoration Assessment Tool (BRAT) outputs under six calibration approaches and the Riverscapes version,
+  per stream reach with observed dam density, for southeastern Wyoming at three scales (Andruss, HydroShare, 2026)
+authored:
+  by: claude
+  model: claude-opus-5-5
+  date: 2026-10-14
+  note: Claude Code session, from evidence.json
+reviewed:
+  by: Federico Oliva
+  date: 2026-10-14
+source:
+  kind: hydroshare
+  provider: CUAHSI HydroShare
+  url: https://www.hydroshare.org
+  api: https://www.hydroshare.org/hsapi
+  log: downloads.csv
+# Sites are defined once in data_acquisition/sites.yaml (name, CRS, land status, governance, colonies);
+# here only this dataset's hints for them.
+sites:
+  wyoming_brat_huc8:
+    hints:
+      colonies: Not stated. The tables give per-reach observed dam counts (Join_Count) and dam density (DamKM), not
+        colonies; 7,984 dam joins over 3,044 reaches with DamKM > 0 in Original.csv.
+      land_status: 'Not stated in the record. Per-reach land administrator columns (ADMIN_AGEN in the BRAT v3 tables,
+        ownership in Riverscapes.csv) give, in Original.csv (201,879 reaches): private (PVT) 54%, BLM 23%, USFS 14%,
+        state (ST) 7%, other (UND, LG) 2%. The reaches lie in Wyoming, Colorado and Nebraska (Riverscapes.csv us_state:
+        WY 247,431, CO 66,939, NE 3,102), so land status must be checked state by state.'
+      governance: 'The record gives CC BY 4.0 (rights statement "shared under the Creative Commons Attribution CC
+        BY"); creator Michelle Andruss, University of Minnesota - Twin Cities. Much of the BRAT attributes come from the
+        BRAT developers (record abstract), whose own terms may apply. No other data-use terms are stated.'
+  medicine_bow_brat:
+    hints:
+      colonies: Not stated. Per-reach observed dam counts and density only (3,040 dam joins over 1,222 reaches with
+        DamKM > 0 in MB_Original.csv).
+      land_status: 'Not stated in the record. ADMIN_AGEN in MB_Original.csv (26,676 reaches): USFS 92%, private 5%,
+        state 1.5%, other 1.5%; the R script calls the area "Medicine Bow NF area only". MB_Riverscapes.csv has reaches
+        in Wyoming (61,912) and Colorado (10,826).'
+      governance: 'The record gives CC BY 4.0; creator Michelle Andruss, University of Minnesota - Twin Cities. A
+        national forest (USFS) area per the R script; no other data-use terms are stated.'
+  wyoming_dam_traces:
+    hints:
+      colonies: Not stated. Per-reach observed dam counts and density only (1,122 dam joins over 388 reaches with DamKM
+        > 0 in HJ_Original.csv).
+      land_status: 'Not stated in the record. ADMIN_AGEN in HJ_Original.csv (2,587 reaches): USFS 98.6%, private 0.9%,
+        state and BLM 0.5%; the R script calls the area "Pole Mountain / Happy Jack area only".'
+      governance: 'This record gives CC BY 4.0 (creator Michelle Andruss); the dam traces of the same area in
+        hydroshare_eeager_dams are CC BY-NC 4.0, so the stricter terms may apply to the dam positions if they are the
+        same dams (see open questions).'
+groups:
+- folder: hydroshare/id_hs_495bc1c63d064fb2b7d16fa859f67f84
+  record:
+    path: resource.json
+    format: hydroshare_json
+  date_precision: unknown
+  start_date: 1990-01-01
+  end_date: 2026-01-26
+  table: {skip: 0}
+  fields: {id: TARGET_FID, value: oCC_EX}
+  notes:
+  - 'Non-spatial tables: one row per stream reach of a BRAT network, with the BRAT inputs (iGeo_*, iVeg_*, iPC_*,
+    iHyd_*), outputs (oVC_*, oCC_*, mCC_*), a spatial join of observed dams (Join_Count, the KML dam attributes Name,
+    FolderPath, SymbolID, ..., EVT, Length, X, Y, Elevation) and DamKM (observed dams per km). The reach geometry is
+    not included. oCC_EX is the predicted existing dam capacity in dams per km (readme), compared with DamKM by
+    WY_BRAT_Calibration_ValidationStats.Rmd.'
+  - 'X and Y are the coordinates of one joined dam per reach (0 where no dam joined), not of the reach, so the tables
+    are not point layers. The readme does not give their CRS; the values (-106.68 to -104.75, 41.13 to 42.09 in
+    Original.csv) are longitude and latitude, likely WGS 84. Where Join_Count > 1 only one dam''s attributes are kept.
+    Elevation is in feet (readme).'
+  - 'TARGET_FID (and ORIG_FID) is unique in every table, so it is the row key; it is the feature id of the spatial
+    join, not a BRAT network id. ReachID is unique only in the HJ tables (in Original.csv 51,624 values over 201,879
+    rows: ReachID restarts per network), and the Riverscapes tables have no ReachID (their keys are OBJECTID_1 with
+    WatershedI, and NHDPlusID per flowline).'
+  - 'The readme lists Shape_Le_1 for every table, but only the *Chew_Survey.csv and *Riverscapes.csv files have it; the
+    Dam_Frequency, Natural_Breaks, Original, Preferred and Random tables end their KML columns with Shape_Leng.'
+  - 'The readme describes MB_Riverscapes.csv with only its first two variables (Join_Count, TARGET_FID); it has the
+    same columns as Riverscapes.csv.'
+  evidence:
+  - 'doi: none; the record (resource.json) has no DOI (package_id null), hence the folder id_hs_...; resource
+    495bc1c63d064fb2b7d16fa859f67f84, citation "Andruss, M. (2026). WY BRAT Calibration Validation Data, HydroShare"'
+  - 'product model_output: record abstract (BRAT outputs for each calibration approach and comparison BRAT version
+    at 3 different scales) and readme ("BRAT ... Calibration Outputs", "BRAT ... Version Outputs")'
+  - 'variant: file names and readme titles: Original (BRAT original version), Chew_Survey (surveyed calibration,
+    "Survey Upcoded" in the R script), Dam_Frequency (dam frequency calibration, "Dam Freq > 100 Upcoded"),
+    Natural_Breaks (natural breaks calibration), Preferred (preferred calibration), Random (random version,
+    "Randomly Upcoded"), Riverscapes (Riverscapes BRAT version)'
+  - 'site wyoming_brat_huc8: readme "All HUC 8 scale"; R script "ALL HUC 8 WATERSHEDS" (Table 4). Riverscapes.csv
+    WatershedI gives seven HUC 8 codes (10180002, 10180004, 10180010, 10180012, 10190009, 10190015, 14050003) in WY,
+    CO and NE; dam X/Y -106.68 to -104.75 E, 41.13 to 42.09 N. A new region: no registry site covers it
+    (red_canyon_creek is at -108.67 E, 42.68 N, outside)'
+  - 'site medicine_bow_brat: readme "Medicine Bow scale"; R script "MEDICINE BOW NF AREA ONLY" (Table 5); dam X/Y
+    -106.41 to -105.29 E, 41.15 to 41.58 N; its HUC 8 codes (MB_Riverscapes.csv WatershedI) are the same seven; a
+    new region inside wyoming_brat_huc8'
+  - 'site wyoming_dam_traces: readme "Pole Mountain scale"; R script "POLE MOUNTAIN / HAPPY JACK AREA ONLY" (Table 6).
+    The joined dams of the HJ tables span -105.435 to -105.291 E, 41.153 to 41.304 N, the same box as the KMZ bounds
+    of Wyoming_DamTraces.kmz in hydroshare_eeager_dams (-105.44 to -105.29 E, 41.15 to 41.31 N); HJ_Riverscapes.csv
+    reaches lie in four HUC 8 (10180010, 10180012, 10190009, 10190015)'
+  - 'crs: none set; the tables are non-spatial (no reach geometry)'
+  - 'table skip 0: column names on the first line (CSV text in evidence.json; the files start with a UTF-8 BOM)'
+  - 'fields id TARGET_FID: uniqueness checked on the files (Original.csv, HJ_Original.csv, Riverscapes.csv,
+    HJ_Riverscapes.csv: one value per row); value oCC_EX: readme ("existing dam capacity density (dams per km)") and the
+    R script, which compares oCC_EX with DamKM'
+  - 'platform, instruments, positioning: not applicable to model outputs and not stated for the observed dams; the dam
+    attributes (Name, FolderPath such as 10190015_final.kmz/10190015_final, SymbolID, AltMode, ...) show they came from
+    KMZ files named by HUC 8, but the record does not say how the dams were mapped'
+  - 'date_precision unknown: neither the record (no coverage or temporal metadata) nor the readme gives the date of
+    the BRAT inputs or of the observed dams'
+  - 'start_date 1990-01-01: a placeholder, NOT supported by any evidence; no earliest date of the inputs or dams is
+    given. To replace once the dam mapping and BRAT input years are known (see open questions)'
+  - 'end_date 2026-01-26: the record''s creation date (resource.json created 2026-01-26T22:31Z; the CSVs were uploaded
+    the same day), the latest the outputs can date from; not the acquisition date. The R scripts carry earlier
+    document dates (Dam_EVT_Exploration.Rmd 2025-09-24, WY_BRAT_Calibration_ValidationStats.Rmd 2025-10-16, "Last
+    Updated 1/26/26"), but the CSVs may have been regenerated later'
+  files:
+  - path: Original.csv
+    product: model_output
+    variant: original
+    site: wyoming_brat_huc8
+    notes:
+    - BRAT original version outputs, all HUC 8 scale; 201,879 reaches, 3,044 with DamKM > 0.
+  - path: Chew_Survey.csv
+    product: model_output
+    variant: chew_survey
+    site: wyoming_brat_huc8
+    notes:
+    - BRAT surveyed (chew survey) calibration outputs, all HUC 8 scale; 201,879 reaches.
+  - path: Dam_Frequency.csv
+    product: model_output
+    variant: dam_frequency
+    site: wyoming_brat_huc8
+    notes:
+    - BRAT dam frequency calibration outputs ("Dam Freq > 100 Upcoded" in the R script), all HUC 8 scale; 201,879
+      reaches.
+  - path: Natural_Breaks.csv
+    product: model_output
+    variant: natural_breaks
+    site: wyoming_brat_huc8
+    notes:
+    - BRAT natural breaks (Jenks) calibration outputs, all HUC 8 scale; 201,879 reaches.
+  - path: Preferred.csv
+    product: model_output
+    variant: preferred
+    site: wyoming_brat_huc8
+    notes:
+    - BRAT preferred calibration outputs, all HUC 8 scale; 201,879 reaches.
+  - path: Random.csv
+    product: model_output
+    variant: random
+    site: wyoming_brat_huc8
+    notes:
+    - BRAT random version outputs ("Randomly Upcoded"), all HUC 8 scale; 201,879 reaches.
+  - path: Riverscapes.csv
+    product: model_output
+    variant: riverscapes
+    site: wyoming_brat_huc8
+    notes:
+    - 'Riverscapes BRAT version outputs, all HUC 8 scale; 317,476 reaches (a different network from the BRAT v3
+      tables: NHDPlus HR flowlines, NHDPlusID, with state, EPA ecoregions, dam setting, limitation, risk and
+      opportunity columns), 4,632 with DamKM > 0.'
+  - path: MB_Original.csv
+    product: model_output
+    variant: original
+    site: medicine_bow_brat
+    notes:
+    - BRAT original version outputs, Medicine Bow scale; 26,676 reaches, 1,222 with DamKM > 0.
+  - path: MB_Chew_Survey.csv
+    product: model_output
+    variant: chew_survey
+    site: medicine_bow_brat
+    notes:
+    - BRAT surveyed (chew survey) calibration outputs, Medicine Bow scale; 26,676 reaches.
+  - path: MB_Dam_Frequency.csv
+    product: model_output
+    variant: dam_frequency
+    site: medicine_bow_brat
+    notes:
+    - BRAT dam frequency calibration outputs, Medicine Bow scale; 26,676 reaches.
+  - path: MB_Natural_Breaks.csv
+    product: model_output
+    variant: natural_breaks
+    site: medicine_bow_brat
+    notes:
+    - BRAT natural breaks calibration outputs, Medicine Bow scale; 26,676 reaches.
+  - path: MB_Preferred.csv
+    product: model_output
+    variant: preferred
+    site: medicine_bow_brat
+    notes:
+    - BRAT preferred calibration outputs, Medicine Bow scale; 26,676 reaches.
+  - path: MB_Random.csv
+    product: model_output
+    variant: random
+    site: medicine_bow_brat
+    notes:
+    - BRAT random version outputs, Medicine Bow scale; 26,676 reaches.
+  - path: MB_Riverscapes.csv
+    product: model_output
+    variant: riverscapes
+    site: medicine_bow_brat
+    notes:
+    - Riverscapes BRAT version outputs, Medicine Bow scale; 72,738 reaches (WY and CO), 2,239 with DamKM > 0.
+  - path: HJ_Original.csv
+    product: model_output
+    variant: original
+    site: wyoming_dam_traces
+    notes:
+    - BRAT original version outputs, Pole Mountain / Happy Jack scale; 2,587 reaches, 388 with DamKM > 0.
+  - path: HJ_Chew_Survey.csv
+    product: model_output
+    variant: chew_survey
+    site: wyoming_dam_traces
+    notes:
+    - BRAT surveyed (chew survey) calibration outputs, Pole Mountain / Happy Jack scale; 2,587 reaches. Its Join_Count
+      sums to 1,123, one more than the other HJ BRAT v3 tables (1,122).
+  - path: HJ_Dam_Frequency.csv
+    product: model_output
+    variant: dam_frequency
+    site: wyoming_dam_traces
+    notes:
+    - BRAT dam frequency calibration outputs, Pole Mountain / Happy Jack scale; 2,587 reaches.
+  - path: HJ_Natural_Breaks.csv
+    product: model_output
+    variant: natural_breaks
+    site: wyoming_dam_traces
+    notes:
+    - BRAT natural breaks calibration outputs, Pole Mountain / Happy Jack scale; 2,587 reaches.
+  - path: HJ_Preferred.csv
+    product: model_output
+    variant: preferred
+    site: wyoming_dam_traces
+    notes:
+    - BRAT preferred calibration outputs, Pole Mountain / Happy Jack scale; 2,587 reaches.
+  - path: HJ_Random.csv
+    product: model_output
+    variant: random
+    site: wyoming_dam_traces
+    notes:
+    - BRAT random version outputs, Pole Mountain / Happy Jack scale; 2,587 reaches.
+  - path: HJ_Riverscapes.csv
+    product: model_output
+    variant: riverscapes
+    site: wyoming_dam_traces
+    notes:
+    - Riverscapes BRAT version outputs, Pole Mountain / Happy Jack scale; 10,390 reaches, 859 with DamKM > 0.
+  - path: Extract_by_Mask_EVT.csv
+    role: report
+    attach_to: [model_output]
+    notes:
+    - 'Table of LANDFIRE EVT codes with the count of dams within 30 m and 100 m and the original BRAT vegetation code
+      (columns EVT, 30m Count, 100m Count, OG Veg Code); the input of Dam_EVT_Exploration.Rmd for the Jenks natural
+      breaks that recode vegetation suitability. Not described in the readme; the record abstract mentions "csv
+      files for the input" of the Jenks script.'
+  - path: Dam_EVT_Exploration.Rmd
+    role: report
+    attach_to: [model_output]
+    notes:
+    - 'R Markdown (document date 2025-09-24): Jenks natural breaks (4 classes) of dam counts per EVT class at 30 m and
+      100 m, and the change from the original vegetation code; writes 30m_Jenks.csv and 100m_Jenks_EVT_Changes.csv
+      (not in the record). Its last chunk uses a Chew table (CHEW.COUNT) that the script never loads, and the chew
+      survey data are not in the record.'
+  - path: WY_BRAT_Calibration_ValidationStats.Rmd
+    role: report
+    attach_to: [model_output]
+    notes:
+    - 'R Markdown by Michelle Andruss (document date 2025-10-16, last updated 2026-01-26): reads all 21 tables and, per
+      scale (Tables 4, 5, 6), fits a multiple regression of oCC_EX on BRAT inputs, the aggregated R² of predicted
+      versus observed capacity categories, confusion matrices (macro F1) and error plots (MAE, RMSE) of oCC_EX
+      against DamKM. Capacity categories: None 0, Rare < 1, Occasional 1 to 5, Frequent 5 to 15, Pervasive >= 15 dams
+      per km. Code partly from Macfarlane et al. 2024 (Montana Beaver Dam Census and BRAT Verification Report).'
+  - path: readme.txt
+    role: report
+    attach_to: [model_output]
+    notes:
+    - 'Variable descriptions for each of the 21 tables (titles give the scale and calibration). Does not cover
+      Extract_by_Mask_EVT.csv or Dam_EVT_Exploration.Rmd, describes MB_Riverscapes.csv with two variables only, and
+      lists Shape_Le_1 for tables that lack it.'
+  - path: resource.json
+    role: metadata
+    attach_to: [model_output]
+    notes:
+    - 'HydroShare record (CompositeResource, created 2026-01-26, modified 2026-01-27) by Michelle Andruss (University
+      of Minnesota - Twin Cities); subjects Beaver Habitat Suitability, Beaver Restoration Assessment Tool. No spatial
+      or temporal coverage, related publication or DOI (relations empty). Points to tools.riverscapes.net/brat/data
+      and brat.riverscapes.net (BRAT v3 outputs) for the attribute definitions.'
+open_questions:
+- 'Dates: neither the record nor the readme gives the year of the BRAT inputs (LANDFIRE EVT version, hydrology) or of
+  the observed dams. start_date 1990-01-01 is a placeholder with no evidence behind it; end_date is the record
+  creation. The R script cites Tables 4 to 6 of an unlinked publication (likely a thesis by the author); find it for
+  the dam mapping years and the BRAT input versions.'
+- 'Observed dams: the dam attributes come from KMZ files named by HUC 8 (e.g. 10190015_final.kmz, 10180004.kmz) not
+  included in the record. The Pole Mountain dams lie in the exact box of Wyoming_DamTraces.kmz (Fairfax 2025,
+  hydroshare_eeager_dams); confirm whether they are the same dams (which would tie this site to that file and its CC
+  BY-NC licence) and how the other dams were mapped (imagery, field survey).'
+- 'Sites: HJ tables are set to wyoming_dam_traces because their dams match its bounds; the reach network
+  (HJ_Riverscapes.csv spans four HUC 8) may extend beyond it. Decide whether to rename that site to Pole Mountain /
+  Happy Jack or add a separate site. The new regions wyoming_brat_huc8 and medicine_bow_brat have no footprint here
+  (non-spatial tables), so their extent and contains lists rest on the dam X/Y and HUC 8 codes; check them against
+  the HUC 8 boundaries.'
+- 'Site crs EPSG:32613 for the two new regions is chosen from the dam longitudes (-106.68 to -104.75 E, UTM zone 13);
+  HUC 8 14050003 may extend west of -108 E (zone 12); confirm.'
+- 'Join key: the reach geometries are not published. TARGET_FID is the only unique key but is the spatial join''s
+  feature id; to place the rows on a map one needs the BRAT v3 networks (ReachID per network) and the Riverscapes
+  BRAT networks (OBJECTID_1 / NHDPlusID per HUC 8) from tools.riverscapes.net; ask the author which network files were
+  used.'
+- 'X / Y CRS: not stated; the values are longitude and latitude, assumed WGS 84.'
+- 'Chew survey: the survey data behind the Chew_Survey calibration (CHEW.COUNT in Dam_EVT_Exploration.Rmd) are not
+  in the record.'
+- Land status, governance and colonies of the three sites are not stated (see site hints).

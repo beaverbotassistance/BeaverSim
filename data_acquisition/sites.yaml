@@ -109,3 +109,21 @@ sites:
     colonies: null
     land_status: null
     governance: null
+  wyoming_brat_huc8:
+    name: Seven HUC 8 watersheds of the Wyoming BRAT calibration study (Andruss 2026), southeastern Wyoming with
+      parts of Colorado and Nebraska, USA
+    crs: EPSG:32613                     # joined dams at -106.68 to -104.75 E (UTM zone 13)
+    colonies: null
+    land_status: null
+    governance: null
+    level: region
+    contains: [medicine_bow_brat, wyoming_dam_traces]   # from the tables' dam X/Y and HUC 8 codes: no footprint
+  medicine_bow_brat:
+    name: Medicine Bow National Forest area of the Wyoming BRAT calibration study (Andruss 2026), southeastern
+      Wyoming and northern Colorado, USA
+    crs: EPSG:32613
+    colonies: null
+    land_status: null
+    governance: null
+    level: region
+    contains: [wyoming_dam_traces]      # Pole Mountain / Happy Jack dams inside the Medicine Bow dam extent
