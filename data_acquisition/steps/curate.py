@@ -58,7 +58,8 @@ def check_raster(item: pystac.Item, key: str, site: Dict[str, Any]) -> None:
         return
     epsg = info["epsg"] if info["has_crs"] else ProjectionExtension.ext(item).epsg   # else: the summary's CRS
     if epsg != int(site["crs"].split(":")[1]):
-        add_quality(item, "crs_mismatch", f"EPSG:{epsg}, site CRS is {site['crs']}")
+        found = f"EPSG:{epsg}" if epsg else "a CRS without EPSG code"
+        add_quality(item, "crs_mismatch", f"{found}, site CRS is {site['crs']}")
     xform = geotiff.unapplied_georeference(path)
     if xform:
         add_quality(item, "unapplied_georeference",

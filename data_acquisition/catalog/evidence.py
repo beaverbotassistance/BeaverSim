@@ -35,8 +35,9 @@ def _lonlat(bbox: Optional[List[float]]) -> Optional[List[float]]:
 
 def _raster(path: Path) -> Dict[str, Any]:
     h = geotiff.info(path)
-    bbox = stac.footprint(h)[1] if h["epsg"] else None     # no footprint without a CRS
+    bbox = stac.footprint(h)[1] if h["has_crs"] else None     # no footprint without a CRS
     return {"driver": h["driver"], "has_crs": h["has_crs"], "epsg": h["epsg"],
+            "crs_name": CRS.from_user_input(h["crs"]).name if h["crs"] else None,
             "resolution_m": [round(r, 4) for r in h["resolution"]], "bands": h["count"],
             "dtypes": sorted(set(h["dtypes"])), "colorinterp": h["colorinterp"], "nodata": h["nodata"],
             "lonlat_bbox": _lonlat(bbox), "overviews": bool(h["overviews"])}

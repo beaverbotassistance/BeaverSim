@@ -35,8 +35,9 @@ def lonlat_box(bounds, crs: str) -> (Dict[str, Any], List[float]):
 
 
 def footprint(info: Dict[str, Any]) -> (Dict[str, Any], List[float]):
-    """Lon/lat polygon and bbox of a raster's bounds (``info`` from ``readers.geotiff.info``)."""
-    return lonlat_box(info["bounds"], f"EPSG:{info['epsg']}")
+    """Lon/lat polygon and bbox of a raster's bounds (``info`` from ``readers.geotiff.info``), in its CRS: the
+    EPSG code, or the WKT for a CRS without one."""
+    return lonlat_box(info["bounds"], f"EPSG:{info['epsg']}" if info["epsg"] else info["crs"])
 
 
 def _utc(d: datetime.date, end: bool = False) -> datetime.datetime:
@@ -80,6 +81,8 @@ def raster_item(item_id: str, path: Path, info: Dict[str, Any], start: datetime.
 
     proj = ProjectionExtension.ext(item, add_if_missing=True)
     proj.epsg, proj.bbox = info["epsg"], list(info["bounds"])
+    if not info["epsg"]:
+        proj.wkt2 = info["crs"]
     proj.shape, proj.transform = info["shape"], info["transform"]
 
     RasterExtension.ext(asset, add_if_missing=True).bands = [

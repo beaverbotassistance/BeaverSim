@@ -89,3 +89,12 @@ def test_season():
     assert descriptors.season(datetime.date(2021, 8, 3), 65.0) == "summer"
     assert descriptors.season(datetime.date(2021, 8, 3), -40.0) == "winter"
     assert descriptors.season(datetime.date(2022, 3, 27), 65.0) == "spring"
+
+
+def test_inspect_becomes_a_quality_flag(root, summary):
+    file = next(f for f in summary["groups"][0]["files"]
+                if f.get("product") == "orthomosaic" and not f.get("variant"))
+    file["inspect"] = "outlines may be offset from the imagery"
+    items, _, _, _ = _build(root, summary)
+    flags = descriptors.get_field(items["test_site_2021-08-03_orthomosaic"], "quality")
+    assert {"flag": "needs_inspection", "detail": "outlines may be offset from the imagery", "source": "manual"} in flags

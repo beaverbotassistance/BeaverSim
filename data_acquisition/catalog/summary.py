@@ -19,7 +19,9 @@ the manual fields, which only a person may set.
 File fields (on a file, or on its group as a default):
     path, product (data files) or role + attach_to (reports, extra metadata),
     variant (short slug, when two files share site, time and product, e.g. two DEM-of-difference methods),
-    site, date, platform, instruments, positioning, bands, unit, vertical_datum, notes
+    site, date, platform, instruments, positioning, bands, unit, vertical_datum, notes,
+    inspect (why a person must check the file before using it, e.g. annotations whose fit to the imagery
+    is uncertain; becomes the quality flag ``needs_inspection``)
 
 Products: orthomosaic, multispectral, dsm, dtm, chm (canopy height model), dod (DEM of difference),
 uncertainty (precision or error maps), photos (``path`` is a folder: one survey's photos, subfolders
@@ -99,7 +101,7 @@ ROLES = {"report", "metadata", "archive"}
 POSITIONING = {"rtk", "ppk", "gcp", "gnss", "none"}
 FILE_FIELDS = {"path", "product", "variant", "role", "attach_to", "archive", "site", "date", "date_precision",
                "start_date", "end_date", "crs", "table", "layers", "fields",
-               "platform", "instruments", "positioning", "bands", "unit", "vertical_datum", "notes"}
+               "platform", "instruments", "positioning", "bands", "unit", "vertical_datum", "notes", "inspect"}
 GROUP_FIELDS = (FILE_FIELDS - {"path", "product", "variant", "role", "attach_to"}
                 | {"folder", "doi", "record", "download_filter", "files", "evidence"})
 MANUAL_SITE_FIELDS = ("colonies", "land_status", "governance", "confirmed")
@@ -204,6 +206,8 @@ def _file_problems(f: Dict[str, Any], merged: Dict[str, Any], sites: Dict[str, D
         p.append(f"product must be one of {sorted(PRODUCTS)}")
     elif f.get("role") and (f["role"] not in ROLES or not f.get("attach_to")):
         p.append(f"role must be one of {sorted(ROLES)} with attach_to")
+    if merged.get("inspect") is not None and not (isinstance(merged["inspect"], str) and merged["inspect"]):
+        p.append("inspect must be a sentence: why the file must be checked")
     if merged.get("crs") is not None and not str(merged["crs"]).startswith("EPSG:"):
         p.append("crs must be EPSG:<code>")
     p += [problem for key, validate in VALIDATORS.items()

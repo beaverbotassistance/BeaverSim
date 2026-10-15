@@ -119,7 +119,7 @@ def _raster_item(f, path, item_id, start, end, checksum, entity) -> Tuple[pystac
     if not header["has_crs"]:
         if not f.get("crs"):
             raise ValueError("the raster declares no CRS; give `crs` in the summary")
-        header["epsg"] = int(f["crs"].split(":")[1])
+        header["epsg"], header["crs"] = int(f["crs"].split(":")[1]), f["crs"]
         flags.append(("crs_from_summary", f"the raster declares no CRS; {f['crs']} from the summary", "build"))
     names, band_flags = _bands(f["product"], f.get("bands"), header, entity)
     bands = [{"name": n, "common_name": n if n in COMMON_NAMES.values() else None} for n in names]
@@ -234,6 +234,8 @@ def data_item(s: Dict[str, Any], f: Dict[str, Any], path: Path, rel: str, group:
     if record is not None:
         flags += _record_flags(f, path, entity, record, archive, start, end, label)
     flags += [("note", note, source) for note in f.get("notes") or []]
+    if f.get("inspect"):
+        flags.append(("needs_inspection", f["inspect"], source))
     if f.get("date_precision") == "unknown":
         flags.append(("date_unknown", f"acquisition date not known; only its limits {start}..{end}", "build"))
     for flag, detail, flag_source in flags:

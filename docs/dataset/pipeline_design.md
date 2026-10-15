@@ -313,8 +313,18 @@ Figures use `beaversim.viz` (theme, palette, media presets) so they match the si
 | 5 | Planner + `process.ipynb` with `reproject`, `define_aoi` (+ review), `clip`, `vegetation_index` | colony products for Swan Lake |
 | 6 | `annotations` (colony assignment), `water_mask`, `sentinel_series`, `change` | multi-year colony report for Swan Lake; annotated epochs for Rumney |
 | 7 | `photogrammetry` (OpenDroneMap) and `coregister` | Montana surveys processed into the same products |
+| 8 | Annotation inspection tool: each annotation on the imagery it was drawn on, accept or shift it (whole layer or one feature), every change recorded with who, when and why | every Montana annotation reviewed (`needs_inspection` cleared or a correction recorded); corrected ground truth for the simulator |
 
 Milestones 1–4 are inspection only and deliver the "see everything in a dataset" goal.
+
+**Why milestone 8.** The Montana annotations were drawn in ArcGIS on orthomosaic pieces each georeferenced
+by hand (a few control points, an affine fit per piece). An annotation is exact only relative to the
+image it was drawn on: across pieces and dates it carries 0.1–3 m of error (measured at Rumney Ranch,
+`alignment.csv`). Every annotation is therefore flagged `needs_inspection` until a person has checked it.
+The tool shows an annotation on its own image (and, after `coregister`, on the co-registered one),
+measures its fit to the image edges (`data_acquisition/sources/field_alignment.py`), and lets the person
+accept it or shift it. Corrections are stored as separate, reviewed records (never by editing the
+exported layers), so the original annotation and every correction stay traceable.
 
 ## 13. Open questions
 

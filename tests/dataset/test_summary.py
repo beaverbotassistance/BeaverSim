@@ -99,3 +99,8 @@ def test_author():
     assert summaries.author(s)[0] == "claude"
     s["reviewed"] = {"by": "Federico Oliva", "date": "d"}
     assert summaries.author(s) == ("manual", {"by": "Federico Oliva", "date": "d"})
+
+
+def test_inspect_must_be_a_sentence(summary):
+    summary["groups"][0]["files"][0]["inspect"] = True
+    assert any("inspect must be a sentence" in p for p in summaries.check(summary, summaries.load_sites()))

@@ -8,8 +8,15 @@ inventory (``output/dataset/manifest.csv``, written by ``data_acquisition.datase
 
 - Photos and orthomosaics (with their sidecars) become **hard links** under the new names: no copy,
   and read-only, which also protects the original.
+- An orthomosaic that ArcGIS georeferenced (a ``GeodataXform`` in its ``.aux.xml``, which GDAL does not
+  apply) gets its own ``.aux.xml`` instead of a link: the same first-order adjustment, fitted to the
+  same control points, written as the file's georeferencing, so every tool places it as ArcGIS did.
+  No pixel is changed. The original sidecar is kept, linked as ``<name>.arcgis.aux.xml``.
 - Each annotation layer is **exported** with ``ogr2ogr`` to its own GeoPackage, unchanged (features,
-  attributes, Z and M, CRS), and checked against its source: feature count, geometry type, CRS.
+  attributes, Z and M), and checked against its source: feature count, geometry type, extent, and
+  where its CRS places it, under both the PROJ of pyproj and that of GDAL (rasterio).
+- ``crs_corrections`` in the layout file replace a CRS that GDAL/PROJ read differently from the software
+  that made the data (e.g. ESRI's ARC System zones, which ArcGIS evaluates on a sphere), for both.
 
 The site folder gets ``manifest.csv`` (every file and its original), ``excluded.csv`` (what was left
 out, and why) and one ``survey.json`` per survey. The originals are never written to.
@@ -31,17 +38,23 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import yaml
+import numpy as np
+import rasterio
 from pyproj import CRS, Transformer
+from pyproj.crs import CompoundCRS
+from rasterio.crs import CRS as RasterioCRS
+from rasterio.warp import transform as rasterio_transform
 
 from data_acquisition.readers import files
 
 LAYOUTS = Path(__file__).resolve().parent.parent / "field_layouts"
 DATASET = "beaver_dataset"
 SEASONS = ("2018 Field Season/", "2019 Field Season/")
+GCP_WARN_M = 3.0               # an applied ArcGIS fit whose control points miss it by more than this is reported
 MIN_SURVEY_PHOTOS = 50          # fewer photos on a day, and no orthomosaic: stray shots, not a survey
 SCHEMA = 1
 # names allowed by docs/dataset/field_naming.md
-ORTHO_NAME = re.compile(r"^surveys/\d{4}-\d{2}-\d{2}/orthomosaic_part-[0-9a-z]+\.tif$")
+ORTHO_NAME = re.compile(r"^surveys/\d{4}-\d{2}-\d{2}/orthomosaic_part-[0-9a-z]+(_chunk-[0-9a-z-]+)?\.tif$")
 FEATURES = ("dams", "canals", "trails", "ponds", "lodges", "colony_boundaries", "dam_widths", "dam_thicknesses",
             "woody_vegetation", "river_reach", "stream")
 LAYER_NAME = re.compile(r"^annotations/\d{4}(-\d{2}-\d{2})?/(" + "|".join(FEATURES)
@@ -75,6 +88,14 @@ def check_layout(layout: Dict[str, Any]) -> List[str]:
         v = layout.get(who)
         if v is not None and not (isinstance(v, dict) and v.get("by") and v.get("date")):
             p.append(f"{who} needs by and date")
+    for c in layout.get("crs_corrections") or []:
+        if not (isinstance(c, dict) and c.get("from") and c.get("to") and c.get("reason")):
+            p.append("crs_corrections entries need from (the CRS name as declared), to (a PROJ string) and reason")
+        else:
+            try:
+                CRS.from_user_input(c["to"])
+            except Exception as e:      # pyproj raises CRSError, or others for malformed input
+                p.append(f"crs_corrections {c['from']}: to is not a CRS ({e})")
     targets: Dict[str, str] = {}
     for kind, name_rule in (("orthomosaics", ORTHO_NAME), ("annotations", LAYER_NAME)):
         for e in layout.get(kind) or []:
@@ -130,8 +151,11 @@ def plan(drive: Path, layout: Dict[str, Any], inventory: List[Dict[str, str]]) -
             excluded.append({"source": src, "layer": "", "reason": e["exclude"]})
             continue
         actions.append({"action": "link", "dest": f"{root}/{e['to']}", "source": src, "layer": ""})
-        actions += [{"action": "link", "dest": f"{root}/{d}", "source": s, "layer": ""}
-                    for s, d in _sidecars(drive, src, e["to"])]
+        for s, d in _sidecars(drive, src, e["to"]):
+            if d.endswith(".tif.aux.xml") and "GeodataXform" in (drive / s).read_text(errors="replace"):
+                actions.append({"action": "georef", "dest": f"{root}/{d}", "source": s, "layer": ""})
+                d = d[:-len(".tif.aux.xml")] + ".arcgis.aux.xml"        # the original, for reference
+            actions.append({"action": "link", "dest": f"{root}/{d}", "source": s, "layer": ""})
         survey_days.add(e["to"].split("/")[1])
 
     photos = [r for r in inventory if r["site"] == site and r["role"] == "raw_photo"]
@@ -186,54 +210,178 @@ def _layer_info(path: Path, layer: str) -> Dict[str, Any]:
             "crs": (geom.get("coordinateSystem") or {}).get("wkt")}
 
 
-def _same_place(a: Optional[str], b: Optional[str], extent: Optional[List[float]]) -> bool:
-    """True if two CRSs put the layer in the same place: its extent corners transform to the same lon/lat
-    (within ~1 mm), and any vertical part has the same datum and unit. Compared by effect, not by text,
-    because GDAL rewrites a CRS's description when it writes a GeoPackage (e.g. ESRI's spherical
-    Equidistant Cylindrical, which PROJ evaluates with the same formula either way)."""
-    if not a or not b:
-        return a == b
-    ca, cb = CRS.from_wkt(a), CRS.from_wkt(b)
-    ha, hb = (c.sub_crs_list[0] if c.is_compound else c for c in (ca, cb))
-    va, vb = (next((s for s in c.sub_crs_list if s.is_vertical), None) if c.is_compound else None for c in (ca, cb))
+def _parts(wkt: str) -> Tuple[CRS, Optional[CRS]]:
+    """(horizontal, vertical or None) parts of a CRS."""
+    c = CRS.from_wkt(wkt)
+    if not c.is_compound:
+        return c, None
+    return (next(p for p in c.sub_crs_list if not p.is_vertical),
+            next((p for p in c.sub_crs_list if p.is_vertical), None))
+
+
+def corrected_crs(wkt: Optional[str], corrections: List[Dict[str, str]]) -> Optional[str]:
+    """The CRS that replaces ``wkt`` by the layout's ``crs_corrections`` (matched on the horizontal CRS's name;
+    a vertical part is kept), as WKT2; None when no correction applies."""
+    if not wkt:
+        return None
+    horizontal, vertical = _parts(wkt)
+    fix = next((c for c in corrections if c["from"] == horizontal.name), None)
+    if fix is None:
+        return None
+    as_json = CRS.from_user_input(fix["to"]).to_json_dict()
+    as_json["name"] = f"{horizontal.name} (corrected: {fix['to']})"
+    new = CRS.from_json_dict(as_json)
+    return (CompoundCRS(f"{as_json['name']} + {vertical.name}", [new, vertical]) if vertical else new).to_wkt()
+
+
+def _lonlat(wkt: str, points: List[Tuple[float, float]], proj: str) -> List[Tuple[float, float]]:
+    """``points`` in the horizontal part of ``wkt``, as lon/lat, with the PROJ of pyproj or of GDAL (rasterio):
+    the two can read the same CRS differently."""
+    horizontal, _ = _parts(wkt)
+    xs, ys = [p[0] for p in points], [p[1] for p in points]
+    if proj == "pyproj":
+        lon, lat = Transformer.from_crs(horizontal, 4326, always_xy=True).transform(xs, ys)
+    else:
+        lon, lat = rasterio_transform(RasterioCRS.from_wkt(horizontal.to_wkt()), "EPSG:4326", xs, ys)
+    return list(zip(lon, lat, strict=True))
+
+
+def _same_place(reference: Optional[str], written: Optional[str], extent: Optional[List[float]]) -> bool:
+    """True if ``written`` puts the layer where ``reference`` does: its extent corners land on the same lon/lat
+    (within ~1 mm) under pyproj's and GDAL's PROJ alike, and any vertical part has the same datum and unit.
+    Compared by effect, not by text: GDAL rewrites a CRS's description when it writes a GeoPackage."""
+    if not reference or not written:
+        return reference == written
+    (_, va), (_, vb) = _parts(reference), _parts(written)
     if (va is None) != (vb is None) or (va and (va.datum.name, va.axis_info[0].unit_name)
                                         != (vb.datum.name, vb.axis_info[0].unit_name)):
         return False
     if not extent:
-        return ha.equals(hb)
+        return CRS.from_wkt(reference).equals(CRS.from_wkt(written))
     corners = [(extent[0], extent[1]), (extent[2], extent[3])]
-    to_a, to_b = (Transformer.from_crs(h, 4326, always_xy=True) for h in (ha, hb))
-    return all(abs(p - q) < 1e-8 for c in corners
-               for p, q in zip(to_a.transform(*c), to_b.transform(*c), strict=True))
+    expected = _lonlat(reference, corners, "pyproj")
+    return all(abs(p - q) < 1e-8 for proj in ("pyproj", "gdal")
+               for a, b in zip(expected, _lonlat(written, corners, proj), strict=True)
+               for p, q in zip(a, b, strict=True))
 
 
-def export_layer(src: Path, layer: str, dest: Path) -> Optional[str]:
-    """Export one layer to a GeoPackage named as ``dest``, then compare it with its source; returns the
-    difference found, or None."""
+def export_layer(src: Path, layer: str, dest: Path, corrections: List[Dict[str, str]]) -> Optional[str]:
+    """Export one layer to a GeoPackage named as ``dest`` (its CRS replaced when a correction applies), then
+    compare it with its source; returns the difference found, or None."""
     name = dest.stem
-    subprocess.run(["ogr2ogr", "-f", "GPKG", str(dest), str(src), layer, "-nln", name, "-preserve_fid",
-                    "-lco", f"DESCRIPTION=exported unchanged from {src.name}, layer {layer}"],
-                   capture_output=True, text=True, check=True)
-    a, b = _layer_info(src, layer), _layer_info(dest, name)
+    a = _layer_info(src, layer)
+    crs = corrected_crs(a["crs"], corrections)
+    note = f"exported unchanged from {src.name}, layer {layer}" + (", CRS corrected" if crs else "")
+    command = ["ogr2ogr", "-f", "GPKG", str(dest), str(src), layer, "-nln", name, "-preserve_fid",
+               "-lco", f"DESCRIPTION={note}"]
+    if crs:
+        srs = dest.with_suffix(".srs.wkt")
+        srs.write_text(crs)
+        command += ["-a_srs", str(srs)]
+    try:
+        subprocess.run(command, capture_output=True, text=True, check=True)
+    finally:
+        if crs:
+            srs.unlink()
+    b = _layer_info(dest, name)
     diffs = [f"{k}: {a[k]} -> {b[k]}" for k in ("features", "geometry") if a[k] != b[k]]
     if (a["extent"] is None) != (b["extent"] is None) or (a["extent"] and any(
             abs(p - q) > 1e-6 for p, q in zip(a["extent"], b["extent"], strict=True))):
         diffs.append(f"extent: {a['extent']} -> {b['extent']}")
-    if not _same_place(a["crs"], b["crs"], a["extent"]):
+    if not _same_place(crs or a["crs"], b["crs"], a["extent"]):
         diffs.append("the CRS places the layer elsewhere")
     return "; ".join(diffs) or None
 
 
-def execute(drive: Path, actions: List[Action]) -> Dict[str, int]:
-    """Carry out the plan. Existing correct links and exports are kept, so a build can be resumed."""
-    done: Dict[str, int] = defaultdict(int)
+def _control_points(aux: str) -> Tuple[int, str, np.ndarray, np.ndarray, List[str]]:
+    """The control-point adjustment of an ArcGIS ``GeodataXform``: (order, target CRS WKT, source points, target
+    points, steps not applied). In a ``CompositeXform`` (a chain of steps) the step fitted to control points is
+    taken; other steps (given by coefficients only, e.g. an extra scaling) are returned as not applied."""
+    xform = re.search(r'<GeodataXform[^>]*xsi:type="typens:(\w+)"(.*?)</GeodataXform>', aux, re.S)
+    if xform.group(1) == "CompositeXform":
+        steps = re.findall(r'<(XF_\d+) xsi:type="typens:(\w+)">(.*?)</\1>', xform.group(2), re.S)
+    else:
+        steps = [("XF", xform.group(1), xform.group(2))]
+    fitted = [(name, kind, body) for name, kind, body in steps if "<SourceGCPs" in body]
+    if len(fitted) != 1 or fitted[0][1] != "PolynomialXform":
+        raise ValueError(f"{[(n, k) for n, k, _ in steps]}: expected one polynomial fitted to control points")
+    name, _, body = fitted[0]
+
+    def points(tag: str) -> np.ndarray:
+        block = re.search(rf"<{tag}[^>]*>(.*?)</{tag}>", body, re.S).group(1)
+        return np.array([float(v) for v in re.findall(r"<Double>([^<]+)</Double>", block)]).reshape(-1, 2)
+
+    order = re.search(r"<PolynomialOrder>(\d+)</PolynomialOrder>", body)
+    wkt = re.search(r"<WKT>(.*?)</WKT>", body, re.S).group(1)
+    skipped = [f"{n} ({k})" for n, k, _ in steps if n != name]
+    return int(order.group(1)) if order else 0, wkt, points("SourceGCPs"), points("TargetGCPs"), skipped
+
+
+def georeference(tif: Path, aux: Path, dest: Path, corrections: List[Dict[str, str]]) -> Dict[str, Any]:
+    """Write ``dest`` (the ``.aux.xml`` of the linked ``tif``) with ArcGIS's georeferencing of ``tif`` applied:
+    the first-order polynomial least-squares fit through its control points, as the file's geotransform, in the
+    target CRS (corrected when the layout says so). Returns the fit's control points and residuals, and the
+    steps of a chained adjustment that were not applied."""
+    order, wkt, source, target, skipped = _control_points(aux.read_text(errors="replace"))
+    if order != 1:
+        raise ValueError(f"{aux.name}: polynomial order {order} is not an affine adjustment; not applied")
+    with rasterio.open(tif) as r:                # the original: its own transform, before any adjustment
+        to_pixel = ~r.transform
+    pixels = np.array([to_pixel * tuple(p) for p in source])
+    design = np.c_[pixels, np.ones(len(pixels))]
+    (a, d), (b, e), (c, f) = np.linalg.lstsq(design, target, rcond=None)[0].tolist()     # plain floats
+    residuals = np.hypot(*(design @ np.array([[a, d], [b, e], [c, f]]) - target).T)
+    crs = corrected_crs(CRS.from_user_input(wkt).to_wkt(), corrections) or CRS.from_user_input(wkt).to_wkt()
+    fit = {"control_points": len(source), "rms_m": round(float(np.sqrt(np.mean(residuals ** 2))), 3),
+           "max_m": round(float(residuals.max()), 3), "not_applied": "; ".join(skipped)}
+    note = (f"ArcGIS polynomial adjustment (order 1) of {aux.name} applied: least-squares fit through "
+            f"{fit['control_points']} control points, residual rms {fit['rms_m']} m, max {fit['max_m']} m"
+            + (f"; chained steps not applied: {fit['not_applied']}" if skipped else ""))
+    dest.write_text(
+        "<PAMDataset>\n"
+        f'  <SRS dataAxisToSRSAxisMapping="1,2">{crs}</SRS>\n'
+        f"  <GeoTransform>{c!r}, {a!r}, {b!r}, {f!r}, {d!r}, {e!r}</GeoTransform>\n"
+        '  <Metadata domain="beaver">\n'
+        f'    <MDI key="georeference">{note}</MDI>\n'
+        "  </Metadata>\n"
+        "</PAMDataset>\n")
+    return fit
+
+
+def _clear(dest: Path) -> None:
+    """Remove a file written by an earlier build, or a link that a written file replaces (unlinking a hard link
+    removes this name only; the original is untouched)."""
+    if dest.exists():
+        if dest.stat().st_nlink == 1:       # our own file: never change the mode of a link (shared with the original)
+            dest.chmod(dest.stat().st_mode | stat.S_IWUSR)
+        dest.unlink()
+
+
+def execute(drive: Path, actions: List[Action], corrections: List[Dict[str, str]]) -> Dict[str, Any]:
+    """Carry out the plan. Existing correct links are kept, so a build can be resumed; exported layers and
+    written sidecars are made again. Returns the counts, and the fit of each georeferenced orthomosaic."""
+    done: Dict[str, Any] = defaultdict(int)
+    fits: Dict[str, Dict[str, Any]] = {}
     problems = []
     for a in actions:
         dest, src = drive / a["dest"], drive / a["source"]
         dest.parent.mkdir(parents=True, exist_ok=True)
+        if a["action"] == "georef":
+            _clear(dest)
+            tif = src.with_name(src.name[:-len(".aux.xml")])
+            fits[a["dest"]] = georeference(tif, src, dest, corrections)
+            _read_only(dest)
+            done["georef"] += 1
+            continue
         if a["action"] == "link":
             if dest.exists():
                 if not os.path.samefile(src, dest):
+                    if dest.stat().st_nlink == 1 and dest.name.endswith(".tif.aux.xml"):
+                        _clear(dest)            # a sidecar written by an earlier build, now linked again
+                        os.link(src, dest)
+                        _read_only(dest)
+                        done["link"] += 1
+                        continue
                     raise FileExistsError(f"{dest} exists and is not a link to {src}")
                 done["link (already there)"] += 1
                 continue
@@ -241,23 +389,28 @@ def execute(drive: Path, actions: List[Action]) -> Dict[str, int]:
             _read_only(dest)                    # same file on disk: also protects the original
             done["link"] += 1
         elif a["action"] == "export":
-            if dest.exists():
-                done["export (already there)"] += 1
-                continue
-            diff = export_layer(src, a["layer"], dest)
+            _clear(dest)
+            diff = export_layer(src, a["layer"], dest, corrections)
             if diff or (a.get("features") and _layer_info(dest, dest.stem)["features"] != int(a["features"])):
                 problems.append(f"{a['dest']}: {diff or 'feature count differs from the layout file'}")
             _read_only(dest)
             done["export"] += 1
     if problems:
         raise RuntimeError("exported layers differ from their sources:\n  " + "\n  ".join(problems))
+    done["fits"] = fits
     return dict(done)
 
 
 def write_records(drive: Path, site: str, actions: List[Action], excluded: List[Action],
-                  inventory: List[Dict[str, str]]) -> None:
-    """``manifest.csv``, ``excluded.csv`` and one ``survey.json`` per survey, in the site folder."""
+                  inventory: List[Dict[str, str]], fits: Dict[str, Dict[str, Any]]) -> None:
+    """``manifest.csv``, ``excluded.csv``, ``georeference.csv`` (the fit of each orthomosaic whose ArcGIS
+    adjustment was applied) and one ``survey.json`` per survey, in the site folder."""
     root = drive / DATASET / "sites" / site
+    with open(root / "georeference.csv", "w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["orthomosaic", "control_points", "rms_m", "max_m", "not_applied"])
+        w.writerows([d.split(f"sites/{site}/", 1)[1][:-len(".aux.xml")], v["control_points"], v["rms_m"], v["max_m"],
+                     v["not_applied"]] for d, v in sorted(fits.items()))
     with open(root / "manifest.csv", "w", newline="") as f:
         w = csv.DictWriter(f, ["action", "dest", "source", "layer"], extrasaction="ignore")
         w.writeheader()
@@ -271,7 +424,7 @@ def write_records(drive: Path, site: str, actions: List[Action], excluded: List[
                                                               "source_folders": set()})
     for a in actions:
         parts = a["dest"].split("/")
-        if a["action"] != "link" or parts[3] != "surveys":
+        if a["action"] not in ("link", "georef") or parts[3] != "surveys":
             continue
         s = surveys[parts[4]]
         if parts[5] == "photos":
@@ -319,8 +472,15 @@ def main() -> None:
     site_dir = args.drive / DATASET / "sites" / args.site
     if site_dir.exists() and not (site_dir / "manifest.csv").exists():
         raise SystemExit(f"{site_dir} exists but was not built from a layout file: move it aside first")
-    print("built:", execute(args.drive, actions))
-    write_records(args.drive, args.site, actions, excluded, inventory)
+    corrections = layout.get("crs_corrections") or []
+    done = execute(args.drive, actions, corrections)
+    fits = done.pop("fits")
+    print("built:", done)
+    write_records(args.drive, args.site, actions, excluded, inventory, fits)
+    for dest, fit in sorted(fits.items()):
+        if fit["max_m"] > GCP_WARN_M or fit["not_applied"]:
+            print(f"  {dest}: control-point residual max {fit['max_m']} m (rms {fit['rms_m']} m)"
+                  + (f"; not applied: {fit['not_applied']}" if fit["not_applied"] else ""))
     print(f"-> {site_dir}")
 
 

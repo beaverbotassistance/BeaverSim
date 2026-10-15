@@ -29,9 +29,11 @@ def is_raster(path: Path) -> bool:
 
 
 def info(path: Path) -> Dict[str, Any]:
-    """Header-only facts: CRS, bounds, shape, transform, resolution, bands, nodata, overviews, driver."""
+    """Header-only facts: CRS (EPSG code, and WKT2 for a CRS without one), bounds, shape, transform, resolution,
+    bands, nodata, overviews, driver."""
     with rasterio.open(path) as d:
         return {"epsg": d.crs.to_epsg() if d.crs else None, "has_crs": d.crs is not None, "driver": d.driver,
+                "crs": d.crs.to_wkt(version="WKT2_2019") if d.crs else None,
                 "bounds": tuple(d.bounds),
                 "shape": [d.height, d.width], "transform": list(d.transform)[:6],
                 "resolution": tuple(abs(r) for r in d.res), "count": d.count, "dtypes": list(d.dtypes),

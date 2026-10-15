@@ -10,6 +10,16 @@ base: "2018 Field Season/Drone Flights/Rumney Ranch/"        # sources are relat
 
 photos: by_exif_date  # surveys/<capture date>/photos/<camera folder>/<photo>, as in manifest.csv; duplicates and strays left out by rule
 
+# Added by Claude on 2026-10-15, after the review, as agreed in session:
+crs_corrections:
+  - from: WGS_1984_ARC_System_Zone_12
+    to: "+proj=eqc +lat_ts=-52.28859923 +lat_0=0 +lon_0=0 +x_0=0 +y_0=0 +R=6378137 +units=m +no_defs"
+    reason: "ArcGIS evaluates the ARC System zones on a sphere of radius 6378137 m. Declared as written, newer
+      PROJ (GDAL 3.12, QGIS) evaluates it on the WGS 84 ellipsoid and places every layer about 25 km north-east.
+      Checked against coordinates ArcGIS itself wrote: Riverreach2018_points LAT/LONG within 0.19 m (median) with
+      the sphere; riverpointsdistributed2.shp LAT within 3 m (its LAT has 4 decimals) with the sphere, 25 km off
+      as declared."
+
 orthomosaics:
   - {source: "04. 05June2018/05June2018_Rumney2b.tif", to: surveys/2018-06-05/orthomosaic_part-2b.tif}
   - {source: "04. 05June2018/05June2018_Rumney3.tif", to: surveys/2018-06-05/orthomosaic_part-3.tif}
@@ -93,6 +103,345 @@ orthomosaics:
   - {source: "14. 02Sept2019/Rumney5.tif", to: surveys/2019-09-05/orthomosaic_part-5.tif}
   - {source: "14. 02Sept2019/Rumney6.tif", to: surveys/2019-09-05/orthomosaic_part-6.tif}
   - {source: "14. 02Sept2019/Rumney7.tif", exclude: "byte-identical to Rumney6.tif (kept), 2019"}
+
+# Chunks of the orthomosaics (SmallChunks/), each georeferenced in ArcGIS in January 2020: the imagery the
+# annotations were drawn on (RumneyRanch.mxd refers to these folders, not to the full tiles). Added by Claude on
+# 2026-10-15, as agreed in session.
+  - {source: "04. 05June2018/SmallChunks/05June2018_Rumney1b_1.tif", to: surveys/2018-06-05/orthomosaic_part-1b_chunk-1.tif}
+  - {source: "04. 05June2018/SmallChunks/05June2018_Rumney1b_2.tif", to: surveys/2018-06-05/orthomosaic_part-1b_chunk-2.tif}
+  - {source: "04. 05June2018/SmallChunks/05June2018_Rumney1b_3.tif", to: surveys/2018-06-05/orthomosaic_part-1b_chunk-3.tif}
+  - {source: "04. 05June2018/SmallChunks/05June2018_Rumney1b_4.tif", to: surveys/2018-06-05/orthomosaic_part-1b_chunk-4.tif}
+  - {source: "04. 05June2018/SmallChunks/05June2018_Rumney2b_1.tif", to: surveys/2018-06-05/orthomosaic_part-2b_chunk-1.tif}
+  - {source: "04. 05June2018/SmallChunks/05June2018_Rumney2b_2.tif", to: surveys/2018-06-05/orthomosaic_part-2b_chunk-2.tif}
+  - {source: "04. 05June2018/SmallChunks/05June2018_Rumney2b_3.tif", to: surveys/2018-06-05/orthomosaic_part-2b_chunk-3.tif}
+  - {source: "04. 05June2018/SmallChunks/05June2018_Rumney3_1.tif", to: surveys/2018-06-05/orthomosaic_part-3_chunk-1.tif}
+  - {source: "04. 05June2018/SmallChunks/05June2018_Rumney3_2.tif", to: surveys/2018-06-05/orthomosaic_part-3_chunk-2.tif}
+  - {source: "04. 05June2018/SmallChunks/05June2018_Rumney3_3.tif", to: surveys/2018-06-05/orthomosaic_part-3_chunk-3.tif}
+  - {source: "04. 05June2018/SmallChunks/05June2018_Rumney3_4.tif", to: surveys/2018-06-05/orthomosaic_part-3_chunk-4.tif}
+  - {source: "04. 05June2018/SmallChunks/05June2018_Rumney4_1.tif", to: surveys/2018-06-05/orthomosaic_part-4_chunk-1.tif}
+  - {source: "04. 05June2018/SmallChunks/05June2018_Rumney4_2.tif", to: surveys/2018-06-05/orthomosaic_part-4_chunk-2.tif}
+  - {source: "04. 05June2018/SmallChunks/05June2018_Rumney4_3.tif", to: surveys/2018-06-05/orthomosaic_part-4_chunk-3.tif}
+  - {source: "04. 05June2018/SmallChunks/05June2018_Rumney4_4.tif", to: surveys/2018-06-05/orthomosaic_part-4_chunk-4.tif}
+  - {source: "04. 05June2018/SmallChunks/05June2018_Rumney5_1.tif", to: surveys/2018-06-05/orthomosaic_part-5_chunk-1.tif}
+  - {source: "04. 05June2018/SmallChunks/05June2018_Rumney5_2.tif", to: surveys/2018-06-05/orthomosaic_part-5_chunk-2.tif}
+  - {source: "04. 05June2018/SmallChunks/05June2018_Rumney5_3.tif", to: surveys/2018-06-05/orthomosaic_part-5_chunk-3.tif}
+  - {source: "04. 05June2018/SmallChunks/05June2018_Rumney5_4.tif", to: surveys/2018-06-05/orthomosaic_part-5_chunk-4.tif}
+  - {source: "05. 13June2018/SmallChunks/13June2018_Rumney1_1.tif", to: surveys/2018-06-13/orthomosaic_part-1_chunk-1.tif}
+  - {source: "05. 13June2018/SmallChunks/13June2018_Rumney1_2.tif", to: surveys/2018-06-13/orthomosaic_part-1_chunk-2.tif}
+  - {source: "05. 13June2018/SmallChunks/13June2018_Rumney1_3.tif", to: surveys/2018-06-13/orthomosaic_part-1_chunk-3.tif}
+  - {source: "05. 13June2018/SmallChunks/13June2018_Rumney1_4.tif", to: surveys/2018-06-13/orthomosaic_part-1_chunk-4.tif}
+  - {source: "05. 13June2018/SmallChunks/13June2018_Rumney2_2.tif", to: surveys/2018-06-13/orthomosaic_part-2_chunk-2.tif}
+  - {source: "05. 13June2018/SmallChunks/13June2018_Rumney2_3.tif", to: surveys/2018-06-13/orthomosaic_part-2_chunk-3.tif}
+  - {source: "05. 13June2018/SmallChunks/13June2018_Rumney2_4.tif", to: surveys/2018-06-13/orthomosaic_part-2_chunk-4.tif}
+  - {source: "05. 13June2018/SmallChunks/13June2018_Rumney3_1.tif", to: surveys/2018-06-13/orthomosaic_part-3_chunk-1.tif}
+  - {source: "05. 13June2018/SmallChunks/13June2018_Rumney3_2.tif", to: surveys/2018-06-13/orthomosaic_part-3_chunk-2.tif}
+  - {source: "05. 13June2018/SmallChunks/13June2018_Rumney3_3.tif", to: surveys/2018-06-13/orthomosaic_part-3_chunk-3.tif}
+  - {source: "05. 13June2018/SmallChunks/13June2018_Rumney4_2.tif", to: surveys/2018-06-13/orthomosaic_part-4_chunk-2.tif}
+  - {source: "05. 13June2018/SmallChunks/13June2018_Rumney4_3.tif", to: surveys/2018-06-13/orthomosaic_part-4_chunk-3.tif}
+  - {source: "05. 13June2018/SmallChunks/13June2018_Rumney4_4.tif", to: surveys/2018-06-13/orthomosaic_part-4_chunk-4.tif}
+  - {source: "05. 13June2018/SmallChunks/13June2018_Rumney5_2.tif", to: surveys/2018-06-13/orthomosaic_part-5_chunk-2.tif}
+  - {source: "05. 13June2018/SmallChunks/13June2018_Rumney5_3.tif", to: surveys/2018-06-13/orthomosaic_part-5_chunk-3.tif}
+  - {source: "05. 13June2018/SmallChunks/13June2018_Rumney5_4.tif", to: surveys/2018-06-13/orthomosaic_part-5_chunk-4.tif}
+  - {source: "05. 13June2018/SmallChunks/13June2018_Rumney6_1.tif", to: surveys/2018-06-13/orthomosaic_part-6_chunk-1.tif}
+  - {source: "05. 13June2018/SmallChunks/13June2018_Rumney6_2.tif", to: surveys/2018-06-13/orthomosaic_part-6_chunk-2.tif}
+  - {source: "05. 13June2018/SmallChunks/13June2018_Rumney6_3.tif", to: surveys/2018-06-13/orthomosaic_part-6_chunk-3.tif}
+  - {source: "05. 13June2018/SmallChunks/13June2018_Rumney6_4.tif", to: surveys/2018-06-13/orthomosaic_part-6_chunk-4.tif}
+  - {source: "05. 13June2018/SmallChunks/13June2018_Rumney7_1.tif", to: surveys/2018-06-13/orthomosaic_part-7_chunk-1.tif}
+  - {source: "05. 13June2018/SmallChunks/13June2018_Rumney7_2.tif", to: surveys/2018-06-13/orthomosaic_part-7_chunk-2.tif}
+  - {source: "05. 13June2018/SmallChunks/13June2018_Rumney7_3.tif", to: surveys/2018-06-13/orthomosaic_part-7_chunk-3.tif}
+  - {source: "05. 13June2018/SmallChunks/13June2018_Rumney7_4.tif", to: surveys/2018-06-13/orthomosaic_part-7_chunk-4.tif}
+  - {source: "06. 21June2018/SmallChunks/RUMNEY_EIGHT_21June2018_1.tif", to: surveys/2018-06-21/orthomosaic_part-8_chunk-1.tif}
+  - {source: "06. 21June2018/SmallChunks/RUMNEY_EIGHT_21June2018_2.tif", to: surveys/2018-06-21/orthomosaic_part-8_chunk-2.tif}
+  - {source: "06. 21June2018/SmallChunks/RUMNEY_EIGHT_21June2018_3.tif", to: surveys/2018-06-21/orthomosaic_part-8_chunk-3.tif}
+  - {source: "06. 21June2018/SmallChunks/RUMNEY_EIGHT_21June2018_4.tif", to: surveys/2018-06-21/orthomosaic_part-8_chunk-4.tif}
+  - {source: "06. 21June2018/SmallChunks/RUMNEY_FIVE_21June2018_2.tif", to: surveys/2018-06-21/orthomosaic_part-5_chunk-2.tif}
+  - {source: "06. 21June2018/SmallChunks/RUMNEY_FIVE_21June2018_3.tif", to: surveys/2018-06-21/orthomosaic_part-5_chunk-3.tif}
+  - {source: "06. 21June2018/SmallChunks/RUMNEY_FIVE_21June2018_4.tif", to: surveys/2018-06-21/orthomosaic_part-5_chunk-4.tif}
+  - {source: "06. 21June2018/SmallChunks/RUMNEY_FOUR_21June2018_2.tif", to: surveys/2018-06-21/orthomosaic_part-4_chunk-2.tif}
+  - {source: "06. 21June2018/SmallChunks/RUMNEY_FOUR_21June2018_3.tif", to: surveys/2018-06-21/orthomosaic_part-4_chunk-3.tif}
+  - {source: "06. 21June2018/SmallChunks/RUMNEY_FOUR_21June2018_4.tif", to: surveys/2018-06-21/orthomosaic_part-4_chunk-4.tif}
+  - {source: "06. 21June2018/SmallChunks/RUMNEY_ONE_21June2018_1.tif", to: surveys/2018-06-21/orthomosaic_part-1_chunk-1.tif}
+  - {source: "06. 21June2018/SmallChunks/RUMNEY_ONE_21June2018_2.tif", to: surveys/2018-06-21/orthomosaic_part-1_chunk-2.tif}
+  - {source: "06. 21June2018/SmallChunks/RUMNEY_ONE_21June2018_3.tif", to: surveys/2018-06-21/orthomosaic_part-1_chunk-3.tif}
+  - {source: "06. 21June2018/SmallChunks/RUMNEY_ONE_21June2018_4.tif", to: surveys/2018-06-21/orthomosaic_part-1_chunk-4.tif}
+  - {source: "06. 21June2018/SmallChunks/RUMNEY_SEVEN_21June2018_1.tif", to: surveys/2018-06-21/orthomosaic_part-7_chunk-1.tif}
+  - {source: "06. 21June2018/SmallChunks/RUMNEY_SEVEN_21June2018_2_1.tif", to: surveys/2018-06-21/orthomosaic_part-7_chunk-2-1.tif}
+  - {source: "06. 21June2018/SmallChunks/RUMNEY_SEVEN_21June2018_2_2.tif", to: surveys/2018-06-21/orthomosaic_part-7_chunk-2-2.tif}
+  - {source: "06. 21June2018/SmallChunks/RUMNEY_SEVEN_21June2018_2_3.tif", to: surveys/2018-06-21/orthomosaic_part-7_chunk-2-3.tif}
+  - {source: "06. 21June2018/SmallChunks/RUMNEY_SEVEN_21June2018_2_4.tif", to: surveys/2018-06-21/orthomosaic_part-7_chunk-2-4.tif}
+  - {source: "06. 21June2018/SmallChunks/RUMNEY_SEVEN_21June2018_3.tif", to: surveys/2018-06-21/orthomosaic_part-7_chunk-3.tif}
+  - {source: "06. 21June2018/SmallChunks/RUMNEY_SEVEN_21June2018_4.tif", to: surveys/2018-06-21/orthomosaic_part-7_chunk-4.tif}
+  - {source: "06. 21June2018/SmallChunks/RUMNEY_THREE_21June2018_1.tif", to: surveys/2018-06-21/orthomosaic_part-3_chunk-1.tif}
+  - {source: "06. 21June2018/SmallChunks/RUMNEY_THREE_21June2018_2.tif", to: surveys/2018-06-21/orthomosaic_part-3_chunk-2.tif}
+  - {source: "06. 21June2018/SmallChunks/RUMNEY_THREE_21June2018_3.tif", to: surveys/2018-06-21/orthomosaic_part-3_chunk-3.tif}
+  - {source: "06. 21June2018/SmallChunks/RUMNEY_TWO_21June2018_2.tif", to: surveys/2018-06-21/orthomosaic_part-2_chunk-2.tif}
+  - {source: "06. 21June2018/SmallChunks/RUMNEY_TWO_21June2018_3.tif", to: surveys/2018-06-21/orthomosaic_part-2_chunk-3.tif}
+  - {source: "06. 21June2018/SmallChunks/RUMNEY_TWO_21June2018_4.tif", to: surveys/2018-06-21/orthomosaic_part-2_chunk-4.tif}
+  - {source: "07. 28June2018/SmallChunks/28June2018_RUMNEY_FIVE_2.tif", to: surveys/2018-06-28/orthomosaic_part-5_chunk-2.tif}
+  - {source: "07. 28June2018/SmallChunks/28June2018_RUMNEY_FIVE_3.tif", to: surveys/2018-06-28/orthomosaic_part-5_chunk-3.tif}
+  - {source: "07. 28June2018/SmallChunks/28June2018_RUMNEY_FIVE_4.tif", to: surveys/2018-06-28/orthomosaic_part-5_chunk-4.tif}
+  - {source: "07. 28June2018/SmallChunks/28June2018_RUMNEY_FOUR_2.tif", to: surveys/2018-06-28/orthomosaic_part-4_chunk-2.tif}
+  - {source: "07. 28June2018/SmallChunks/28June2018_RUMNEY_FOUR_3.tif", to: surveys/2018-06-28/orthomosaic_part-4_chunk-3.tif}
+  - {source: "07. 28June2018/SmallChunks/28June2018_RUMNEY_FOUR_4.tif", to: surveys/2018-06-28/orthomosaic_part-4_chunk-4.tif}
+  - {source: "07. 28June2018/SmallChunks/28June2018_RUMNEY_ONE_1.tif", to: surveys/2018-06-28/orthomosaic_part-1_chunk-1.tif}
+  - {source: "07. 28June2018/SmallChunks/28June2018_RUMNEY_ONE_2.tif", to: surveys/2018-06-28/orthomosaic_part-1_chunk-2.tif}
+  - {source: "07. 28June2018/SmallChunks/28June2018_RUMNEY_ONE_3.tif", to: surveys/2018-06-28/orthomosaic_part-1_chunk-3.tif}
+  - {source: "07. 28June2018/SmallChunks/28June2018_RUMNEY_ONE_4.tif", to: surveys/2018-06-28/orthomosaic_part-1_chunk-4.tif}
+  - {source: "07. 28June2018/SmallChunks/28June2018_RUMNEY_SEVEN_1.tif", to: surveys/2018-06-28/orthomosaic_part-7_chunk-1.tif}
+  - {source: "07. 28June2018/SmallChunks/28June2018_RUMNEY_SEVEN_2.tif", to: surveys/2018-06-28/orthomosaic_part-7_chunk-2.tif}
+  - {source: "07. 28June2018/SmallChunks/28June2018_RUMNEY_SEVEN_3.tif", to: surveys/2018-06-28/orthomosaic_part-7_chunk-3.tif}
+  - {source: "07. 28June2018/SmallChunks/28June2018_RUMNEY_SEVEN_4.tif", to: surveys/2018-06-28/orthomosaic_part-7_chunk-4.tif}
+  - {source: "07. 28June2018/SmallChunks/28June2018_RUMNEY_SIX_1.tif", to: surveys/2018-06-28/orthomosaic_part-6_chunk-1.tif}
+  - {source: "07. 28June2018/SmallChunks/28June2018_RUMNEY_SIX_2.tif", to: surveys/2018-06-28/orthomosaic_part-6_chunk-2.tif}
+  - {source: "07. 28June2018/SmallChunks/28June2018_RUMNEY_SIX_3.tif", to: surveys/2018-06-28/orthomosaic_part-6_chunk-3.tif}
+  - {source: "07. 28June2018/SmallChunks/28June2018_RUMNEY_SIX_4.tif", to: surveys/2018-06-28/orthomosaic_part-6_chunk-4.tif}
+  - {source: "07. 28June2018/SmallChunks/28June2018_RUMNEY_THREE_1.tif", to: surveys/2018-06-28/orthomosaic_part-3_chunk-1.tif}
+  - {source: "07. 28June2018/SmallChunks/28June2018_RUMNEY_THREE_2.tif", to: surveys/2018-06-28/orthomosaic_part-3_chunk-2.tif}
+  - {source: "07. 28June2018/SmallChunks/28June2018_RUMNEY_THREE_3.tif", to: surveys/2018-06-28/orthomosaic_part-3_chunk-3.tif}
+  - {source: "07. 28June2018/SmallChunks/28June2018_RUMNEY_TWO_2.tif", to: surveys/2018-06-28/orthomosaic_part-2_chunk-2.tif}
+  - {source: "07. 28June2018/SmallChunks/28June2018_RUMNEY_TWO_3.tif", to: surveys/2018-06-28/orthomosaic_part-2_chunk-3.tif}
+  - {source: "07. 28June2018/SmallChunks/28June2018_RUMNEY_TWO_4.tif", to: surveys/2018-06-28/orthomosaic_part-2_chunk-4.tif}
+  - {source: "08. 06July2018/SmallChunks/06July2018_Rumney1_1.tif", to: surveys/2018-07-06/orthomosaic_part-1_chunk-1.tif}
+  - {source: "08. 06July2018/SmallChunks/06July2018_Rumney1_2.tif", to: surveys/2018-07-06/orthomosaic_part-1_chunk-2.tif}
+  - {source: "08. 06July2018/SmallChunks/06July2018_Rumney1_3.tif", to: surveys/2018-07-06/orthomosaic_part-1_chunk-3.tif}
+  - {source: "08. 06July2018/SmallChunks/06July2018_Rumney1_4.tif", to: surveys/2018-07-06/orthomosaic_part-1_chunk-4.tif}
+  - {source: "08. 06July2018/SmallChunks/06July2018_Rumney2_2.tif", to: surveys/2018-07-06/orthomosaic_part-2_chunk-2.tif}
+  - {source: "08. 06July2018/SmallChunks/06July2018_Rumney2_3.tif", to: surveys/2018-07-06/orthomosaic_part-2_chunk-3.tif}
+  - {source: "08. 06July2018/SmallChunks/06July2018_Rumney2_4.tif", to: surveys/2018-07-06/orthomosaic_part-2_chunk-4.tif}
+  - {source: "08. 06July2018/SmallChunks/06July2018_Rumney3_1.tif", to: surveys/2018-07-06/orthomosaic_part-3_chunk-1.tif}
+  - {source: "08. 06July2018/SmallChunks/06July2018_Rumney3_2.tif", to: surveys/2018-07-06/orthomosaic_part-3_chunk-2.tif}
+  - {source: "08. 06July2018/SmallChunks/06July2018_Rumney3_3.tif", to: surveys/2018-07-06/orthomosaic_part-3_chunk-3.tif}
+  - {source: "08. 06July2018/SmallChunks/06July2018_Rumney3_4.tif", exclude: "broken ArcGIS georeferencing: a polynomial given by coefficients only, with 0.84 m pixels instead of about 1.3 cm, placing the chunk thousands of km away"}
+  - {source: "08. 06July2018/SmallChunks/06July2018_Rumney5_2.tif", to: surveys/2018-07-06/orthomosaic_part-5_chunk-2.tif}
+  - {source: "08. 06July2018/SmallChunks/06July2018_Rumney5_3.tif", to: surveys/2018-07-06/orthomosaic_part-5_chunk-3.tif}
+  - {source: "08. 06July2018/SmallChunks/06July2018_Rumney5_4.tif", to: surveys/2018-07-06/orthomosaic_part-5_chunk-4.tif}
+  - {source: "08. 06July2018/SmallChunks/06July2018_Rumney6_2.tif", to: surveys/2018-07-06/orthomosaic_part-6_chunk-2.tif}
+  - {source: "08. 06July2018/SmallChunks/06July2018_Rumney6_3.tif", to: surveys/2018-07-06/orthomosaic_part-6_chunk-3.tif}
+  - {source: "08. 06July2018/SmallChunks/06July2018_Rumney6_4.tif", to: surveys/2018-07-06/orthomosaic_part-6_chunk-4.tif}
+  - {source: "08. 06July2018/SmallChunks/06July2018_Rumney7_2.tif", to: surveys/2018-07-06/orthomosaic_part-7_chunk-2.tif}
+  - {source: "08. 06July2018/SmallChunks/06July2018_Rumney8_1.tif", to: surveys/2018-07-06/orthomosaic_part-8_chunk-1.tif}
+  - {source: "08. 06July2018/SmallChunks/06July2018_Rumney8_2.tif", to: surveys/2018-07-06/orthomosaic_part-8_chunk-2.tif}
+  - {source: "08. 06July2018/SmallChunks/06July2018_Rumney8_3.tif", to: surveys/2018-07-06/orthomosaic_part-8_chunk-3.tif}
+  - {source: "08. 06July2018/SmallChunks/06July2018_Rumney8_4.tif", to: surveys/2018-07-06/orthomosaic_part-8_chunk-4.tif}
+  - {source: "09. 17July2018/SmallChunks/17July2018_1_1.tif", to: surveys/2018-07-17/orthomosaic_part-1_chunk-1.tif}
+  - {source: "09. 17July2018/SmallChunks/17July2018_1_2.tif", to: surveys/2018-07-17/orthomosaic_part-1_chunk-2.tif}
+  - {source: "09. 17July2018/SmallChunks/17July2018_1_3.tif", to: surveys/2018-07-17/orthomosaic_part-1_chunk-3.tif}
+  - {source: "09. 17July2018/SmallChunks/17July2018_1_4.tif", to: surveys/2018-07-17/orthomosaic_part-1_chunk-4.tif}
+  - {source: "09. 17July2018/SmallChunks/17July2018_2_1.tif", to: surveys/2018-07-17/orthomosaic_part-2_chunk-1.tif}
+  - {source: "09. 17July2018/SmallChunks/17July2018_2_2.tif", to: surveys/2018-07-17/orthomosaic_part-2_chunk-2.tif}
+  - {source: "09. 17July2018/SmallChunks/17July2018_2_3.tif", to: surveys/2018-07-17/orthomosaic_part-2_chunk-3.tif}
+  - {source: "09. 17July2018/SmallChunks/17July2018_2_4.tif", to: surveys/2018-07-17/orthomosaic_part-2_chunk-4.tif}
+  - {source: "09. 17July2018/SmallChunks/17July2018_3_2.tif", to: surveys/2018-07-17/orthomosaic_part-3_chunk-2.tif}
+  - {source: "09. 17July2018/SmallChunks/17July2018_3_3.tif", to: surveys/2018-07-17/orthomosaic_part-3_chunk-3.tif}
+  - {source: "09. 17July2018/SmallChunks/17July2018_3_4.tif", to: surveys/2018-07-17/orthomosaic_part-3_chunk-4.tif}
+  - {source: "09. 17July2018/SmallChunks/17July2018_4_2.tif", to: surveys/2018-07-17/orthomosaic_part-4_chunk-2.tif}
+  - {source: "09. 17July2018/SmallChunks/17July2018_4_3.tif", to: surveys/2018-07-17/orthomosaic_part-4_chunk-3.tif}
+  - {source: "09. 17July2018/SmallChunks/17July2018_4_4.tif", to: surveys/2018-07-17/orthomosaic_part-4_chunk-4.tif}
+  - {source: "09. 17July2018/SmallChunks/17July2018_5_1.tif", to: surveys/2018-07-17/orthomosaic_part-5_chunk-1.tif}
+  - {source: "09. 17July2018/SmallChunks/17July2018_5_2.tif", to: surveys/2018-07-17/orthomosaic_part-5_chunk-2.tif}
+  - {source: "09. 17July2018/SmallChunks/17July2018_5_3.tif", to: surveys/2018-07-17/orthomosaic_part-5_chunk-3.tif}
+  - {source: "09. 17July2018/SmallChunks/17July2018_5_4.tif", to: surveys/2018-07-17/orthomosaic_part-5_chunk-4.tif}
+  - {source: "09. 17July2018/SmallChunks/17July2018_6_3.tif", to: surveys/2018-07-17/orthomosaic_part-6_chunk-3.tif}
+  - {source: "10. 26July2018/SmallChunks/26July2018RUMNEY_5_1.tif", to: surveys/2018-07-26/orthomosaic_part-5_chunk-1.tif}
+  - {source: "10. 26July2018/SmallChunks/26July2018RUMNEY_5_2.tif", to: surveys/2018-07-26/orthomosaic_part-5_chunk-2.tif}
+  - {source: "10. 26July2018/SmallChunks/26July2018RUMNEY_5_3.tif", to: surveys/2018-07-26/orthomosaic_part-5_chunk-3.tif}
+  - {source: "10. 26July2018/SmallChunks/26July2018RUMNEY_5_4.tif", to: surveys/2018-07-26/orthomosaic_part-5_chunk-4.tif}
+  - {source: "10. 26July2018/SmallChunks/26July2018_1_1.tif", to: surveys/2018-07-26/orthomosaic_part-1_chunk-1.tif}
+  - {source: "10. 26July2018/SmallChunks/26July2018_1_2.tif", to: surveys/2018-07-26/orthomosaic_part-1_chunk-2.tif}
+  - {source: "10. 26July2018/SmallChunks/26July2018_1_3.tif", to: surveys/2018-07-26/orthomosaic_part-1_chunk-3.tif}
+  - {source: "10. 26July2018/SmallChunks/26July2018_1_4.tif", to: surveys/2018-07-26/orthomosaic_part-1_chunk-4.tif}
+  - {source: "10. 26July2018/SmallChunks/26July2018_2_2.tif", to: surveys/2018-07-26/orthomosaic_part-2_chunk-2.tif}
+  - {source: "10. 26July2018/SmallChunks/26July2018_2_3.tif", to: surveys/2018-07-26/orthomosaic_part-2_chunk-3.tif}
+  - {source: "10. 26July2018/SmallChunks/26July2018_2_4.tif", to: surveys/2018-07-26/orthomosaic_part-2_chunk-4.tif}
+  - {source: "10. 26July2018/SmallChunks/26July2018_3_1.tif", to: surveys/2018-07-26/orthomosaic_part-3_chunk-1.tif}
+  - {source: "10. 26July2018/SmallChunks/26July2018_3_2.tif", to: surveys/2018-07-26/orthomosaic_part-3_chunk-2.tif}
+  - {source: "10. 26July2018/SmallChunks/26July2018_3_3.tif", to: surveys/2018-07-26/orthomosaic_part-3_chunk-3.tif}
+  - {source: "10. 26July2018/SmallChunks/26July2018_4_1.tif", to: surveys/2018-07-26/orthomosaic_part-4_chunk-1.tif}
+  - {source: "10. 26July2018/SmallChunks/26July2018_4_2.tif", to: surveys/2018-07-26/orthomosaic_part-4_chunk-2.tif}
+  - {source: "10. 26July2018/SmallChunks/26July2018_4_3.tif", to: surveys/2018-07-26/orthomosaic_part-4_chunk-3.tif}
+  - {source: "10. 26July2018/SmallChunks/26July2018_4_4.tif", to: surveys/2018-07-26/orthomosaic_part-4_chunk-4.tif}
+  - {source: "10. 26July2018/SmallChunks/26July2018_6_1.tif", to: surveys/2018-07-26/orthomosaic_part-6_chunk-1.tif}
+  - {source: "10. 26July2018/SmallChunks/26July2018_6_2.tif", to: surveys/2018-07-26/orthomosaic_part-6_chunk-2.tif}
+  - {source: "10. 26July2018/SmallChunks/26July2018_6_3.tif", to: surveys/2018-07-26/orthomosaic_part-6_chunk-3.tif}
+  - {source: "10. 26July2018/SmallChunks/26July2018_6_4.tif", to: surveys/2018-07-26/orthomosaic_part-6_chunk-4.tif}
+  - {source: "10. 26July2018/SmallChunks/26July2018_7_2.tif", to: surveys/2018-07-26/orthomosaic_part-7_chunk-2.tif}
+  - {source: "10. 26July2018/SmallChunks/26July2018_7_3.tif", to: surveys/2018-07-26/orthomosaic_part-7_chunk-3.tif}
+  - {source: "10. 26July2018/SmallChunks/26July2018_7_4.tif", to: surveys/2018-07-26/orthomosaic_part-7_chunk-4.tif}
+  - {source: "11. 06Aug2018/SmallChunks/06Aug2018_Rumney1_1.tif", to: surveys/2018-08-06/orthomosaic_part-1_chunk-1.tif}
+  - {source: "11. 06Aug2018/SmallChunks/06Aug2018_Rumney1_2.tif", to: surveys/2018-08-06/orthomosaic_part-1_chunk-2.tif}
+  - {source: "11. 06Aug2018/SmallChunks/06Aug2018_Rumney1_3.tif", to: surveys/2018-08-06/orthomosaic_part-1_chunk-3.tif}
+  - {source: "11. 06Aug2018/SmallChunks/06Aug2018_Rumney1_4.tif", to: surveys/2018-08-06/orthomosaic_part-1_chunk-4.tif}
+  - {source: "11. 06Aug2018/SmallChunks/06Aug2018_Rumney2_2.tif", to: surveys/2018-08-06/orthomosaic_part-2_chunk-2.tif}
+  - {source: "11. 06Aug2018/SmallChunks/06Aug2018_Rumney2_3.tif", to: surveys/2018-08-06/orthomosaic_part-2_chunk-3.tif}
+  - {source: "11. 06Aug2018/SmallChunks/06Aug2018_Rumney2_4.tif", to: surveys/2018-08-06/orthomosaic_part-2_chunk-4.tif}
+  - {source: "11. 06Aug2018/SmallChunks/06Aug2018_Rumney3_1.tif", to: surveys/2018-08-06/orthomosaic_part-3_chunk-1.tif}
+  - {source: "11. 06Aug2018/SmallChunks/06Aug2018_Rumney3_2.tif", to: surveys/2018-08-06/orthomosaic_part-3_chunk-2.tif}
+  - {source: "11. 06Aug2018/SmallChunks/06Aug2018_Rumney3_3.tif", to: surveys/2018-08-06/orthomosaic_part-3_chunk-3.tif}
+  - {source: "11. 06Aug2018/SmallChunks/06Aug2018_Rumney4_1.tif", to: surveys/2018-08-06/orthomosaic_part-4_chunk-1.tif}
+  - {source: "11. 06Aug2018/SmallChunks/06Aug2018_Rumney4_2.tif", to: surveys/2018-08-06/orthomosaic_part-4_chunk-2.tif}
+  - {source: "11. 06Aug2018/SmallChunks/06Aug2018_Rumney4_3.tif", to: surveys/2018-08-06/orthomosaic_part-4_chunk-3.tif}
+  - {source: "11. 06Aug2018/SmallChunks/06Aug2018_Rumney5_1.tif", to: surveys/2018-08-06/orthomosaic_part-5_chunk-1.tif}
+  - {source: "11. 06Aug2018/SmallChunks/06Aug2018_Rumney5_2.tif", to: surveys/2018-08-06/orthomosaic_part-5_chunk-2.tif}
+  - {source: "11. 06Aug2018/SmallChunks/06Aug2018_Rumney5_3.tif", to: surveys/2018-08-06/orthomosaic_part-5_chunk-3.tif}
+  - {source: "11. 06Aug2018/SmallChunks/06Aug2018_Rumney5_4.tif", to: surveys/2018-08-06/orthomosaic_part-5_chunk-4.tif}
+  - {source: "11. 06Aug2018/SmallChunks/06Aug2018_Rumney5b_1.tif", to: surveys/2018-08-06/orthomosaic_part-5b_chunk-1.tif}
+  - {source: "11. 06Aug2018/SmallChunks/06Aug2018_Rumney5b_3.tif", to: surveys/2018-08-06/orthomosaic_part-5b_chunk-3.tif}
+  - {source: "11. 06Aug2018/SmallChunks/06Aug2018_Rumney5b_4.tif", to: surveys/2018-08-06/orthomosaic_part-5b_chunk-4.tif}
+  - {source: "11. 06Aug2018/SmallChunks/06Aug2018_Rumney6_2.tif", to: surveys/2018-08-06/orthomosaic_part-6_chunk-2.tif}
+  - {source: "11. 06Aug2018/SmallChunks/06Aug2018_Rumney7_1.tif", to: surveys/2018-08-06/orthomosaic_part-7_chunk-1.tif}
+  - {source: "11. 06Aug2018/SmallChunks/06Aug2018_Rumney7_3.tif", to: surveys/2018-08-06/orthomosaic_part-7_chunk-3.tif}
+  - {source: "13. 22Aug2018/SmallChunks/22Aug2018_Rumney1_1.tif", to: surveys/2018-08-22/orthomosaic_part-1_chunk-1.tif}
+  - {source: "13. 22Aug2018/SmallChunks/22Aug2018_Rumney1_2.tif", to: surveys/2018-08-22/orthomosaic_part-1_chunk-2.tif}
+  - {source: "13. 22Aug2018/SmallChunks/22Aug2018_Rumney1_3.tif", to: surveys/2018-08-22/orthomosaic_part-1_chunk-3.tif}
+  - {source: "13. 22Aug2018/SmallChunks/22Aug2018_Rumney1_4.tif", to: surveys/2018-08-22/orthomosaic_part-1_chunk-4.tif}
+  - {source: "13. 22Aug2018/SmallChunks/22Aug2018_Rumney2_2.tif", to: surveys/2018-08-22/orthomosaic_part-2_chunk-2.tif}
+  - {source: "13. 22Aug2018/SmallChunks/22Aug2018_Rumney2_3.tif", to: surveys/2018-08-22/orthomosaic_part-2_chunk-3.tif}
+  - {source: "13. 22Aug2018/SmallChunks/22Aug2018_Rumney2_4.tif", to: surveys/2018-08-22/orthomosaic_part-2_chunk-4.tif}
+  - {source: "13. 22Aug2018/SmallChunks/22Aug2018_Rumney3_1.tif", to: surveys/2018-08-22/orthomosaic_part-3_chunk-1.tif}
+  - {source: "13. 22Aug2018/SmallChunks/22Aug2018_Rumney3_2.tif", to: surveys/2018-08-22/orthomosaic_part-3_chunk-2.tif}
+  - {source: "13. 22Aug2018/SmallChunks/22Aug2018_Rumney3_3.tif", to: surveys/2018-08-22/orthomosaic_part-3_chunk-3.tif}
+  - {source: "13. 22Aug2018/SmallChunks/22Aug2018_Rumney4_2.tif", to: surveys/2018-08-22/orthomosaic_part-4_chunk-2.tif}
+  - {source: "13. 22Aug2018/SmallChunks/22Aug2018_Rumney4_3.tif", to: surveys/2018-08-22/orthomosaic_part-4_chunk-3.tif}
+  - {source: "13. 22Aug2018/SmallChunks/22Aug2018_Rumney4_4.tif", to: surveys/2018-08-22/orthomosaic_part-4_chunk-4.tif}
+  - {source: "13. 22Aug2018/SmallChunks/22Aug2018_Rumney5_2.tif", to: surveys/2018-08-22/orthomosaic_part-5_chunk-2.tif}
+  - {source: "13. 22Aug2018/SmallChunks/22Aug2018_Rumney5_3.tif", to: surveys/2018-08-22/orthomosaic_part-5_chunk-3.tif}
+  - {source: "13. 22Aug2018/SmallChunks/22Aug2018_Rumney5_4.tif", to: surveys/2018-08-22/orthomosaic_part-5_chunk-4.tif}
+  - {source: "13. 22Aug2018/SmallChunks/22Aug2018_Rumney6_1.tif", to: surveys/2018-08-22/orthomosaic_part-6_chunk-1.tif}
+  - {source: "13. 22Aug2018/SmallChunks/22Aug2018_Rumney6_2.tif", to: surveys/2018-08-22/orthomosaic_part-6_chunk-2.tif}
+  - {source: "13. 22Aug2018/SmallChunks/22Aug2018_Rumney6_3.tif", to: surveys/2018-08-22/orthomosaic_part-6_chunk-3.tif}
+  - {source: "13. 22Aug2018/SmallChunks/22Aug2018_Rumney7_2.tif", to: surveys/2018-08-22/orthomosaic_part-7_chunk-2.tif}
+  - {source: "13. 22Aug2018/SmallChunks/22Aug2018_Rumney7_3.tif", to: surveys/2018-08-22/orthomosaic_part-7_chunk-3.tif}
+  - {source: "13. 22Aug2018/SmallChunks/22Aug2018_Rumney7_4.tif", to: surveys/2018-08-22/orthomosaic_part-7_chunk-4.tif}
+  - {source: "14. 02Sept2019/SmallChunks/06Sept2019_Rumney1_1.tif", to: surveys/2019-09-03/orthomosaic_part-1_chunk-1.tif}
+  - {source: "14. 02Sept2019/SmallChunks/06Sept2019_Rumney1_2.tif", to: surveys/2019-09-03/orthomosaic_part-1_chunk-2.tif}
+  - {source: "14. 02Sept2019/SmallChunks/06Sept2019_Rumney1_3.tif", to: surveys/2019-09-03/orthomosaic_part-1_chunk-3.tif}
+  - {source: "14. 02Sept2019/SmallChunks/06Sept2019_Rumney1_4.tif", to: surveys/2019-09-03/orthomosaic_part-1_chunk-4.tif}
+  - {source: "14. 02Sept2019/SmallChunks/06Sept2019_Rumney2_2.tif", to: surveys/2019-09-03/orthomosaic_part-2_chunk-2.tif}
+  - {source: "14. 02Sept2019/SmallChunks/06Sept2019_Rumney2_3.tif", to: surveys/2019-09-03/orthomosaic_part-2_chunk-3.tif}
+  - {source: "14. 02Sept2019/SmallChunks/06Sept2019_Rumney2_4.tif", to: surveys/2019-09-03/orthomosaic_part-2_chunk-4.tif}
+  - {source: "14. 02Sept2019/SmallChunks/06Sept2019_Rumney3_1.tif", to: surveys/2019-09-05/orthomosaic_part-3_chunk-1.tif}
+  - {source: "14. 02Sept2019/SmallChunks/06Sept2019_Rumney3_2.tif", to: surveys/2019-09-05/orthomosaic_part-3_chunk-2.tif}
+  - {source: "14. 02Sept2019/SmallChunks/06Sept2019_Rumney3_4.tif", to: surveys/2019-09-05/orthomosaic_part-3_chunk-4.tif}
+  - {source: "14. 02Sept2019/SmallChunks/06Sept2019_Rumney4_1.tif", to: surveys/2019-09-05/orthomosaic_part-4_chunk-1.tif}
+  - {source: "14. 02Sept2019/SmallChunks/06Sept2019_Rumney4_2.tif", to: surveys/2019-09-05/orthomosaic_part-4_chunk-2.tif}
+  - {source: "14. 02Sept2019/SmallChunks/06Sept2019_Rumney4_3.tif", to: surveys/2019-09-05/orthomosaic_part-4_chunk-3.tif}
+  - {source: "14. 02Sept2019/SmallChunks/06Sept2019_Rumney4_4.tif", to: surveys/2019-09-05/orthomosaic_part-4_chunk-4.tif}
+  - {source: "14. 02Sept2019/SmallChunks/06Sept2019_Rumney5_3.tif", to: surveys/2019-09-05/orthomosaic_part-5_chunk-3.tif}
+  - {source: "14. 02Sept2019/SmallChunks/06Sept2019_Rumney5_4.tif", to: surveys/2019-09-05/orthomosaic_part-5_chunk-4.tif}
+  - {source: "14. 02Sept2019/SmallChunks/06Sept2019_Rumney6_1.tif", to: surveys/2019-09-05/orthomosaic_part-6_chunk-1.tif}
+  - {source: "14. 02Sept2019/SmallChunks/06Sept2019_Rumney6_2.tif", to: surveys/2019-09-05/orthomosaic_part-6_chunk-2.tif}
+  - {source: "14. 02Sept2019/SmallChunks/06Sept2019_Rumney6_3.tif", to: surveys/2019-09-05/orthomosaic_part-6_chunk-3.tif}
+  - {source: "14. 02Sept2019/SmallChunks/Rumney3_3_b.tif", to: surveys/2019-09-05/orthomosaic_part-3_chunk-3-b.tif}
+  - {source: "14. 02Sept2019/SmallChunks/Rumney3_3_c.tif", to: surveys/2019-09-05/orthomosaic_part-3_chunk-3-c.tif}
+  - {source: "14. 02Sept2019/SmallChunks/Rumney3_3_d.tif", to: surveys/2019-09-05/orthomosaic_part-3_chunk-3-d.tif}
+  - {source: "14. 02Sept2019/SmallChunks/Rumney3_b.tif", to: surveys/2019-09-05/orthomosaic_part-3_chunk-b.tif}
+  - {source: "04. 05June2018/SmallChunks/05June2018_Rumney2b_4.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "05. 13June2018/SmallChunks/05June2018_Rumney5_2_1.tif", exclude: "a 5 June chunk misplaced in the 13 June folder, without georeferencing (no ArcGIS adjustment, no world file)"}
+  - {source: "05. 13June2018/SmallChunks/05June2018_Rumney5_2_2.tif", exclude: "a 5 June chunk misplaced in the 13 June folder, without georeferencing (no ArcGIS adjustment, no world file)"}
+  - {source: "05. 13June2018/SmallChunks/05June2018_Rumney5_2_3.tif", exclude: "a 5 June chunk misplaced in the 13 June folder, without georeferencing (no ArcGIS adjustment, no world file)"}
+  - {source: "05. 13June2018/SmallChunks/05June2018_Rumney5_2_4.tif", exclude: "a 5 June chunk misplaced in the 13 June folder, without georeferencing (no ArcGIS adjustment, no world file)"}
+  - {source: "05. 13June2018/SmallChunks/13June2018_Rumney2_1.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "05. 13June2018/SmallChunks/13June2018_Rumney2_4_1.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "05. 13June2018/SmallChunks/13June2018_Rumney2_4_2.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "05. 13June2018/SmallChunks/13June2018_Rumney2_4_3.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "05. 13June2018/SmallChunks/13June2018_Rumney2_4_4.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "05. 13June2018/SmallChunks/13June2018_Rumney3_4.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "05. 13June2018/SmallChunks/13June2018_Rumney4_1.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "05. 13June2018/SmallChunks/13June2018_Rumney5_1.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "05. 13June2018/SmallChunks/13June2018_Rumney7_2_1.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "05. 13June2018/SmallChunks/13June2018_Rumney7_2_2.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "05. 13June2018/SmallChunks/13June2018_Rumney7_2_3.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "05. 13June2018/SmallChunks/13June2018_Rumney7_2_4.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "06. 21June2018/SmallChunks/RUMNEY_FIVE_21June2018_1.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "06. 21June2018/SmallChunks/RUMNEY_FOUR_21June2018_1.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "06. 21June2018/SmallChunks/RUMNEY_SEVEN_21June2018_2.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "06. 21June2018/SmallChunks/RUMNEY_SIX_21June2018_1.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "06. 21June2018/SmallChunks/RUMNEY_SIX_21June2018_2.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "06. 21June2018/SmallChunks/RUMNEY_SIX_21June2018_3.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "06. 21June2018/SmallChunks/RUMNEY_SIX_21June2018_4.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "06. 21June2018/SmallChunks/RUMNEY_THREE_21June2018_4.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "06. 21June2018/SmallChunks/RUMNEY_TWO_21June2018_1.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "07. 28June2018/SmallChunks/28June2018_RUMNEY_EIGHT_1.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "07. 28June2018/SmallChunks/28June2018_RUMNEY_EIGHT_2.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "07. 28June2018/SmallChunks/28June2018_RUMNEY_EIGHT_3.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "07. 28June2018/SmallChunks/28June2018_RUMNEY_EIGHT_4.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "07. 28June2018/SmallChunks/28June2018_RUMNEY_FIVE_1.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "07. 28June2018/SmallChunks/28June2018_RUMNEY_FOUR_1.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "07. 28June2018/SmallChunks/28June2018_RUMNEY_NINE_1.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "07. 28June2018/SmallChunks/28June2018_RUMNEY_NINE_2.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "07. 28June2018/SmallChunks/28June2018_RUMNEY_NINE_3.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "07. 28June2018/SmallChunks/28June2018_RUMNEY_NINE_4.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "07. 28June2018/SmallChunks/28June2018_RUMNEY_TEN_1.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "07. 28June2018/SmallChunks/28June2018_RUMNEY_TEN_2.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "07. 28June2018/SmallChunks/28June2018_RUMNEY_TEN_3.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "07. 28June2018/SmallChunks/28June2018_RUMNEY_TEN_4.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "07. 28June2018/SmallChunks/28June2018_RUMNEY_THREE_4.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "07. 28June2018/SmallChunks/28June2018_RUMNEY_TWO_1.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "08. 06July2018/SmallChunks/06July2018_Rumney2_1.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "08. 06July2018/SmallChunks/06July2018_Rumney4_1.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "08. 06July2018/SmallChunks/06July2018_Rumney4_2.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "08. 06July2018/SmallChunks/06July2018_Rumney4_3.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "08. 06July2018/SmallChunks/06July2018_Rumney4_4.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "08. 06July2018/SmallChunks/06July2018_Rumney5_1.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "08. 06July2018/SmallChunks/06July2018_Rumney6_1.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "08. 06July2018/SmallChunks/06July2018_Rumney7_1.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "08. 06July2018/SmallChunks/06July2018_Rumney7_3.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "08. 06July2018/SmallChunks/06July2018_Rumney7_4.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "09. 17July2018/SmallChunks/17July2018Rumney_7b_1.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "09. 17July2018/SmallChunks/17July2018Rumney_7b_2.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "09. 17July2018/SmallChunks/17July2018Rumney_7b_3.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "09. 17July2018/SmallChunks/17July2018Rumney_7b_4.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "09. 17July2018/SmallChunks/17July2018_3_1.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "09. 17July2018/SmallChunks/17July2018_4_1.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "09. 17July2018/SmallChunks/17July2018_6_1.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "09. 17July2018/SmallChunks/17July2018_6_2.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "09. 17July2018/SmallChunks/17July2018_6_4.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "10. 26July2018/SmallChunks/26July2018_2_1.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "10. 26July2018/SmallChunks/26July2018_3_4.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "10. 26July2018/SmallChunks/26July2018_7_1.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "11. 06Aug2018/SmallChunks/06Aug2018_Rumney2_1.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "11. 06Aug2018/SmallChunks/06Aug2018_Rumney3_4.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "11. 06Aug2018/SmallChunks/06Aug2018_Rumney4_4.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "11. 06Aug2018/SmallChunks/06Aug2018_Rumney5b_2.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "11. 06Aug2018/SmallChunks/06Aug2018_Rumney7_2.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "11. 06Aug2018/SmallChunks/06Aug2018_Rumney7_4.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "11. 06Aug2018/SmallChunks/06Aug2018_Rumney8_1.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "11. 06Aug2018/SmallChunks/06Aug2018_Rumney8_2.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "11. 06Aug2018/SmallChunks/06Aug2018_Rumney8_3.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "11. 06Aug2018/SmallChunks/06Aug2018_Rumney8_4.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "13. 22Aug2018/SmallChunks/22Aug2018_Rumney2_1.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "13. 22Aug2018/SmallChunks/22Aug2018_Rumney3_4.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "13. 22Aug2018/SmallChunks/22Aug2018_Rumney4_1.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "13. 22Aug2018/SmallChunks/22Aug2018_Rumney5_1.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "13. 22Aug2018/SmallChunks/22Aug2018_Rumney6_4.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "13. 22Aug2018/SmallChunks/22Aug2018_Rumney7_1.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "13. 22Aug2018/SmallChunks/22Aug2018_Rumney8_1.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "13. 22Aug2018/SmallChunks/22Aug2018_Rumney8_2.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "13. 22Aug2018/SmallChunks/22Aug2018_Rumney8_3.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "13. 22Aug2018/SmallChunks/22Aug2018_Rumney8_4.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "13. 22Aug2018/SmallChunks/22Aug2018_Rumney9_1.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "13. 22Aug2018/SmallChunks/22Aug2018_Rumney9_2.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "13. 22Aug2018/SmallChunks/22Aug2018_Rumney9_3.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "13. 22Aug2018/SmallChunks/22Aug2018_Rumney9_4.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "14. 02Sept2019/SmallChunks/06Sept2019_Rumney2_1.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "14. 02Sept2019/SmallChunks/06Sept2019_Rumney3_3.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "14. 02Sept2019/SmallChunks/06Sept2019_Rumney5_1.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "14. 02Sept2019/SmallChunks/06Sept2019_Rumney5_2.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "14. 02Sept2019/SmallChunks/06Sept2019_Rumney6_4.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "14. 02Sept2019/SmallChunks/06Sept2019_Rumney7_1.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "14. 02Sept2019/SmallChunks/06Sept2019_Rumney7_2.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "14. 02Sept2019/SmallChunks/06Sept2019_Rumney7_3.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "14. 02Sept2019/SmallChunks/06Sept2019_Rumney7_4.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "14. 02Sept2019/SmallChunks/Rumney3_3_a.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "14. 02Sept2019/SmallChunks/Rumney3_a.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "14. 02Sept2019/SmallChunks/Rumney6_a.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "14. 02Sept2019/SmallChunks/Rumney6_b.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "14. 02Sept2019/SmallChunks/Rumney6_c.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "14. 02Sept2019/SmallChunks/Rumney6_d.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "14. 02Sept2019/SmallChunks/Rumney7_a.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "14. 02Sept2019/SmallChunks/Rumney7_b.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "14. 02Sept2019/SmallChunks/Rumney7_c.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
+  - {source: "14. 02Sept2019/SmallChunks/Rumney7_d.tif", exclude: "no georeferencing: neither an ArcGIS adjustment nor a world file"}
 
 annotations:
   - {source: "ColonyBoundaries.gdb", layer: "ColonyBoundaries2018", to: annotations/2018/colony_boundaries.gpkg, features: 8}
