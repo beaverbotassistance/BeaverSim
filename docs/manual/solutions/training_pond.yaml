@@ -1,0 +1,57 @@
+# Reference summary for the course's sample data root (docs/manual/tools/make_sample.py).
+# Compare it with your own in chapter 9; build it in chapter 10.
+schema: 1
+dataset: training_pond
+title: Training Pond, drone survey of a beaver dam, July 2023 (invented data for the course)
+authored:
+  by: claude
+  model: claude-opus-5-5
+  date: 2026-10-15
+  note: written for the course as the reference answer
+reviewed: null                  # until a person reviews it, its values are labelled "claude" in the catalogue
+source:
+  kind: dataone
+  provider: Example repository (invented)
+sites:
+  training_pond:
+    hints:
+      land_status: not stated in the record; an invented site
+groups:
+- folder: repo/doi_10.5555_training.pond
+  doi: doi:10.5555/training.pond
+  record: {path: metadata.xml, format: eml}
+  site: training_pond
+  platform: UAV
+  instruments: [DJI FC6310 camera]
+  positioning: [gnss]
+  evidence:
+  - 'date: file names and the methods text of metadata.xml ("12 July 2023")'
+  - 'platform and camera: methods text ("DJI Phantom 4 Pro (camera FC6310)") and the photos'' EXIF'
+  - 'dem_2022.asc: methods text ("earlier survey (August 2022) in UTM zone 12N (EPSG:32612)")'
+  files:
+  - path: ortho_2023-07-12.tif
+    product: orthomosaic
+    date: 2023-07-12
+    bands: [red, green, blue, alpha]
+  - path: dsm_2023-07-12.tif
+    product: dsm
+    date: 2023-07-12
+  - path: dem_2022.asc
+    product: dtm
+    date: 2022-08-01
+    date_precision: month
+    crs: EPSG:32612
+    notes:
+    - the grid declares no CRS; the methods text gives UTM zone 12N
+  - path: dams_2023-07-12.gpkg
+    product: annotations
+    date: 2023-07-12
+    inspect: dams drawn by hand on the orthomosaic; check them against it before use
+  - path: photos_2023-07-12
+    product: photos
+    date: 2023-07-12
+  - path: README.txt                # no date: it attaches to every item of the group
+    role: metadata
+    attach_to: [orthomosaic, dsm, dtm, annotations, photos]
+open_questions:
+- Is dem_2022.asc a terrain model (dtm) or a surface model (dsm)? The record says only "elevation grid".

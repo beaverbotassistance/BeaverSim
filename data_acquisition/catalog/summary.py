@@ -85,6 +85,7 @@ lists the registry sites inside it, checked against footprints. Manual site fiel
 the registry, so ``summary["sites"][slug]`` has the registry fields plus this summary's ``hints``.
 """
 import datetime
+import os
 import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
@@ -128,9 +129,10 @@ def load(name_or_path: str) -> Dict[str, Any]:
 
 
 def load_sites(path: Optional[Path] = None) -> Dict[str, Dict[str, Any]]:
-    """The site registry (``SITES`` unless ``path`` is given): ``{slug: {name, crs, colonies, land_status,
-    governance[, confirmed, level, contains]}}``; empty if the file does not exist."""
-    path = path or SITES
+    """The site registry: ``path``, else the file named by the environment variable ``BEAVER_SITES`` (e.g. the
+    sample data root's own registry), else ``SITES``. ``{slug: {name, crs, colonies, land_status, governance[,
+    confirmed, level, contains]}}``; empty if the file does not exist."""
+    path = path or (Path(os.environ["BEAVER_SITES"]) if os.environ.get("BEAVER_SITES") else SITES)
     return (yaml.safe_load(path.read_text()) or {}).get("sites") or {} if path.exists() else {}
 
 

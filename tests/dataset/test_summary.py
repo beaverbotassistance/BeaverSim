@@ -104,3 +104,11 @@ def test_author():
 def test_inspect_must_be_a_sentence(summary):
     summary["groups"][0]["files"][0]["inspect"] = True
     assert any("inspect must be a sentence" in p for p in summaries.check(summary, summaries.load_sites()))
+
+
+def test_registry_from_the_environment(tmp_path, monkeypatch):
+    other = tmp_path / "other_sites.yaml"
+    other.write_text("schema: 1\nsites:\n  elsewhere: {name: Elsewhere, crs: 'EPSG:32612', colonies: null, "
+                     "land_status: null, governance: null}\n")
+    monkeypatch.setenv("BEAVER_SITES", str(other))
+    assert list(summaries.load_sites()) == ["elsewhere"]
