@@ -1,5 +1,7 @@
 """Raster reader (GeoTIFF and any other raster GDAL opens, e.g. ESRI ASCII grids): header facts, band
 names declared by the file, and value samples. The module keeps its name; GeoTIFF is the usual case."""
+import math
+import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -56,8 +58,6 @@ def unapplied_georeference(path: Path) -> Optional[Dict[str, Any]]:
     does not apply, so the file's position as read here is the unadjusted one. Returns its type,
     order, number of control-point pairs and the range of their shifts (in CRS units), or None.
     """
-    import math
-    import re
     aux = path.with_name(path.name + ".aux.xml")
     if not aux.exists():
         return None
@@ -71,9 +71,10 @@ def unapplied_georeference(path: Path) -> Optional[Dict[str, Any]]:
         block = re.search(rf"<{tag}[^>]*>(.*?)</{tag}>", body, re.S)
         return [float(v) for v in re.findall(r"<Double>([^<]+)</Double>", block.group(1))] if block else []
 
-    src, dst = points("SourceGCPs"), points("TargetGCPs")
-    pairs = list(zip(zip(src[0::2], src[1::2]), zip(dst[0::2], dst[1::2])))
+    src, dst = points("SourceGCPs"), points("TargetGCPs")       # x1, y1, x2, y2, ...
+    pairs = [(src[i:i + 2], dst[i:i + 2]) for i in range(0, min(len(src), len(dst)) - 1, 2)]
     shifts = [math.dist(a, b) for a, b in pairs]
     order = re.search(r"<PolynomialOrder>(\d+)</PolynomialOrder>", body)
     return {"type": xform.group(1), "order": int(order.group(1)) if order else None, "gcps": len(pairs),
-            "shift_min": round(min(shifts), 2) if shifts else None, "shift_max": round(max(shifts), 2) if shifts else None}
+            "shift_min": round(min(shifts), 2) if shifts else None,
+            "shift_max": round(max(shifts), 2) if shifts else None}

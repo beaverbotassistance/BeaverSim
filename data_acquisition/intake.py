@@ -71,15 +71,17 @@ separate summary whose groups' `download_filter` covers only the new files, so t
 API). If one of the clients above already serves it, use that client and skip to step 3.
 
 **2. Write a client for the new repository**, `data_acquisition/sources/<repository>.py`, following the
-contract below. Match the existing clients' structure, naming and comment style. If the repository's metadata record is a format not listed above, also write
-`data_acquisition/readers/<format>.py` and add one entry to `RECORDS` (follow `readers/pangaea.py`).
+contract below. Match the existing clients' structure, naming and comment style. If the repository's
+metadata record is a format not listed above, also write `data_acquisition/readers/<format>.py` and add
+one entry to `RECORDS` (follow `readers/pangaea.py`).
 
 Contract for a source client:
 - CLI: `python -m data_acquisition.sources.<repository> --root <root> --id <doi or id> [--filter <regex>]`, plus
   a `--list` option that only prints the files (name, size) and licence, without downloading.
 - Saves the repository's metadata record in the dataset folder under the file name its `RECORDS` entry
   gives, unchanged. When a repository serves one record from several endpoints (e.g. metadata and file
-  list separately, or in pages), save every response as served, each labelled with its URL, in that one file. Dataset folder: `data_acquisition.sources.dataset_folder(root, "<repository>", doi)`, with
+  list separately, or in pages), save every response as served, each labelled with its URL, in that one
+  file. Dataset folder: `data_acquisition.sources.dataset_folder(root, "<repository>", doi)`, with
   the identifier of the exact version downloaded (for versioned repositories, the version DOI, not the
   concept DOI; log the version DOI too). A dataset without a DOI keeps the repository's own identifier
   (e.g. `hs:<id>`): never make up a DOI.
@@ -103,8 +105,9 @@ the size each choice implies. **Stop and wait for the user's approval** before d
 
 **5. Draft the summary.** Run:
 
-    python -m data_acquisition.catalog.describe prompt --root "{root}" --folders "<the dataset folder, relative to the root>" \\\\
-        --dataset {dataset} --source-kind <repository> --context docs/dataset/beaver_open_datasets.md
+    python -m data_acquisition.catalog.describe prompt --root "{root}" \\\\
+        --folders "<the dataset folder, relative to the root>" --dataset {dataset} \\\\
+        --source-kind <repository> --context docs/dataset/beaver_open_datasets.md
 
 and follow the prompt it writes (it ends with `describe check`).
 

@@ -2,13 +2,15 @@
 coordinate columns, as a non-spatial table (e.g. model results per stream reach).
 
 ``spec = {skip[, x, y, z, delimiter]}``: lines to skip above the column names, and the coordinate
-columns (both ``x`` and ``y``, or neither). The CRS comes from the summary (tables rarely state one). Returns the same shape as
-:func:`data_acquisition.readers.vector.info`, so tables become vector items like any point layer.
+columns (both ``x`` and ``y``, or neither). The CRS comes from the summary (tables rarely state one).
+Returns the same shape as :func:`data_acquisition.readers.vector.info`, so tables become vector items
+like any point layer.
 """
 from pathlib import Path
 from typing import Any, Dict
 
 import pandas as pd
+from pyproj import CRS
 
 EXTENSIONS = (".csv", ".tsv", ".txt")
 
@@ -43,16 +45,15 @@ def info(path: Path, spec: Dict[str, Any], crs: str) -> Dict[str, Any]:
     without ``x``/``y`` gives :func:`rows_info` instead."""
     if not (spec.get("x") and spec.get("y")):
         return rows_info(path, spec)
-    from data_acquisition.readers.vector import _epsg
-    from pyproj import CRS
     table = read(path, spec)
     x = pd.to_numeric(table[spec["x"]], errors="coerce")
     y = pd.to_numeric(table[spec["y"]], errors="coerce")
     ok = x.notna() & y.notna()
-    wkt = CRS.from_user_input(crs).to_wkt()
+    crs_ = CRS.from_user_input(crs)
+    wkt = crs_.to_wkt()
     bounds = [float(x[ok].min()), float(y[ok].min()), float(x[ok].max()), float(y[ok].max())] if ok.any() else None
-    layer = {"name": path.stem, "geometry_type": "Point Z" if spec.get("z") else "Point", "features": int(ok.sum()),
-             "fields": list(table.columns), "crs": wkt, "vertical_crs": None, "epsg": _epsg(wkt), "bounds": bounds,
-             "rows_without_coordinates": int((~ok).sum())}
+    layer = {"name": path.stem, "geometry_type": "Point Z" if spec.get("z") else "Point",
+             "features": int(ok.sum()), "fields": list(table.columns), "crs": wkt, "vertical_crs": None,
+             "epsg": crs_.to_epsg(), "bounds": bounds, "rows_without_coordinates": int((~ok).sum())}
     return {"layers": [layer], "crs": wkt, "epsg": layer["epsg"], "bounds": bounds, "vertical_crs": [],
             "features": layer["features"]}

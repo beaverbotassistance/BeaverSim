@@ -25,6 +25,7 @@ import json
 from pathlib import Path
 from typing import Any, Dict, List
 
+from data_acquisition.catalog import build
 from data_acquisition.catalog import summary as summaries
 from data_acquisition.catalog.evidence import gather
 
@@ -128,7 +129,6 @@ def registry_lines() -> str:
 
 def check_summary(root: Path, path: str) -> int:
     """Schema-check a summary and dry-run the builder on it; prints problems, returns their count."""
-    from data_acquisition.catalog import build
     try:
         s = summaries.load(path)
     except ValueError as e:

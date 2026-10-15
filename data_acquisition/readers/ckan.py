@@ -53,7 +53,8 @@ def read(text: str) -> Dict[str, Any]:
         if not name or name in entities:
             name = f"{r['id']}_{name}"
         # portals keep links as typed (e.g. with spaces); escaped here, existing %-escapes kept
-        entities[name] = {"url": urllib.parse.quote(r["url"], safe=":/?#[]@!$&'()*+,;=%~"), "pid": r["id"], "size": int(r["size"]) if r.get("size") else None,
+        entities[name] = {"url": urllib.parse.quote(r["url"], safe=":/?#[]@!$&'()*+,;=%~"), "pid": r["id"],
+                          "size": int(r["size"]) if r.get("size") else None,
                           "checksum": _checksum(r.get("hash")), "media_type": r.get("mimetype"),
                           "description": r.get("name", ""), "attributes": []}
     organization = (p.get("organization") or {}).get("title", "")

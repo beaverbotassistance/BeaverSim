@@ -14,8 +14,10 @@ import re
 from data_acquisition.sources import checksums
 from typing import Any, Dict
 
-LICENCES = {"creativecommons.org/licenses/by/4.0": "CC-BY-4.0", "creativecommons.org/licenses/by-nc/4.0": "CC-BY-NC-4.0",
-            "creativecommons.org/publicdomain/zero/1.0": "CC0-1.0", "creativecommons.org/licenses/by-sa/4.0": "CC-BY-SA-4.0"}
+LICENCES = {"creativecommons.org/licenses/by/4.0": "CC-BY-4.0",
+            "creativecommons.org/licenses/by-nc/4.0": "CC-BY-NC-4.0",
+            "creativecommons.org/publicdomain/zero/1.0": "CC0-1.0",
+            "creativecommons.org/licenses/by-sa/4.0": "CC-BY-SA-4.0"}
 PART = "This resource includes"        # the relation a collection lists its members with
 
 
@@ -34,7 +36,8 @@ def read(text: str) -> Dict[str, Any]:
     rights = m.get("rights") or {}
     doi = re.search(r"doi\.org/(10\.\d+/\S+)", m.get("citation", ""))
     box = m.get("spatial_coverage") or {}
-    bounds = ({"west": box["westlimit"], "east": box["eastlimit"], "south": box["southlimit"], "north": box["northlimit"]}
+    bounds = ({"west": box["westlimit"], "east": box["eastlimit"],
+               "south": box["southlimit"], "north": box["northlimit"]}
               if box.get("type") == "box" else
               {"west": box["east"], "east": box["east"], "south": box["north"], "north": box["north"]}
               if box.get("type") == "point" else {})

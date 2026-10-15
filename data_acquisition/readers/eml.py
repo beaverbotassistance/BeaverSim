@@ -36,7 +36,8 @@ def read(xml: str) -> Dict[str, Any]:
             entities[_text(e.find("entityName"))] = {
                 "url": url or None, "pid": urllib.parse.unquote(url.rsplit("/resolve/", 1)[-1]) if url else None,
                 "size": int(_text(size)) if size is not None else None,
-                "checksum": (auth.get("method", "").lower().replace("-", ""), _text(auth)) if auth is not None else None,
+                "checksum": ((auth.get("method", "").lower().replace("-", ""), _text(auth))
+                             if auth is not None else None),
                 "attributes": attributes}
     return {"package_id": root.get("packageId"), "title": _text(ds.find("title")),
             "licence": next((spdx for key, spdx in LICENCES.items() if key in rights), None), "rights": rights,

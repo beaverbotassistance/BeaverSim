@@ -6,9 +6,10 @@ is a folder (``*.gdb``); every other format is a file.
 """
 import warnings
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import pyogrio
+from pyproj import CRS
 
 EXTENSIONS = (".gpkg", ".shp", ".geojson", ".json", ".kml", ".kmz", ".gdb", ".fgb", ".gpx")
 
@@ -28,15 +29,13 @@ def _opens(path: Path) -> bool:
 def _epsg(crs: Optional[str]) -> Optional[int]:
     if not crs:
         return None
-    from pyproj import CRS
     return CRS.from_user_input(crs).to_epsg()
 
 
-def _split(crs: Optional[str]) -> (Optional[str], Optional[str]):
+def _split(crs: Optional[str]) -> Tuple[Optional[str], Optional[str]]:
     """(horizontal WKT, vertical CRS name) of a CRS; a compound CRS (e.g. UTM + NAVD88 feet) is split."""
     if not crs:
         return None, None
-    from pyproj import CRS
     c = CRS.from_user_input(crs)
     if c.is_compound:
         parts = c.sub_crs_list
@@ -68,6 +67,8 @@ def info(path: Path, sample_rows: int = 0) -> Dict[str, Any]:
 
 
 def _info(path: Path, sample_rows: int) -> Dict[str, Any]:
+    # GDAL opens the file again for every call below. That is cheap except for KML, which is parsed whole on
+    # each open: a KML of ~1,450 layers (EEAGER) takes ~100 s per pass, twice (header and sampled type).
     layers: List[Dict[str, Any]] = []
     for name, geom_type in pyogrio.list_layers(path):
         meta = pyogrio.read_info(path, layer=name, force_feature_count=True, force_total_bounds=True)
@@ -99,4 +100,5 @@ def one_layer(info: Dict[str, Any], name: str) -> Dict[str, Any]:
     """``info`` (from :func:`info`) restricted to the layer ``name``, in the same shape."""
     layer = next(l for l in info["layers"] if l["name"] == name)
     return {"layers": [layer], "crs": layer["crs"], "epsg": layer["epsg"], "bounds": layer["bounds"],
-            "vertical_crs": [layer["vertical_crs"]] if layer["vertical_crs"] else [], "features": layer["features"]}
+            "vertical_crs": [layer["vertical_crs"]] if layer["vertical_crs"] else [],
+            "features": layer["features"]}
