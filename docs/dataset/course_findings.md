@@ -35,3 +35,10 @@ together. Each entry: what was found, the evidence, and a suggestion. Newest las
    ESRI's definition but ellipsoidal when read.
 5. **A folder of photos has `media_type: image/jpeg`** on its STAC asset, although the asset is a folder, not a
    JPEG (`stac.photos_item`). Suggestion: no media type, or a role/extra field saying it is a folder.
+6. **Collection licence `various`, also for data with no licence.** `build` sets a site collection's `license` to
+   `various` whenever its items do not share one licence, including when none has a licence (all Rumney items:
+   the collection says `various`). STAC deprecates `various` and `proprietary`; it asks for an SPDX expression for
+   several licences (e.g. `CC0-1.0 AND CC-BY-4.0`) and `other` when the licence is not on the SPDX list, which with
+   no licence link means "private, no rights granted"
+   ([collection spec](https://github.com/radiantearth/stac-spec/blob/master/collection-spec/collection-spec.md)).
+   Suggestion: an SPDX `AND` expression for mixed licences, `other` for none. `build.build`.

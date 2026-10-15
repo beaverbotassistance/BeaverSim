@@ -421,6 +421,89 @@ print(inspect.getsourcefile(build._provenance), inspect.getsourcelines(build._pr
 print(inspect.getdoc(build._provenance))"""),
     ])
 
+CH05 = Chapter(
+    "05_data_governance", "5. Data governance: licences, land, Indigenous data",
+    "Exercises of [chapter 5](../05_data_governance.md). Run the setup cell first. The exercises change a *copy* "
+    "of the sample's site registry, never the real one.",
+    """import copy, datetime, tempfile
+import yaml
+from data_acquisition.catalog import build, descriptors
+from data_acquisition.catalog import summary as summaries
+from data_acquisition.readers import eml
+from data_acquisition.steps.curate import curate_item
+
+REFERENCE = yaml.safe_load((ROOT / "docs/manual/solutions/training_pond.yaml").read_text())
+MY_REGISTRY = Path(tempfile.mkdtemp()) / "sites.yaml"
+MY_REGISTRY.write_text((SAMPLE / "sites.yaml").read_text())""",
+    [
+        Exercise("**1. Licences from records.** Read the sample's `metadata.xml` with `eml.read` and print its "
+                 "licence. "
+                 "Change the licence URL in the text to CC BY-SA 4.0, then to a licence the reader does not know: "
+                 "what does it return?",
+                 """text = (DATASET / "metadata.xml").read_text()
+...  # your code here""",
+                 """text = (DATASET / "metadata.xml").read_text()
+print("as published:", eml.read(text)["licence"])
+by_sa = text.replace("licenses/by/4.0", "licenses/by-sa/4.0")
+print("CC BY-SA:    ", eml.read(by_sa)["licence"])
+unknown = text.replace("https://creativecommons.org/licenses/by/4.0/", "https://example.org/my-own-terms")
+print("unknown:     ", eml.read(unknown)["licence"], "| the text is kept:", eml.read(unknown)["rights"][:60])
+# A licence the reader does not know is None: left empty and listed as missing, never guessed."""),
+        Exercise("**2. A registry entry.** In `MY_REGISTRY` (a copy of the sample's registry), set `land_status` to "
+                 "`{value, by, date, note}` and check it with `summaries.check_sites`. Then try an entry without `by`.",
+                 """registry = yaml.safe_load(MY_REGISTRY.read_text())
+...  # your code here""",
+                 """registry = yaml.safe_load(MY_REGISTRY.read_text())
+site = registry["sites"]["training_pond"]
+site["land_status"] = {"value": "private ranch (invented)", "by": "A Student", "date": datetime.date.today(),
+                       "note": "from the landowner, by phone"}
+print("valid entry:", summaries.check_sites(registry["sites"]) or "no problems")
+bad = copy.deepcopy(registry["sites"]); bad["training_pond"]["land_status"] = {"value": "private"}
+print("without by: ", summaries.check_sites(bad))
+MY_REGISTRY.write_text(yaml.safe_dump(registry, sort_keys=False))"""),
+        Exercise("**3. From registry to items.** Build and curate the sample with your registry (point `BEAVER_SITES` "
+                 "to it). What does the orthomosaic item say about `land_status`, and where did the value come from? "
+                 "What changes if `by` is `claude`?",
+                 """os.environ["BEAVER_SITES"] = str(MY_REGISTRY)
+...  # your code here
+os.environ["BEAVER_SITES"] = str(SAMPLE / "sites.yaml")      # back to the sample's registry""",
+                 """def orthomosaic_item():
+    s = summaries.load(str(ROOT / "docs/manual/solutions/training_pond.yaml"))
+    catalog, _ = build.build(SAMPLE, s)
+    item = next(i for i in catalog.get_items(recursive=True) if i.id.endswith("orthomosaic"))
+    curate_item(item, s)
+    return item
+
+os.environ["BEAVER_SITES"] = str(MY_REGISTRY)
+item = orthomosaic_item()
+print(item.properties["beaver:land_status"], item.properties["beaver:origin"]["land_status"])
+registry = yaml.safe_load(MY_REGISTRY.read_text())
+registry["sites"]["training_pond"]["land_status"]["by"] = "claude"
+MY_REGISTRY.write_text(yaml.safe_dump(registry, sort_keys=False))
+print(orthomosaic_item().properties["beaver:origin"]["land_status"])
+os.environ["BEAVER_SITES"] = str(SAMPLE / "sites.yaml")
+# Entered by a person: source "manual", with who and when. Entered by Claude: source "claude", never confirmed."""),
+        Exercise("**4. Hints only.** Add `land_status: private` under the site in a copy of the reference summary, "
+                 "next to `hints`. What does the check say?",
+                 """s = copy.deepcopy(REFERENCE)
+...  # your code here (summaries.check(s, summaries.load_sites()))""",
+                 """s = copy.deepcopy(REFERENCE)
+s["sites"]["training_pond"]["land_status"] = "private"
+print(summaries.check(s, summaries.load_sites()))
+# Blocks: a summary may only hint; land status is decided in the site registry, by a person."""),
+        Exercise("**5. Find it in the code.** Where does `curate` copy the registry's fields into items, and where "
+                 "does a site collection's licence become `various`?",
+                 """import inspect
+...  # your code here""",
+                 """import inspect
+from data_acquisition.steps import curate
+for fn, needle in ((curate.curate_item, "_set_entered"), (build.build, '"various"')):
+    source, first = inspect.getsourcelines(fn)
+    for n, line in enumerate(source, first):
+        if needle in line:
+            print(f"{inspect.getsourcefile(fn)}:{n}: {line.strip()}")"""),
+    ])
+
 CH06 = Chapter(
     "06_what_the_pipeline_needs", "6. What the pipeline needs from you",
     "Exercises of [chapter 6](../06_what_the_pipeline_needs.md). Each exercise changes one thing in a copy of the "
@@ -524,7 +607,7 @@ for fn, needle in ((summaries.epoch, "date must be YYYY-MM-DD"), (build._raster_
             print(f"{inspect.getsourcefile(fn)}:{n}: {line.strip()}")'''),
     ])
 
-CHAPTERS = [CH00, CH01, CH02, CH03, CH04, CH06]
+CHAPTERS = [CH00, CH01, CH02, CH03, CH04, CH05, CH06]
 
 
 def notebook(chapter: Chapter, solutions: bool) -> nbformat.NotebookNode:
