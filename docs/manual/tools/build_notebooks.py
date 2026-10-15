@@ -43,6 +43,7 @@ class Chapter(NamedTuple):
     intro: str
     imports: str
     exercises: List[Exercise]
+    network: bool = False           # needs an internet connection (the course test skips it unless asked)
 
 
 CH00 = Chapter(
@@ -678,7 +679,83 @@ for fn in (zenodo.main, describe.check_summary, build.build, curate.curate, root
     print(f"{fn.__module__}.{fn.__name__}\\n    {inspect.getdoc(module).splitlines()[0][:100]}")"""),
     ])
 
-CHAPTERS = [CH00, CH01, CH02, CH03, CH04, CH05, CH06, CH07]
+CH08 = Chapter(
+    "08_open_datasets", "8. Bringing in an open dataset",
+    "Exercises of [chapter 8](../08_open_datasets.md). Run the setup cell first. **These exercises download from the "
+    "Arctic Data Center**: an internet connection is needed. They use their own data root and the real site "
+    "registry, because the Baldwin Peninsula is a real site.",
+    """import csv, shutil, stat, subprocess
+os.environ.pop("BEAVER_SITES", None)         # the real site registry
+OPEN = ROOT / "output/manual/open_root"
+DOI = "doi:10.18739/A2CZ3253W"
+FOLDER = OPEN / "arcticdata/doi_10.18739_A2CZ3253W"
+
+
+def run(*args):
+    \"\"\"Run a pipeline command from the repository root; print it and the last lines of its output.\"\"\"
+    print("$ python -m", " ".join(str(a) for a in args))
+    out = subprocess.run([sys.executable, "-m", *map(str, args)], cwd=ROOT, capture_output=True, text=True)
+    print("\\n".join((out.stdout + out.stderr).strip().splitlines()[-8:]), "\\n")""",
+    [
+        Exercise("**1. List.** List `doi:10.18739/A2CZ3253W` with the DataONE client. What is its licence, and how "
+                 "large is it?",
+                 """...  # your code here: run("data_acquisition.sources.dataone", "--root", OPEN, "--id", DOI, ...)""",
+                 """shutil.rmtree(OPEN, ignore_errors=True)      # start from an empty data root
+run("data_acquisition.sources.dataone", "--root", OPEN, "--id", DOI, "--list")
+# CC-BY-4.0, one zip of 55 KB (the listing rounds it to 0.000 GB)."""),
+        Exercise("**2. Download.** Download it into `output/manual/open_root`. Find its row in `downloads.csv` and "
+                 "explain each column. Run the download again: what happens?",
+                 """...  # your code here""",
+                 """run("data_acquisition.sources.dataone", "--root", OPEN, "--id", DOI)
+for row in csv.DictReader(open(OPEN / "downloads.csv")):
+    for key, value in row.items():
+        print(f"  {key:19s} {value}")
+run("data_acquisition.sources.dataone", "--root", OPEN, "--id", DOI)
+# The second run downloads nothing: the file is there, and is only verified again."""),
+        Exercise("**3. Extract.** Extract the zip. Which files appeared, and with which permissions? Run the "
+                 "extraction again.",
+                 """zip_path = next(FOLDER.glob("*.zip"))
+...  # your code here""",
+                 """zip_path = next(FOLDER.glob("*.zip"))
+run("data_acquisition.sources.archives", zip_path)
+for p in sorted(FOLDER.iterdir()):
+    print(f"  {stat.filemode(p.stat().st_mode)}  {p.name}")
+gdb = next(FOLDER.glob("*.gdb"))
+print("  inside the geodatabase:", len(list(gdb.iterdir())), "files, e.g.",
+      stat.filemode(next(gdb.iterdir()).stat().st_mode))
+run("data_acquisition.sources.archives", zip_path)
+# The extracted files are read-only; a second run only checks them against the zip's CRC-32."""),
+        Exercise("**4. Catalogue.** Check, build and curate it with `--verify`, using the summary "
+                 "`arcticdata_baldwin_dams`. What was each item verified against?",
+                 """...  # your code here""",
+                 """import json
+run("data_acquisition.catalog.describe", "check", "--root", OPEN, "--summary", "arcticdata_baldwin_dams")
+run("data_acquisition.catalog.build", "--root", OPEN, "--summary", "arcticdata_baldwin_dams")
+run("data_acquisition.steps.curate", "--catalog", OPEN / "stac/arcticdata_baldwin_dams/catalog.json",
+    "--summary", "arcticdata_baldwin_dams", "--verify")
+for p in sorted((OPEN / "stac/arcticdata_baldwin_dams").glob("*/*/*.json")):
+    d = json.loads(p.read_text())
+    print(d["id"], "->", d["properties"]["beaver:provenance"]["verified"])"""),
+        Exercise("**5. Intake.** Write an intake prompt for any Zenodo DOI into `output/manual/intake_example` "
+                 "(nothing is downloaded). Read the client contract in it: which rules does it set?",
+                 """...  # your code here (data_acquisition.intake --url ... --root ... --dataset ... --out ...)""",
+                 """out = ROOT / "output/manual/intake_example"
+run("data_acquisition.intake", "--url", "https://doi.org/10.5281/zenodo.7493153", "--root", OPEN,
+    "--dataset", "example_new", "--out", out)
+text = (out / "prompt.md").read_text()
+start = text.find("Contract for a source client")
+print(text[start:start + 1800])"""),
+        Exercise("**6. Find it in the code.** Which function downloads a file with resume, and which writes the row "
+                 "of `downloads.csv`?",
+                 """import inspect
+...  # your code here""",
+                 """import inspect
+from data_acquisition.sources import downloads, http
+for fn in (http.fetch, downloads.finish, downloads.log):
+    print(f"{fn.__module__}.{fn.__name__}: {inspect.getdoc(fn).splitlines()[0]}")"""),
+    ], network=True)
+
+CHAPTERS = [CH00, CH01, CH02, CH03, CH04, CH05, CH06, CH07, CH08]
 
 
 def notebook(chapter: Chapter, solutions: bool) -> nbformat.NotebookNode:
@@ -693,6 +770,7 @@ def notebook(chapter: Chapter, solutions: bool) -> nbformat.NotebookNode:
     for i, cell in enumerate(cells):
         cell["id"] = f"{chapter.name[:2]}-{i:02d}"          # stable ids: a rebuild changes nothing in git
     nb = new_notebook(cells=cells)
+    nb.metadata["beaver_course"] = {"needs_network": chapter.network}
     nb.metadata["kernelspec"] = {"name": "python3", "display_name": "Python 3", "language": "python"}
     return nb
 
