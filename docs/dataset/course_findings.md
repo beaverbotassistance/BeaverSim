@@ -49,3 +49,8 @@ together. Each entry: what was found, the evidence, and a suggestion. Newest las
    (and §11, done) when milestone 2 is planned.
 8. **`--list` prints sizes in GB with three decimals,** so small datasets show `0.000 GB` (Baldwin dams: a 55 KB zip,
    listed as `0.000 GB`, total `0.000 GB`). Suggestion: human-readable units (KB/MB/GB) in the clients' listing.
+9. **A file that fails verification stays in place.** `http.fetch` renames the `.part` file to its final name
+   before `downloads.verify` runs; when verification fails, the client stops with an error but the bad file stays
+   where the good one belongs (writable, not logged). A second run sees it exists, skips the download, and fails
+   again, until someone deletes it by hand (`sources/dataone.py`, the same pattern in the other clients).
+   Suggestion: verify the `.part` file before renaming it, or move a failed file aside (e.g. `<name>.failed`).
