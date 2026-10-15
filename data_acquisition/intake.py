@@ -71,12 +71,11 @@ separate summary whose groups' `download_filter` covers only the new files, so t
 API). If one of the clients above already serves it, use that client and skip to step 3.
 
 **2. Write a client for the new repository**, `data_acquisition/sources/<repository>.py`, following the
-contract below. Read `sources/dataone.py` and `sources/pangaea.py` first: match their structure,
-naming and comment style. If the repository's metadata record is a format not listed above, also write
+contract below. Match the existing clients' structure, naming and comment style. If the repository's metadata record is a format not listed above, also write
 `data_acquisition/readers/<format>.py` and add one entry to `RECORDS` (follow `readers/pangaea.py`).
 
 Contract for a source client:
-- CLI: `python -m data_acquisition.sources.<repository> --root <root> --doi <doi> [--filter <regex>]`, plus
+- CLI: `python -m data_acquisition.sources.<repository> --root <root> --id <doi or id> [--filter <regex>]`, plus
   a `--list` option that only prints the files (name, size) and licence, without downloading.
 - Saves the repository's metadata record in the dataset folder under the file name its `RECORDS` entry
   gives, unchanged. When a repository serves one record from several endpoints (e.g. metadata and file
@@ -84,16 +83,16 @@ Contract for a source client:
   the identifier of the exact version downloaded (for versioned repositories, the version DOI, not the
   concept DOI; log the version DOI too). A dataset without a DOI keeps the repository's own identifier
   (e.g. `hs:<id>`): never make up a DOI.
-- Downloads with the standard library only (`urllib`); resumes partial `.part` files where the server
-  supports ranges; retries temporary errors with a growing wait.
-- Verifies every file with `data_acquisition.sources.checksums.check` against the repository's checksum when it
-  gives one (it understands plain digests and S3 multipart ETags `<hex>-<n>`); raises on a mismatch. When the
-  check is undecided (a multipart ETag whose part size is unknown) or there is no checksum, verifies against the
-  MD5 the storage states when serving the file, and logs which in the `verified_by` column.
-- Makes every downloaded file read-only; never deletes or overwrites a downloaded file.
+- Uses the shared helpers, and nothing else, for what is common to every client:
+  `data_acquisition.sources.http` (`get`, `fetch`: standard library only, retries with a growing wait,
+  resumable `.part` files) and `data_acquisition.sources.downloads` (`finish` verifies each file against the
+  repository's checksum or the MD5 the server states, makes it read-only and returns its log row; `listing`
+  prints a `--list`; `log` merges rows into `<root>/downloads.csv`). Pass `size_only=True` to `finish` only
+  behind an explicit option, as the CKAN client's `--no-md5-ok`.
+- Never deletes or overwrites a downloaded file.
 - If the repository publishes archives (zip), extracts them with `data_acquisition.sources.archives.extract`
   (CRC-checked, read-only, never overwrites) after verifying the archive; never extract any other way.
-- Appends one row per file to `<root>/downloads.csv` with `dataone.log` (same columns).
+- Read `sources/zenodo.py` (the smallest client) as the model.
 
 **3. List before downloading.** Run the client with `--list`. Report to the user: number of files, total
 size, licence, and a proposed `--filter` that keeps what the pipeline can use (rasters, metadata,

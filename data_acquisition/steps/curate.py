@@ -29,7 +29,6 @@ from data_acquisition.catalog import summary as summaries
 from data_acquisition.readers import geotiff, table, vector
 from data_acquisition.sources import checksums
 from data_acquisition.sources.archives import verify_member
-from data_acquisition.sources.dataone import file_hash
 from data_acquisition.catalog.descriptors import add_quality, get_field, set_field
 
 SAMPLE = 1024           # side of the central window read for value checks, pixels
@@ -155,7 +154,7 @@ def _verify(item: pystac.Item, asset: pystac.Asset, path: Path) -> None:
             item.properties["beaver:provenance"] = {**prov, "verified": f"{datetime.date.today().isoformat()} ({against})"}
     else:
         algorithm = {v: k for k, v in stac.MULTIHASH.items()}[checksum[:4]]
-        if file_hash(path, algorithm) != checksum[4:]:
+        if checksums.digest(path, algorithm) != checksum[4:]:
             add_quality(item, "checksum_mismatch", f"{algorithm} differs from the repository")
         else:
             prov = dict(get_field(item, "provenance") or {})

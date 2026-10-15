@@ -22,7 +22,7 @@ from data_acquisition.catalog import descriptors, stac
 from data_acquisition.catalog import summary as summaries
 from data_acquisition.catalog.descriptors import add_quality, set_field
 from data_acquisition.readers import RECORD_FILES, RECORDS, eml, geotiff, table, vector
-from data_acquisition.sources import dataone
+from data_acquisition.sources import downloads
 
 COMMON_NAMES = {"blue": "blue", "green": "green", "red": "red", "red edge": "rededge", "rededge": "rededge",
                 "near infrared": "nir", "near-infrared": "nir", "nir": "nir"}
@@ -202,7 +202,7 @@ def data_item(s: Dict[str, Any], f: Dict[str, Any], path: Path, rel: str, group:
 
 def build(root: Path, s: Dict[str, Any]) -> (pystac.Catalog, Dict[str, List[str]]):
     """Catalog of the files ``s`` describes under ``root``, and a report of problems."""
-    log = dataone.read_log(root / s["source"]["log"]) if s["source"].get("log") else {}
+    log = downloads.read_log(root / s["source"]["log"]) if s["source"].get("log") else {}
     report = {"missing": [], "undescribed": [], "unsupported": [], "unattached": [], "unmatched_layers": []}
     _vector_info.cache_clear()
     items: Dict[str, pystac.Item] = {}
