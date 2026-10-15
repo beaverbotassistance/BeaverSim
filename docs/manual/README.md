@@ -37,7 +37,7 @@ those are later milestones, and the chapters that will cover them are marked as 
 | 05 | [Data governance: licences, land, Indigenous data](05_data_governance.md) | draft, for review |
 | 06 | [What the pipeline needs from you](06_what_the_pipeline_needs.md) | draft, for review |
 | | **Part 2 – Using the pipeline (milestone 1)** | |
-| 07 | [The pipeline at a glance](07_pipeline_at_a_glance.md) | outline |
+| 07 | [The pipeline at a glance](07_pipeline_at_a_glance.md) | draft, for review |
 | 08 | [Bringing in an open dataset](08_open_datasets.md) | outline |
 | 09 | [Describing a dataset: summaries and Claude](09_describing_a_dataset.md) | outline |
 | 10 | [Building and curating catalogues](10_building_and_curating.md) | outline |

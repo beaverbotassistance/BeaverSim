@@ -607,7 +607,78 @@ for fn, needle in ((summaries.epoch, "date must be YYYY-MM-DD"), (build._raster_
             print(f"{inspect.getsourcefile(fn)}:{n}: {line.strip()}")'''),
     ])
 
-CHAPTERS = [CH00, CH01, CH02, CH03, CH04, CH05, CH06]
+CH07 = Chapter(
+    "07_pipeline_at_a_glance", "7. The pipeline at a glance",
+    "Exercises of [chapter 7](../07_pipeline_at_a_glance.md). Run the setup cell first. The stages are run as "
+    "shell commands, as you would in a terminal; `run` prints the command and the end of its output.",
+    """import csv, json, subprocess
+
+SUMMARY = ROOT / "docs/manual/solutions/training_pond.yaml"
+STAC = SAMPLE / "stac"
+
+
+def run(*args):
+    \"\"\"Run a pipeline command from the repository root; print it and the last lines of its output.\"\"\"
+    print("$ python -m", " ".join(str(a) for a in args))
+    out = subprocess.run([sys.executable, "-m", *map(str, args)], cwd=ROOT, capture_output=True, text=True)
+    print("\\n".join((out.stdout + out.stderr).strip().splitlines()[-6:]), "\\n")
+
+
+def tree(folder):
+    for p in sorted(folder.rglob("*")) if folder.exists() else []:
+        if p.is_file():
+            print("  ", p.relative_to(folder))""",
+    [
+        Exercise("**1. Run the stages.** On the sample root, run `describe check` with the reference summary, then "
+                 "`build`, `curate` and `root`. After each, list what appeared under the sample root's `stac/`.",
+                 """import shutil
+shutil.rmtree(STAC, ignore_errors=True)      # start from a sample root without catalogues
+run("data_acquisition.catalog.describe", "check", "--root", SAMPLE, "--summary", SUMMARY)
+tree(STAC)
+...  # your code here: build, curate, root""",
+                 """import shutil
+shutil.rmtree(STAC, ignore_errors=True)      # start from a sample root without catalogues
+run("data_acquisition.catalog.describe", "check", "--root", SAMPLE, "--summary", SUMMARY)
+tree(STAC)                                   # nothing: check builds in memory only
+run("data_acquisition.catalog.build", "--root", SAMPLE, "--summary", SUMMARY)
+tree(STAC)
+run("data_acquisition.steps.curate", "--catalog", STAC / "training_pond/catalog.json", "--summary", SUMMARY)
+run("data_acquisition.catalog.root", "--root", SAMPLE)
+tree(STAC)"""),
+        Exercise("**2. Read the outputs.** Open `build_report.json`, `curate_report.csv` and `sites.json`. What does "
+                 "each tell you?",
+                 """...  # your code here""",
+                 """print("build report:", json.loads((STAC / "training_pond/build_report.json").read_text()))
+for row in csv.DictReader(open(STAC / "training_pond/curate_report.csv")):
+    print("curate:", row)
+print("sites:", json.dumps(json.loads((STAC / "sites.json").read_text()), indent=1)[:600])
+# The build report lists what could not be described or attached (here nothing); the curate report, per item,
+# the missing descriptors and the flags; sites.json, per site, the datasets and what is still unknown.
+# The photos are flagged not_in_record: the sample's metadata.xml does not list the photo folder, and the builder
+# says so rather than assume it belongs to the record."""),
+        Exercise("**3. Options.** Print the `--help` of every command. Which ones write into the data root, and which "
+                 "option or command lets you see what would happen without writing anything?",
+                 """...  # your code here""",
+                 """for module in ("data_acquisition.sources.zenodo", "data_acquisition.catalog.describe",
+               "data_acquisition.catalog.build", "data_acquisition.steps.curate", "data_acquisition.catalog.root",
+               "data_acquisition.sources.field", "data_acquisition.sources.field_alignment"):
+    out = subprocess.run([sys.executable, "-m", module, "--help"], cwd=ROOT, capture_output=True, text=True)
+    print(module, "|", " ".join(out.stdout.split("\\n")[0].split()[1:]))
+# Writing: the clients (downloads), build, curate, root, field, field_alignment. Looking first: --list (clients),
+# describe check (in memory), --dry-run (field step)."""),
+        Exercise("**4. Find the stages.** For each stage, name the module and its main function.",
+                 """import inspect
+...  # your code here""",
+                 """import inspect
+from data_acquisition.catalog import build, describe, root
+from data_acquisition.sources import field, zenodo
+from data_acquisition.steps import curate
+for fn in (zenodo.main, describe.check_summary, build.build, curate.curate, root.main, field.main):
+    module = sys.modules[fn.__module__]
+    print(f"{fn.__module__}.{fn.__name__}\\n    {inspect.getdoc(module).splitlines()[0][:100]}")"""),
+    ])
+
+CHAPTERS = [CH00, CH01, CH02, CH03, CH04, CH05, CH06, CH07]
 
 
 def notebook(chapter: Chapter, solutions: bool) -> nbformat.NotebookNode:
