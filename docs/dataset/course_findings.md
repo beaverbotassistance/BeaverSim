@@ -54,3 +54,12 @@ together. Each entry: what was found, the evidence, and a suggestion. Newest las
    where the good one belongs (writable, not logged). A second run sees it exists, skips the download, and fails
    again, until someone deletes it by hand (`sources/dataone.py`, the same pattern in the other clients).
    Suggestion: verify the `.part` file before renaming it, or move a failed file aside (e.g. `<name>.failed`).
+10. **Photos in small folders get no evidence.** The evidence gatherer groups a folder of photos into one entry
+    only from 10 photos up (`evidence.PHOTO_FOLDER`); below that each photo is listed on its own, and for a single
+    photo it reads nothing (no camera, time or position). The course's sample, 6 photos, shows six empty entries.
+    Suggestion: group any folder of photos, or read the EXIF of single photos too.
+11. **The drafting prompt hard-codes the repository's paths.** `describe prompt` tells Claude to write the draft
+    into `data_acquisition/summaries/` and to add new sites to `data_acquisition/sites.yaml`, even when
+    `BEAVER_SITES` points to another registry (the registry it *lists* does follow `BEAVER_SITES`). Drafting the
+    course's sample with Claude would write into the real summaries folder and registry. Suggestion: take the
+    registry path from `load_sites`' resolution and allow an output folder for the draft.
