@@ -980,7 +980,7 @@ groups:
     date: 2024-04-09
     attach_to: [orthomosaic, dsm]
 open_questions:
-- 'Positioning: every methods text names both a D-RTK 2 base (rtk) and Leica Viva ground control, but all 29 Pix4D reports state ''Georeferencing: yes, no 3D GCP''. Only rtk is set here. Was the Leica survey used to fix the base station, or as check points? The reviewed arcticdata_seward summary sets [rtk, gcp] for the same team and workflow; the two should be made consistent.'
+- 'Positioning is set to rtk in arcticdata_seward, arcticdata_abon_2024 and arcticdata_seward_repeat: the 35 Pix4D reports of this team state no 3D GCP in processing. Still open: what the Leica Viva survey the methods mention was used for (the RTK base station''s coordinates, or check points); the reports or the authors may say.'
 - 'RGB band order: every orthomosaic header declares red, green, blue, while the EML records say blue, green, red. The header order is used; check one file visually.'
 - 'unit: reflectance is inferred from the radiometric calibration described in the methods; the value scale (0-1 or percent) is not stated. Check on a sample.'
 - 'Ptarmigan Creek: the EML bounds are the Willow Creek ones (see group notes); the rasters place it at -164.92 to

@@ -93,7 +93,6 @@ groups:
   platform: DJI Mavic 3 Multispectral
   positioning:
   - rtk
-  - gcp
   notes:
   - Same ABON package as the Swan Lake DLB group of arcticdata_seward; this group covers the other sites' 27 files.
   - The EML entity descriptions are shuffled for Kotz_B_South, Kotz_B_West, South_Fork_Serpentine_River,
@@ -108,8 +107,7 @@ groups:
     Peninsula) and the others at 64.6-65.9 N, -165.5..-164.7 E (Seward Peninsula)'
   - 'date: file names (DDMonthYYYY), per file; EML dates 2024-08-02..2024-08-07'
   - 'platform: methods text (DJI Mavic 3 Multispectral quadcopter); file names say M3'
-  - 'positioning: methods text (DJI D-RTK 2 Mobile Base Station -> rtk; Leica Viva differential GPS provided ground
-    control -> gcp)'
+  - 'positioning: rtk from the methods text (DJI D-RTK 2 Mobile Base Station). The methods also mention Leica Viva ground control, but this record has no processing reports; the same team''s workflow is documented by 35 Pix4D reports (arcticdata_seward 6, arcticdata_seward_repeat 29), all stating ''Georeferencing: yes, no 3D GCP'', so gcp is not set, for consistency with them'
   - 'products: file names (Orthomosaic_RGB 5cm, Digital_Surface_Model 10cm, Multispectral_Bands 10cm), GeoTIFF
     resolutions (0.05, 0.1, 0.1 m) and band counts (3 uint8, 1 float32, 4 float32), matching the three products in
     the methods text'
@@ -306,8 +304,7 @@ open_questions:
   Creek Road, Swan Lake Creek, South Fork Serpentine River and Kotzebue B East/West/South/3. Should these slugs match
   the sites of those records when they are added, and is Glacier_Creek the same site as Glacier Creek Road and
   Upper_Nome_River the same as MP31? Footprints should be compared when the earlier records are downloaded.'
-- 'Positioning: the methods name both an RTK base (D-RTK 2) and Leica Viva ground control; whether the Leica points
-  were used as GCPs or only as check points is not stated, and the record has no Pix4D reports.'
+- 'Positioning is set to rtk in arcticdata_seward, arcticdata_abon_2024 and arcticdata_seward_repeat: the 35 Pix4D reports of this team state no 3D GCP in processing. Still open: what the Leica Viva survey the methods mention was used for (the RTK base station''s coordinates, or check points); the reports or the authors may say.'
 - 'unit: reflectance is inferred from the radiometric calibration in the methods; the value scale (0-1 or percent) is
   not stated. Check on a sample (multispectral nodata is -10000).'
 - 'Vertical datum: ellipsoid heights with a WGS84 horizontal datum; the ellipsoid realisation (WGS84 vs ITRF/NAD83 via
