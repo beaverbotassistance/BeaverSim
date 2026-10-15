@@ -2,8 +2,10 @@
 # Project-specific
 # ---------------------------------------------------------------------------
 output/
+# docs: the manual and the dataset docs are published; working notes and papers stay local
 docs/*
 !docs/dataset/
+!docs/manual/
 resources/images/
 resources/doc
 core.*
