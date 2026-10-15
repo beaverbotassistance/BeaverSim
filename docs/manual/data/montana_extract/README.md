@@ -29,4 +29,5 @@ extract.json                  the box, the source of every file, and the alignme
   ([field naming](../../../dataset/field_naming.md)).
 - **Annotations:** the features of each layer that touch the box, copied whole and unchanged (geometry with
   Z and M, attributes) with `ogr2ogr`; their feature ids are those of `beaver_dataset`, which corrections refer to.
-- **Photos:** downscaled to 800 pixels on the longest side; EXIF (camera, time, GPS) kept.
+- **Photos:** downscaled to 800 pixels on the longest side; EXIF (camera, time, GPS) and DJI's XMP (height
+  above take-off, gimbal and flight angles) kept.

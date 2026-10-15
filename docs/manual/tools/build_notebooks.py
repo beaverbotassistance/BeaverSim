@@ -257,6 +257,86 @@ for module, needle in ((stac, "proj.wkt2"), (curate, '"crs_mismatch"')):
 # stac.raster_item (and stac.vector_item, for vectors) writes proj.wkt2; curate.check_raster raises crs_mismatch.'''),
     ])
 
+CH03 = Chapter(
+    "03_drone_surveys", "3. Drone surveys: from photos to maps",
+    "Exercises of [chapter 3](../03_drone_surveys.md). Run the setup cell first.",
+    """import re
+import numpy as np
+import rasterio
+from data_acquisition.readers import photos""",
+    [
+        Exercise("**1. A photo's metadata.** Read the EXIF of one photo of the Montana extract with `photos.exif`: "
+                 "camera, time, position, altitude. Then find, in the file's XMP block, DJI's `RelativeAltitude`, "
+                 "`AbsoluteAltitude` and `GimbalPitchDegree`. What do they tell you?",
+                 """photo = EXTRACT / "2018-07-26/photos/DJI_0139.JPG"
+...  # your code here (photos.exif; the XMP is text inside the file: search for 'drone-dji:')""",
+                 """photo = EXTRACT / "2018-07-26/photos/DJI_0139.JPG"
+print(photos.exif(photo))
+xmp = dict(re.findall(r'drone-dji:(\\w+)="([^"]*)"', photo.read_bytes().decode("latin-1")))
+for key in ("RelativeAltitude", "AbsoluteAltitude", "GimbalPitchDegree", "FlightYawDegree"):
+    print(f"{key}: {xmp[key]}")
+# The drone flew about 43 m above its take-off point, camera pointing straight down (pitch -90). The EXIF GPS
+# altitude is DJI's absolute altitude, stored twice; the relative altitude is what sets the photo's scale."""),
+        Exercise("**2. Ground sample distance.** Derive the Phantom 4 Pro's sensor width from its 84 degree (diagonal) "
+                 "field of view and 8.8 mm focal length, for a 3:2 sensor. Then compute the GSD at the photo's "
+                 "relative "
+                 "altitude, for 5472-pixel-wide photos. Compare with 1.3 cm.",
+                 """F, IMW, FOV = 8.8, 5472, 84.0           # mm, pixels, degrees (diagonal)
+...  # your code here""",
+                 """F, IMW, FOV = 8.8, 5472, 84.0
+diagonal = 2 * F * np.tan(np.radians(FOV / 2))
+SW = diagonal * 3 / np.sqrt(3 ** 2 + 2 ** 2)      # width of a 3:2 rectangle with that diagonal
+H = 42.8
+gsd = SW * H / (F * IMW)
+print(f"sensor diagonal {diagonal:.2f} mm, width {SW:.2f} mm; GSD at {H} m = {gsd * 100:.2f} cm")"""),
+        Exercise("**3. One photo's footprint.** How many metres of ground does one photo cover at that height (5472 x "
+                 "3648 pixels)? With 75% frontal overlap, and the short side along the flight line, how far apart are "
+                 "consecutive photos?",
+                 """...  # your code here (reuse gsd)""",
+                 """across, along = gsd * 5472, gsd * 3648
+print(f"one photo covers {across:.0f} m x {along:.0f} m")
+print(f"75% frontal overlap: a photo every {along * (1 - 0.75):.0f} m along the line")"""),
+        Exercise("**4. An affine fit.** Make 8 control points from a known affine plus random errors of 0.5 m; fit an "
+                 "affine by least squares; print the residuals and their rms. How do they change with 4 points, or 20?",
+                 """rng = np.random.default_rng(0)
+true = np.array([[0.0125, 0.0001, 368000.0], [0.0001, -0.0135, 5420040.0]])   # pixel -> metres
+...  # your code here""",
+                 """rng = np.random.default_rng(0)
+true = np.array([[0.0125, 0.0001, 368000.0], [0.0001, -0.0135, 5420040.0]])
+for n in (4, 8, 20):
+    pixels = rng.uniform(0, 4000, size=(n, 2))
+    design = np.c_[pixels, np.ones(n)]
+    clicked = design @ true.T + rng.normal(0, 0.5, size=(n, 2))       # where a person clicked, 0.5 m errors
+    fit, *_ = np.linalg.lstsq(design, clicked, rcond=None)
+    residuals = np.hypot(*(design @ fit - clicked).T)
+    print(f"{n:2d} points: rms {np.sqrt(np.mean(residuals ** 2)):.2f} m, max {residuals.max():.2f} m")
+# With few points the fit follows the errors (small residuals that look good but are not); with more points the
+# rms approaches the real click error. Small residuals from few points are not evidence of accuracy."""),
+        Exercise("**5. Two georeferencings.** The extract has, for each date, the same area from the chunk and "
+                 "from the "
+                 "full tile, on the same grid. Measure the shift between them with "
+                 "`skimage.registration.phase_cross_correlation`, in metres.",
+                 """from skimage.registration import phase_cross_correlation
+...  # your code here""",
+                 """from skimage.registration import phase_cross_correlation
+for day in ("2018-07-26", "2018-08-06"):
+    with rasterio.open(EXTRACT / day / "orthomosaic_chunk.tif") as r:
+        chunk, res = r.read(2).astype(float), r.res[0]
+    with rasterio.open(EXTRACT / day / "orthomosaic_full_tile.tif") as r:
+        tile = r.read(2).astype(float)
+    shift, _, _ = phase_cross_correlation(chunk, tile, upsample_factor=10)
+    print(f"{day}: the two georeferencings differ by {np.hypot(*shift) * res:.2f} m")"""),
+        Exercise("**6. Find it in the code.** Which function writes ArcGIS's adjustment into a sidecar, and which one "
+                 "reads the control points from an `.aux.xml`?",
+                 """import inspect
+...  # your code here""",
+                 """import inspect
+from data_acquisition.readers import geotiff
+from data_acquisition.sources import field
+for fn in (field.georeference, geotiff.arcgis_adjustment):
+    print(f"{fn.__module__}.{fn.__name__}: {inspect.getdoc(fn).splitlines()[0]}")"""),
+    ])
+
 CH06 = Chapter(
     "06_what_the_pipeline_needs", "6. What the pipeline needs from you",
     "Exercises of [chapter 6](../06_what_the_pipeline_needs.md). Each exercise changes one thing in a copy of the "
@@ -360,7 +440,7 @@ for fn, needle in ((summaries.epoch, "date must be YYYY-MM-DD"), (build._raster_
             print(f"{inspect.getsourcefile(fn)}:{n}: {line.strip()}")'''),
     ])
 
-CHAPTERS = [CH00, CH01, CH02, CH06]
+CHAPTERS = [CH00, CH01, CH02, CH03, CH06]
 
 
 def notebook(chapter: Chapter, solutions: bool) -> nbformat.NotebookNode:

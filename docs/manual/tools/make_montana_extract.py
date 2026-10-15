@@ -5,7 +5,7 @@
 For each date: the orthomosaic chunk the annotations were drawn on and the full tile, both cut to the box
 and resampled to 5 cm (JPEG-compressed GeoTIFF); the features of every annotation layer of that date that
 touch the box (unchanged: Z, M, attributes and feature ids); three photos taken over the box, downscaled
-with their EXIF kept. The box is centred on the largest dam that lies on a chunk at both dates. A README
+with their EXIF and XMP kept. The box is centred on the largest dam that lies on a chunk at both dates. A README
 records the sources and what was done to them. A few MB, committed under ``docs/manual/data/montana_extract/``.
 
     python docs/manual/tools/make_montana_extract.py --site-dir "<drive>/beaver_dataset/sites/rumney_ranch"
@@ -104,9 +104,9 @@ def cut_photos(photo_dir: Path, lonlat_box, out_dir: Path, n: int = 3) -> List[s
     out_dir.mkdir(parents=True, exist_ok=True)
     for p in chosen:
         with Image.open(p) as im:
-            exif = im.info.get("exif", b"")
+            exif, xmp = im.info.get("exif", b""), im.info.get("xmp")      # XMP: DJI's flight and gimbal data
             im.thumbnail((PHOTO_PX, PHOTO_PX))
-            im.save(out_dir / p.name, exif=exif, quality=80)
+            im.save(out_dir / p.name, exif=exif, xmp=xmp, quality=80)
     return [p.name for p in chosen]
 
 
