@@ -95,7 +95,9 @@ def cut_photos(photo_dir: Path, lonlat_box, out_dir: Path, n: int = 3) -> List[s
     chosen = []
     for p in sorted(photo_dir.rglob("*.JPG")):
         e = photos.exif(p)
-        if e["lon"] is not None and lonlat_box[0] <= e["lon"] <= lonlat_box[2] and lonlat_box[1] <= e["lat"] <= lonlat_box[3]:
+        inside = e["lon"] is not None and lonlat_box[0] <= e["lon"] <= lonlat_box[2] \
+            and lonlat_box[1] <= e["lat"] <= lonlat_box[3]
+        if inside:
             chosen.append(p)
         if len(chosen) == n:
             break
