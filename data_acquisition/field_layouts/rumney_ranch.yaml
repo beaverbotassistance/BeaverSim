@@ -40,7 +40,7 @@ orthomosaics:
   - {source: "06. 21June2018/RUMNEY_FOUR_21June2018.tif", to: surveys/2018-06-21/orthomosaic_part-4.tif}
   - {source: "06. 21June2018/RUMNEY_ONE_21June2018.tif", to: surveys/2018-06-21/orthomosaic_part-1.tif}
   - {source: "06. 21June2018/RUMNEY_SEVEN_21June2018.tif", to: surveys/2018-06-21/orthomosaic_part-7.tif}
-  - {source: "06. 21June2018/RUMNEY_SIX_21June2018.tif", to: surveys/2018-06-21/orthomosaic_part-6.tif}
+  - {source: "06. 21June2018/RUMNEY_SIX_21June2018.tif", exclude: "cannot be placed: an engineering CRS (LOCAL_CS, metres) with no link to the earth, no ArcGIS adjustment, and none of its chunks is georeferenced"}
   - {source: "06. 21June2018/RUMNEY_THREE_21June2018.tif", to: surveys/2018-06-21/orthomosaic_part-3.tif}
   - {source: "06. 21June2018/RUMNEY_TWO_21June2018.tif", to: surveys/2018-06-21/orthomosaic_part-2.tif}
   - {source: "07. 28June2018/28JUNE2018_RUMNEY_SEVEN.tif", to: surveys/2018-06-28/orthomosaic_part-7.tif}

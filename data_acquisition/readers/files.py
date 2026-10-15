@@ -7,8 +7,9 @@ and the evidence gatherer uses :func:`is_companion` to leave them out of the evi
 from pathlib import Path, PurePosixPath
 from typing import Set
 
-# GDAL and ArcGIS sidecars of a raster x.tif: x.tif.ovr, x.tif.aux.xml, x.tfw, x.tfwx, ...
-RASTER_SIDECARS = (".ovr", ".aux.xml", ".tfw", ".tfwx", ".msk", ".prj")
+# GDAL and ArcGIS sidecars of a raster x.tif: x.tif.ovr, x.tif.aux.xml, x.tfw, x.tfwx, ...; x.arcgis.aux.xml is the
+# original ArcGIS sidecar kept by the field step when it writes its own x.tif.aux.xml
+RASTER_SIDECARS = (".ovr", ".aux.xml", ".tfw", ".tfwx", ".msk", ".prj", ".arcgis.aux.xml")
 RASTERS = (".tif", ".tiff")
 # the parts of a shapefile x.shp
 SHAPEFILE_PARTS = (".shx", ".dbf", ".prj", ".cpg", ".sbn", ".sbx", ".qix", ".shp.xml", ".fix")

@@ -74,7 +74,10 @@ def raster_item(item_id: str, path: Path, info: Dict[str, Any], start: datetime.
     ``{"name": ..., "common_name": ...}`` (common_name may be None); band names are written as
     ``eo:bands`` for every product. Time as in :func:`_item`.
     """
-    geom, bbox = footprint(info)
+    try:
+        geom, bbox = footprint(info)
+    except Exception as e:      # rasterio/PROJ raise several error types for a CRS they cannot transform
+        raise ValueError(f"its CRS cannot be placed on the earth ({type(e).__name__})") from e
     props = {"gsd": round(min(info["resolution"]), 4)}
     asset = pystac.Asset(str(path.resolve()), title=title, roles=roles, media_type=pystac.MediaType.GEOTIFF)
     item = _item(item_id, geom, bbox, start, end, props, asset_key, asset)

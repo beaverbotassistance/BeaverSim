@@ -401,6 +401,22 @@ def execute(drive: Path, actions: List[Action], corrections: List[Dict[str, str]
     return dict(done)
 
 
+RECORDS = ("manifest.csv", "excluded.csv", "georeference.csv", "alignment.csv", "survey.json")
+
+
+def prune(drive: Path, site: str, actions: List[Action]) -> List[str]:
+    """Remove files of the site folder that the plan no longer makes (left by an earlier build): links (this name
+    only; the original is untouched) and files the field step wrote. Records are kept; they are rewritten."""
+    site_dir = drive / DATASET / "sites" / site
+    planned = {drive / a["dest"] for a in actions}
+    removed = []
+    for p in sorted(site_dir.rglob("*")):
+        if p.is_file() and p not in planned and p.name not in RECORDS:
+            _clear(p)
+            removed.append(str(p.relative_to(site_dir)))
+    return removed
+
+
 def write_records(drive: Path, site: str, actions: List[Action], excluded: List[Action],
                   inventory: List[Dict[str, str]], fits: Dict[str, Dict[str, Any]]) -> None:
     """``manifest.csv``, ``excluded.csv``, ``georeference.csv`` (the fit of each orthomosaic whose ArcGIS
@@ -475,7 +491,10 @@ def main() -> None:
     corrections = layout.get("crs_corrections") or []
     done = execute(args.drive, actions, corrections)
     fits = done.pop("fits")
-    print("built:", done)
+    removed = prune(args.drive, args.site, actions)
+    print("built:", done, f"| removed {len(removed)} left from an earlier build" if removed else "")
+    for r in removed[:20]:
+        print("  removed", r)
     write_records(args.drive, args.site, actions, excluded, inventory, fits)
     for dest, fit in sorted(fits.items()):
         if fit["max_m"] > GCP_WARN_M or fit["not_applied"]:
