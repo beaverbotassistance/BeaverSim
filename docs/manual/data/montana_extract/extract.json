@@ -1,0 +1,86 @@
+{
+ "site": "rumney_ranch",
+ "box": {
+  "bounds": [
+   -7702012.375,
+   5447491.475,
+   -7701952.375,
+   5447551.475
+  ],
+  "crs": "COMPOUNDCRS[\"WGS_1984_ARC_System_Zone_12 (corrected: +proj=eqc +lat_ts=-52.28859923 +lat_0=0 +lon_0=0 +x_0=0 +y_0=0 +R=6378137 +units=m +no_defs) + NAVD88 height (ftUS)\",PROJCRS[\"WGS_1984_ARC_System_Zone_12 (corrected: +proj=eqc +lat_ts=-52.28859923 +lat_0=0 +lon_0=0 +x_0=0 +y_0=0 +R=6378137 +units=m +no_defs)\",BASEGEOGCRS[\"unknown\",DATUM[\"unknown\",ELLIPSOID[\"unknown\",6378137,0,LENGTHUNIT[\"metre\",1,ID[\"EPSG\",9001]]]],PRIMEM[\"Greenwich\",0,ANGLEUNIT[\"degree\",0.0174532925199433],ID[\"EPSG\",8901]]],CONVERSION[\"unnamed\",METHOD[\"Equidistant Cylindrical (Spherical)\",ID[\"EPSG\",1029]],PARAMETER[\"Latitude of 1st standard parallel\",-52.28859923,ANGLEUNIT[\"degree\",0.0174532925199433],ID[\"EPSG\",8823]],PARAMETER[\"Longitude of natural origin\",0,ANGLEUNIT[\"degree\",0.0174532925199433],ID[\"EPSG\",8802]],PARAMETER[\"False easting\",0,LENGTHUNIT[\"metre\",1],ID[\"EPSG\",8806]],PARAMETER[\"False northing\",0,LENGTHUNIT[\"metre\",1],ID[\"EPSG\",8807]]],CS[Cartesian,2],AXIS[\"easting\",east,ORDER[1],LENGTHUNIT[\"metre\",1,ID[\"EPSG\",9001]]],AXIS[\"northing\",north,ORDER[2],LENGTHUNIT[\"metre\",1,ID[\"EPSG\",9001]]]],VERTCRS[\"NAVD88 height (ftUS)\",VDATUM[\"North American Vertical Datum 1988\"],CS[vertical,1],AXIS[\"gravity-related height\",up,LENGTHUNIT[\"US survey foot\",0.304800609601219]],ID[\"EPSG\",6360]]]",
+  "lonlat": [
+   -113.111184,
+   48.935649,
+   -113.110303,
+   48.936188
+  ]
+ },
+ "resolution_m": 0.05,
+ "dates": {
+  "2018-07-26": {
+   "chunk": "surveys/2018-07-26/orthomosaic_part-4_chunk-3.tif",
+   "full_tile": "surveys/2018-07-26/orthomosaic_part-4.tif",
+   "annotations": [
+    "dams.gpkg",
+    "dams_points.gpkg"
+   ],
+   "photos": [
+    "DJI_0139.JPG",
+    "DJI_0140.JPG",
+    "DJI_0141.JPG"
+   ],
+   "alignment": [
+    {
+     "date": "2018-07-26",
+     "layer": "dams",
+     "fid": "44",
+     "kind": "chunk",
+     "image": "orthomosaic_part-4_chunk-3.tif",
+     "east_m": "-0.05",
+     "north_m": "0.05",
+     "shift_m": "0.071",
+     "fit_found": "True"
+    },
+    {
+     "date": "2018-07-26",
+     "layer": "dams",
+     "fid": "45",
+     "kind": "chunk",
+     "image": "orthomosaic_part-4_chunk-3.tif",
+     "east_m": "0.05",
+     "north_m": "-0.05",
+     "shift_m": "0.071",
+     "fit_found": "True"
+    }
+   ]
+  },
+  "2018-08-06": {
+   "chunk": "surveys/2018-08-06/orthomosaic_part-4_chunk-3.tif",
+   "full_tile": "surveys/2018-08-06/orthomosaic_part-4.tif",
+   "annotations": [
+    "canals_colony-b.gpkg",
+    "dams.gpkg",
+    "dams_points.gpkg",
+    "trails_colony-b.gpkg"
+   ],
+   "photos": [
+    "DJI_0079.JPG",
+    "DJI_0080.JPG",
+    "DJI_0081.JPG"
+   ],
+   "alignment": [
+    {
+     "date": "2018-08-06",
+     "layer": "dams",
+     "fid": "42",
+     "kind": "chunk",
+     "image": "orthomosaic_part-4_chunk-3.tif",
+     "east_m": "0.0",
+     "north_m": "-0.05",
+     "shift_m": "0.05",
+     "fit_found": "True"
+    }
+   ]
+  }
+ }
+}
