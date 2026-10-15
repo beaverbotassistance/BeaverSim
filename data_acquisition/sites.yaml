@@ -156,3 +156,9 @@ sites:
     colonies: null
     land_status: null
     governance: null
+  rumney_ranch:
+    name: Rumney Ranch beaver colonies (drone survey site, colonies A to H), northwestern Montana, USA
+    crs: EPSG:32612                     # WGS 84 / UTM 12N: the site is at about 48.93 N, 113.12 W
+    colonies: null
+    land_status: null
+    governance: null
