@@ -68,3 +68,9 @@ together. Each entry: what was found, the evidence, and a suggestion. Newest las
     blocks); step 2 describes the evidence as "file lists, GeoTIFF headers, metadata records", leaving out vector
     layers, photo folders and report text. Suggestion: update the how-to (the course's chapter 9 has the current
     picture).
+13. **A rebuild leaves the folders of items that no longer exist.** Removing a file from a summary and rebuilding
+    gives a catalogue whose links are right (the item is gone from the collection), but the item's folder and JSON
+    stay on disk under `stac/<dataset>/<site>/` (tested on the course's sample: the DSM's folder remained). Tools
+    that follow links are fine; anything that scans the folder (`rglob("*.json")`, as several checks in this
+    project's history did) still sees the old item. Suggestion: `stac.save` clears the dataset's catalogue folder
+    (only `stac/<dataset>/`) before writing, or `build` removes item folders it did not write.
