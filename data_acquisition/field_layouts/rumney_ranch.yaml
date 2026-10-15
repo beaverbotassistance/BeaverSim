@@ -1,0 +1,211 @@
+# Layout of Rumney Ranch in beaver_dataset/: where each original file goes, under the names of
+# docs/dataset/field_naming.md, or why it is left out. DRAFT by Claude: review, then set `reviewed`.
+schema: 1
+site: rumney_ranch
+authored: {by: claude, model: claude-opus-5-5, date: 2026-10-15, note: "from output/dataset/manifest.csv and checks in session (byte comparisons, footprints, 1 m overlap of layers)"}
+reviewed:
+  by: Federico Oliva
+  date: 2026-10-15
+base: "2018 Field Season/Drone Flights/Rumney Ranch/"        # sources are relative to this folder of the drive unless they start with a season folder
+
+photos: by_exif_date  # surveys/<capture date>/photos/<camera folder>/<photo>, as in manifest.csv; duplicates and strays left out by rule
+
+orthomosaics:
+  - {source: "04. 05June2018/05June2018_Rumney2b.tif", to: surveys/2018-06-05/orthomosaic_part-2b.tif}
+  - {source: "04. 05June2018/05June2018_Rumney3.tif", to: surveys/2018-06-05/orthomosaic_part-3.tif}
+  - {source: "04. 05June2018/05June2018_Rumney4.tif", to: surveys/2018-06-05/orthomosaic_part-4.tif}
+  - {source: "04. 05June2018/05June2018_Rumney5.tif", to: surveys/2018-06-05/orthomosaic_part-5.tif}
+  - {source: "05. 13June2018/13June2018_Rumney1.tif", exclude: "byte-identical to 13June2018_RumneyRanch1.tif (kept)"}
+  - {source: "05. 13June2018/13June2018_Rumney2.tif", exclude: "alternative export of 13June2018_RumneyRanch2.tif (kept): same footprint, 1 px difference in size"}
+  - {source: "05. 13June2018/13June2018_Rumney3.tif", exclude: "alternative export of the area of 13June2018_RumneyRanch3.tif (kept), coarser (0.0151 vs 0.0136 m per pixel)"}
+  - {source: "05. 13June2018/13June2018_RumneyRanch1.tif", to: surveys/2018-06-13/orthomosaic_part-1.tif}
+  - {source: "05. 13June2018/13June2018_RumneyRanch2.tif", to: surveys/2018-06-13/orthomosaic_part-2.tif}
+  - {source: "05. 13June2018/13June2018_RumneyRanch3.tif", to: surveys/2018-06-13/orthomosaic_part-3.tif}
+  - {source: "05. 13June2018/13June2018_RumneyRanch4.tif", to: surveys/2018-06-13/orthomosaic_part-4.tif}
+  - {source: "05. 13June2018/13June2018_RumneyRanch5.tif", to: surveys/2018-06-13/orthomosaic_part-5.tif}
+  - {source: "05. 13June2018/13June2018_RumneyRanch6.tif", to: surveys/2018-06-13/orthomosaic_part-6.tif}
+  - {source: "05. 13June2018/13June2018_RumneyRanch7.tif", to: surveys/2018-06-13/orthomosaic_part-7.tif}
+  - {source: "06. 21June2018/RUMNEY_EIGHT_21June2018.tif", to: surveys/2018-06-21/orthomosaic_part-8.tif}
+  - {source: "06. 21June2018/RUMNEY_FIVE_21June2018.tif", to: surveys/2018-06-21/orthomosaic_part-5.tif}
+  - {source: "06. 21June2018/RUMNEY_FOUR_21June2018.tif", to: surveys/2018-06-21/orthomosaic_part-4.tif}
+  - {source: "06. 21June2018/RUMNEY_ONE_21June2018.tif", to: surveys/2018-06-21/orthomosaic_part-1.tif}
+  - {source: "06. 21June2018/RUMNEY_SEVEN_21June2018.tif", to: surveys/2018-06-21/orthomosaic_part-7.tif}
+  - {source: "06. 21June2018/RUMNEY_SIX_21June2018.tif", to: surveys/2018-06-21/orthomosaic_part-6.tif}
+  - {source: "06. 21June2018/RUMNEY_THREE_21June2018.tif", to: surveys/2018-06-21/orthomosaic_part-3.tif}
+  - {source: "06. 21June2018/RUMNEY_TWO_21June2018.tif", to: surveys/2018-06-21/orthomosaic_part-2.tif}
+  - {source: "07. 28June2018/28JUNE2018_RUMNEY_SEVEN.tif", to: surveys/2018-06-28/orthomosaic_part-7.tif}
+  - {source: "07. 28June2018/28June2018_RUMNEY_EIGHT.tif", to: surveys/2018-06-28/orthomosaic_part-8.tif}
+  - {source: "07. 28June2018/28June2018_RUMNEY_FIVE.tif", to: surveys/2018-06-28/orthomosaic_part-5.tif}
+  - {source: "07. 28June2018/28June2018_RUMNEY_FOUR.tif", to: surveys/2018-06-28/orthomosaic_part-4.tif}
+  - {source: "07. 28June2018/28June2018_RUMNEY_NINE.tif", to: surveys/2018-06-28/orthomosaic_part-9.tif}
+  - {source: "07. 28June2018/28June2018_RUMNEY_ONE.tif", to: surveys/2018-06-28/orthomosaic_part-1.tif}
+  - {source: "07. 28June2018/28June2018_RUMNEY_SIX.tif", to: surveys/2018-06-28/orthomosaic_part-6.tif}
+  - {source: "07. 28June2018/28June2018_RUMNEY_TEN.tif", to: surveys/2018-06-28/orthomosaic_part-10.tif}
+  - {source: "07. 28June2018/28June2018_RUMNEY_THREE.tif", to: surveys/2018-06-28/orthomosaic_part-3.tif}
+  - {source: "07. 28June2018/28June2018_RUMNEY_TWO.tif", to: surveys/2018-06-28/orthomosaic_part-2.tif}
+  - {source: "08. 06July2018/06July2018_Rumney1.tif", to: surveys/2018-07-06/orthomosaic_part-1.tif}
+  - {source: "08. 06July2018/06July2018_Rumney2.tif", to: surveys/2018-07-06/orthomosaic_part-2.tif}
+  - {source: "08. 06July2018/06July2018_Rumney3.tif", to: surveys/2018-07-06/orthomosaic_part-3.tif}
+  - {source: "08. 06July2018/06July2018_Rumney4.tif", to: surveys/2018-07-06/orthomosaic_part-4.tif}
+  - {source: "08. 06July2018/06July2018_Rumney6.tif", to: surveys/2018-07-06/orthomosaic_part-6.tif}
+  - {source: "08. 06July2018/06July2018_Rumney7.tif", to: surveys/2018-07-06/orthomosaic_part-7.tif}
+  - {source: "08. 06July2018/06July2018_Rumney8.tif", to: surveys/2018-07-06/orthomosaic_part-8.tif}
+  - {source: "09. 17July2018/17July2018_1.tif", to: surveys/2018-07-17/orthomosaic_part-1.tif}
+  - {source: "09. 17July2018/17July2018_2.tif", to: surveys/2018-07-17/orthomosaic_part-2.tif}
+  - {source: "09. 17July2018/17July2018_3.tif", to: surveys/2018-07-17/orthomosaic_part-3.tif}
+  - {source: "09. 17July2018/17July2018_4.tif", to: surveys/2018-07-17/orthomosaic_part-4.tif}
+  - {source: "09. 17July2018/17July2018_5.tif", to: surveys/2018-07-17/orthomosaic_part-5.tif}
+  - {source: "09. 17July2018/17July2018_6.tif", to: surveys/2018-07-17/orthomosaic_part-6.tif}
+  - {source: "10. 26July2018/26July2018_1.tif", to: surveys/2018-07-26/orthomosaic_part-1.tif}
+  - {source: "10. 26July2018/26July2018_2.tif", to: surveys/2018-07-26/orthomosaic_part-2.tif}
+  - {source: "10. 26July2018/26July2018_3.tif", to: surveys/2018-07-26/orthomosaic_part-3.tif}
+  - {source: "10. 26July2018/26July2018_4.tif", to: surveys/2018-07-26/orthomosaic_part-4.tif}
+  - {source: "10. 26July2018/26July2018_6.tif", to: surveys/2018-07-26/orthomosaic_part-6.tif}
+  - {source: "10. 26July2018/26July2018_7.tif", to: surveys/2018-07-26/orthomosaic_part-7.tif}
+  - {source: "11. 06Aug2018/06Aug2018_Rumney1.tif", to: surveys/2018-08-06/orthomosaic_part-1.tif}
+  - {source: "11. 06Aug2018/06Aug2018_Rumney2.tif", to: surveys/2018-08-06/orthomosaic_part-2.tif}
+  - {source: "11. 06Aug2018/06Aug2018_Rumney3.tif", to: surveys/2018-08-06/orthomosaic_part-3.tif}
+  - {source: "11. 06Aug2018/06Aug2018_Rumney4.tif", to: surveys/2018-08-06/orthomosaic_part-4.tif}
+  - {source: "11. 06Aug2018/06Aug2018_Rumney5.tif", to: surveys/2018-08-06/orthomosaic_part-5.tif}
+  - {source: "11. 06Aug2018/06Aug2018_Rumney55.tif", to: surveys/2018-08-06/orthomosaic_part-55.tif}
+  - {source: "11. 06Aug2018/06Aug2018_Rumney6.tif", to: surveys/2018-08-06/orthomosaic_part-6.tif}
+  - {source: "11. 06Aug2018/06Aug2018_Rumney7.tif", to: surveys/2018-08-06/orthomosaic_part-7.tif}
+  - {source: "11. 06Aug2018/06Aug2018_Rumney8.tif", to: surveys/2018-08-06/orthomosaic_part-8.tif}
+  - {source: "12. 14Aug2018/14Aug2018_Rumney1.tif", to: surveys/2018-08-14/orthomosaic_part-1.tif}
+  - {source: "12. 14Aug2018/14Aug2018_Rumney2.tif", to: surveys/2018-08-14/orthomosaic_part-2.tif}
+  - {source: "12. 14Aug2018/14Aug2018_Rumney3.tif", to: surveys/2018-08-14/orthomosaic_part-3.tif}
+  - {source: "12. 14Aug2018/14Aug2018_Rumney4.tif", to: surveys/2018-08-14/orthomosaic_part-4.tif}
+  - {source: "12. 14Aug2018/14Aug2018_Rumney5.tif", to: surveys/2018-08-14/orthomosaic_part-5.tif}
+  - {source: "12. 14Aug2018/14Aug2018_Rumney6.tif", to: surveys/2018-08-14/orthomosaic_part-6.tif}
+  - {source: "12. 14Aug2018/14Aug2018_Rumney7.tif", to: surveys/2018-08-14/orthomosaic_part-7.tif}
+  - {source: "13. 22Aug2018/22Aug2018_Rumney1.tif", to: surveys/2018-08-22/orthomosaic_part-1.tif}
+  - {source: "13. 22Aug2018/22Aug2018_Rumney2.tif", to: surveys/2018-08-22/orthomosaic_part-2.tif}
+  - {source: "13. 22Aug2018/22Aug2018_Rumney3.tif", to: surveys/2018-08-22/orthomosaic_part-3.tif}
+  - {source: "13. 22Aug2018/22Aug2018_Rumney4.tif", to: surveys/2018-08-22/orthomosaic_part-4.tif}
+  - {source: "13. 22Aug2018/22Aug2018_Rumney5.tif", to: surveys/2018-08-22/orthomosaic_part-5.tif}
+  - {source: "13. 22Aug2018/22Aug2018_Rumney6.tif", to: surveys/2018-08-22/orthomosaic_part-6.tif}
+  - {source: "13. 22Aug2018/22Aug2018_Rumney8.tif", to: surveys/2018-08-22/orthomosaic_part-8.tif}
+  - {source: "13. 22Aug2018/22Aug2018_Rumney9.tif", to: surveys/2018-08-22/orthomosaic_part-9.tif}
+  - {source: "14. 02Sept2019/Rumney1.tif", to: surveys/2019-09-03/orthomosaic_part-1.tif}
+  - {source: "14. 02Sept2019/Rumney2.tif", to: surveys/2019-09-03/orthomosaic_part-2.tif}
+  - {source: "14. 02Sept2019/Rumney3.tif", to: surveys/2019-09-05/orthomosaic_part-3.tif}
+  - {source: "14. 02Sept2019/Rumney4.tif", to: surveys/2019-09-05/orthomosaic_part-4.tif}
+  - {source: "14. 02Sept2019/Rumney5.tif", to: surveys/2019-09-05/orthomosaic_part-5.tif}
+  - {source: "14. 02Sept2019/Rumney6.tif", to: surveys/2019-09-05/orthomosaic_part-6.tif}
+  - {source: "14. 02Sept2019/Rumney7.tif", exclude: "byte-identical to Rumney6.tif (kept), 2019"}
+
+annotations:
+  - {source: "ColonyBoundaries.gdb", layer: "ColonyBoundaries2018", to: annotations/2018/colony_boundaries.gpkg, features: 8}
+  - {source: "DamDimensions.gdb", layer: "Damthickness", to: annotations/2018/dam_thicknesses.gpkg, features: 44}
+  - {source: "DamDimensions.gdb", layer: "Damwidth", to: annotations/2018/dam_widths.gpkg, features: 49}
+  - {source: "Lodges.gdb", layer: "Lodges2018", to: annotations/2018/lodges.gpkg, features: 10}
+  - {source: "Lodges.gdb", layer: "Lodges2018_points", to: annotations/2018/lodges_points.gpkg, features: 9}
+  - {source: "RiverReach.gdb", layer: "RiverReach2018", to: annotations/2018/river_reach.gpkg, features: 5}
+  - {source: "RiverReach.gdb", layer: "Riverreach2018_points", to: annotations/2018/river_reach_points.gpkg, features: 15894}
+  - {source: "RiverReach.gdb", layer: "test", exclude: "empty layer (0 features)"}
+  - {source: "RiverReach.shp", layer: "RiverReach", to: annotations/2018/river_reach_points_vertices.gpkg, features: 1219, note: "derived in 2020 (file date) from river_reach: the line's vertices (ORIG_FID, SHAPE_Leng), all on the line"}
+  - {source: "Trails.gdb", layer: "ColonyD_Rumney_Trails_06Aug2918", to: annotations/2018-08-06/trails_colony-d.gpkg, features: 679, note: "'2918' in the name read as 2018 (the other colonies' trails of that day are 06Aug2018)"}
+  - {source: "evenpointsdistributed.shp", layer: "evenpointsdistributed", exclude: "empty layer (0 features)"}
+  - {source: "riverpointsdistributed2.shp", layer: "riverpointsdistributed2", to: annotations/2018/river_reach_points_spaced.gpkg, features: 15285, note: "derived in 2020 (file date): points spaced along river_reach (median 0.5 m from it), with POINT_X/Y, LAT/LONG"}
+  - {source: "riverreachline.shp", layer: "riverreachline", to: annotations/2018/river_reach_merged.gpkg, features: 1, note: "derived in 2020 (file date): river_reach merged into one line"}
+  - {source: "test.shp", layer: "test", exclude: "empty layer (0 features)"}
+  - {source: "Canals.gdb", layer: "C05Jun2018_Canals_Rumney_C", to: annotations/2018-06-05/canals_colony-c_pass-1.gpkg, features: 56, note: "earlier, partial pass of the canal mapping (Canals.gdb), kept beside Rumney_Canals2018.gdb"}
+  - {source: "Canals.gdb", layer: "C05June2018_Canals_Rumney", to: annotations/2018-06-05/canals_colony-a_pass-1.gpkg, features: 33, note: "no colony in the name; colony a from its extent (inside colony a's canals; 69% within 1 m of ColonyA_Rumney_Canals_05June2018)"}
+  - {source: "Dams.gdb", layer: "D05Jun2018_Dams_Rumney", to: annotations/2018-06-05/dams.gpkg, features: 41}
+  - {source: "Dams.gdb", layer: "D05June2018_Dams_Rumney", to: annotations/2018-06-05/dams_points.gpkg, features: 30}
+  - {source: "Rumney_Canals2018.gdb", layer: "ColonyA_Rumney_Canals_05June2018", to: annotations/2018-06-05/canals_colony-a.gpkg, features: 24}
+  - {source: "Rumney_Canals2018.gdb", layer: "ColonyB_Rumney_Canals_05June2018", to: annotations/2018-06-05/canals_colony-b.gpkg, features: 25}
+  - {source: "Rumney_Canals2018.gdb", layer: "ColonyC_Rumney_Canals_05June2018", to: annotations/2018-06-05/canals_colony-c.gpkg, features: 118}
+  - {source: "Rumney_Canals2018.gdb", layer: "ColonyD_Rumney_Canals_05June2018", to: annotations/2018-06-05/canals_colony-d.gpkg, features: 89}
+  - {source: "Rumney_Canals2018.gdb", layer: "ColonyE_Rumney_Canals_05June2018", to: annotations/2018-06-05/canals_colony-e.gpkg, features: 40}
+  - {source: "Rumney_Canals2018.gdb", layer: "ColonyF_Rumney_Canals_05June2018", to: annotations/2018-06-05/canals_colony-f.gpkg, features: 64}
+  - {source: "Rumney_Canals2018.gdb", layer: "ColonyG_Rumney_Canals_05June2018", to: annotations/2018-06-05/canals_colony-g.gpkg, features: 48}
+  - {source: "Rumney_Canals2018.gdb", layer: "ColonyH_Rumney_Canals_05June2018", to: annotations/2018-06-05/canals_colony-h.gpkg, features: 42}
+  - {source: "Trails.gdb", layer: "ColonyA_Rumney_Trails_05June2018", to: annotations/2018-06-05/trails_colony-a.gpkg, features: 435}
+  - {source: "Trails.gdb", layer: "ColonyB_Rumney_Trails_05June2018", to: annotations/2018-06-05/trails_colony-b.gpkg, features: 497}
+  - {source: "Trails.gdb", layer: "ColonyC_Rumney_Trails_05June2018", to: annotations/2018-06-05/trails_colony-c.gpkg, features: 525}
+  - {source: "Trails.gdb", layer: "ColonyD_Rumney_Trails_05June2018", to: annotations/2018-06-05/trails_colony-d.gpkg, features: 282}
+  - {source: "Trails.gdb", layer: "ColonyE_Rumney_Trails_05June2018", to: annotations/2018-06-05/trails_colony-e.gpkg, features: 121}
+  - {source: "Trails.gdb", layer: "ColonyF_Rumney_Trails_05June2018", to: annotations/2018-06-05/trails_colony-f.gpkg, features: 225}
+  - {source: "Trails.gdb", layer: "ColonyG_Rumney_Trails_05June2018", to: annotations/2018-06-05/trails_colony-g.gpkg, features: 228}
+  - {source: "Trails.gdb", layer: "ColonyH_Rumney_Trails_05June2018", to: annotations/2018-06-05/trails_colony-h.gpkg, features: 547}
+  - {source: "Vegetation.gdb", layer: "WoodyVegetation05June2018", to: annotations/2018-06-05/woody_vegetation.gpkg, features: 7559}
+  - {source: "Dams.gdb", layer: "D13Jun2018_Dams_Rumney", to: annotations/2018-06-13/dams.gpkg, features: 45}
+  - {source: "Dams.gdb", layer: "D13June2018_Dams_Rumney", to: annotations/2018-06-13/dams_points.gpkg, features: 35}
+  - {source: "Canals.gdb", layer: "C21June2018_Canals_Rumney_A", to: annotations/2018-06-21/canals_colony-a_pass-1.gpkg, features: 60, note: "earlier, partial pass of the canal mapping (Canals.gdb), kept beside Rumney_Canals2018.gdb"}
+  - {source: "Dams.gdb", layer: "D21Jun2018_Dams_Rumney", to: annotations/2018-06-21/dams.gpkg, features: 48}
+  - {source: "Dams.gdb", layer: "D28Jun2018_Dams_Rumney", to: annotations/2018-06-28/dams.gpkg, features: 52}
+  - {source: "Dams.gdb", layer: "D28Jun2018_Dams_Rumney_Points", to: annotations/2018-06-28/dams_points.gpkg, features: 38}
+  - {source: "Canals.gdb", layer: "C06July2018_Canals_Rumney_A", to: annotations/2018-07-06/canals_colony-a_pass-1.gpkg, features: 23, note: "earlier, partial pass of the canal mapping (Canals.gdb), kept beside Rumney_Canals2018.gdb"}
+  - {source: "Dams.gdb", layer: "D06Jul2018_Dams_Rumney", to: annotations/2018-07-06/dams.gpkg, features: 50}
+  - {source: "Dams.gdb", layer: "D06Jul2018_Dams_Rumney_Points", to: annotations/2018-07-06/dams_points.gpkg, features: 41}
+  - {source: "Rumney_Canals2018.gdb", layer: "ColonyA_Rumney_Canals_06July2018", to: annotations/2018-07-06/canals_colony-a.gpkg, features: 31}
+  - {source: "Rumney_Canals2018.gdb", layer: "ColonyB_Rumney_Canals_06July2018", to: annotations/2018-07-06/canals_colony-b.gpkg, features: 52}
+  - {source: "Rumney_Canals2018.gdb", layer: "ColonyC_Rumney_Canals_06July2018", to: annotations/2018-07-06/canals_colony-c.gpkg, features: 84}
+  - {source: "Rumney_Canals2018.gdb", layer: "ColonyD_Rumney_Canals_06July2018", to: annotations/2018-07-06/canals_colony-d.gpkg, features: 78}
+  - {source: "Rumney_Canals2018.gdb", layer: "ColonyE_Rumney_Canals_06July2018", to: annotations/2018-07-06/canals_colony-e.gpkg, features: 22}
+  - {source: "Rumney_Canals2018.gdb", layer: "ColonyF_Rumney_Canals_06July2018", to: annotations/2018-07-06/canals_colony-f.gpkg, features: 70}
+  - {source: "Rumney_Canals2018.gdb", layer: "ColonyG_Rumney_Canals_06July2018", to: annotations/2018-07-06/canals_colony-g.gpkg, features: 79}
+  - {source: "Rumney_Canals2018.gdb", layer: "ColonyH_Rumney_Canals_06July2018", to: annotations/2018-07-06/canals_colony-h.gpkg, features: 76}
+  - {source: "Trails.gdb", layer: "ColonyA_Rumney_Trails_06July2018", to: annotations/2018-07-06/trails_colony-a.gpkg, features: 815}
+  - {source: "Trails.gdb", layer: "ColonyB_Rumney_Trails_06July2018", to: annotations/2018-07-06/trails_colony-b.gpkg, features: 1576}
+  - {source: "Trails.gdb", layer: "ColonyC_Rumney_Trails_06July2018", to: annotations/2018-07-06/trails_colony-c.gpkg, features: 567}
+  - {source: "Trails.gdb", layer: "ColonyD_Rumney_Trails_06July2018", to: annotations/2018-07-06/trails_colony-d.gpkg, features: 402}
+  - {source: "Trails.gdb", layer: "ColonyE_Rumney_Trails_06July2018", to: annotations/2018-07-06/trails_colony-e.gpkg, features: 145}
+  - {source: "Trails.gdb", layer: "ColonyF_Rumney_Trails_06July2018", to: annotations/2018-07-06/trails_colony-f.gpkg, features: 291}
+  - {source: "Trails.gdb", layer: "ColonyG_Rumney_Trails_06July2018", to: annotations/2018-07-06/trails_colony-g.gpkg, features: 247}
+  - {source: "Trails.gdb", layer: "ColonyH_Rumney_Trails_06July2018", to: annotations/2018-07-06/trails_colony-h.gpkg, features: 620}
+  - {source: "Canals.gdb", layer: "C17July2018_Canals_Rumney_F", to: annotations/2018-07-17/canals_colony-f_pass-1.gpkg, features: 51, note: "earlier, partial pass of the canal mapping (Canals.gdb), kept beside Rumney_Canals2018.gdb"}
+  - {source: "Dams.gdb", layer: "D17Jul2018_Dams_Rumney", to: annotations/2018-07-17/dams.gpkg, features: 50}
+  - {source: "Dams.gdb", layer: "D17Jul2018_Dams_Rumney_Points", to: annotations/2018-07-17/dams_points.gpkg, features: 41}
+  - {source: "Dams.gdb", layer: "D26Jul2018_Dams_Rumney", to: annotations/2018-07-26/dams.gpkg, features: 56}
+  - {source: "Dams.gdb", layer: "D26Jul2018_Dams_Rumney_Points", to: annotations/2018-07-26/dams_points.gpkg, features: 40}
+  - {source: "Canals.gdb", layer: "C06Aug2018_Canals_Rumney_A", to: annotations/2018-08-06/canals_colony-a_pass-1.gpkg, features: 33, note: "earlier, partial pass of the canal mapping (Canals.gdb), kept beside Rumney_Canals2018.gdb"}
+  - {source: "Dams.gdb", layer: "D06Aug2018_Dams_Rumney", to: annotations/2018-08-06/dams.gpkg, features: 52}
+  - {source: "Dams.gdb", layer: "D06Aug2018_Dams_Rumney_Points", to: annotations/2018-08-06/dams_points.gpkg, features: 41}
+  - {source: "Rumney_Canals2018.gdb", layer: "ColonyA_Rumney_Canals_06Aug2018", to: annotations/2018-08-06/canals_colony-a.gpkg, features: 33}
+  - {source: "Rumney_Canals2018.gdb", layer: "ColonyB_Rumney_Canals_06Aug2018", to: annotations/2018-08-06/canals_colony-b.gpkg, features: 15}
+  - {source: "Rumney_Canals2018.gdb", layer: "ColonyC_Rumney_Canals_06Aug2018", to: annotations/2018-08-06/canals_colony-c.gpkg, features: 63}
+  - {source: "Rumney_Canals2018.gdb", layer: "ColonyD_Rumney_Canals_06Aug2018", to: annotations/2018-08-06/canals_colony-d.gpkg, features: 74}
+  - {source: "Rumney_Canals2018.gdb", layer: "ColonyE_Rumney_Canals_06Aug2018", to: annotations/2018-08-06/canals_colony-e.gpkg, features: 36}
+  - {source: "Rumney_Canals2018.gdb", layer: "ColonyF_Rumney_Canals_06Aug2018", to: annotations/2018-08-06/canals_colony-f.gpkg, features: 93}
+  - {source: "Rumney_Canals2018.gdb", layer: "ColonyG_Rumney_Canals_06Aug2018", to: annotations/2018-08-06/canals_colony-g.gpkg, features: 58}
+  - {source: "Rumney_Canals2018.gdb", layer: "ColonyH_Rumney_Canals_06Aug2018", to: annotations/2018-08-06/canals_colony-h.gpkg, features: 48}
+  - {source: "Trails.gdb", layer: "ColonyA_Rumney_Trails_06Aug2018", to: annotations/2018-08-06/trails_colony-a.gpkg, features: 954}
+  - {source: "Trails.gdb", layer: "ColonyB_Rumney_Trails_06Aug2018", to: annotations/2018-08-06/trails_colony-b.gpkg, features: 1374}
+  - {source: "Trails.gdb", layer: "ColonyC_Rumney_Trails_06Aug2018", to: annotations/2018-08-06/trails_colony-c.gpkg, features: 653}
+  - {source: "Trails.gdb", layer: "ColonyE_Rumney_Trails_06Aug2018", to: annotations/2018-08-06/trails_colony-e.gpkg, features: 409}
+  - {source: "Trails.gdb", layer: "ColonyF_Rumney_Trails_06Aug2018", to: annotations/2018-08-06/trails_colony-f.gpkg, features: 827}
+  - {source: "Trails.gdb", layer: "ColonyG_Rumney_Trails_06Aug2018", to: annotations/2018-08-06/trails_colony-g.gpkg, features: 430}
+  - {source: "Trails.gdb", layer: "ColonyH_Rumney_Trails_06Aug2018", to: annotations/2018-08-06/trails_colony-h.gpkg, features: 1519}
+  - {source: "Dams.gdb", layer: "D14Aug2018_Dams_Rumney", to: annotations/2018-08-14/dams.gpkg, features: 57}
+  - {source: "Dams.gdb", layer: "D14Aug2018_Dams_Rumney_Points", to: annotations/2018-08-14/dams_points.gpkg, features: 43}
+  - {source: "Canals.gdb", layer: "C22Aug2018_Canals_RumneyA", to: annotations/2018-08-22/canals_colony-a_pass-1.gpkg, features: 38, note: "earlier, partial pass of the canal mapping (Canals.gdb), kept beside Rumney_Canals2018.gdb"}
+  - {source: "Canals.gdb", layer: "C22Aug2018_Canals_Rumney_C", to: annotations/2018-08-22/canals_colony-c_pass-1.gpkg, features: 17, note: "earlier, partial pass of the canal mapping (Canals.gdb), kept beside Rumney_Canals2018.gdb"}
+  - {source: "Dams.gdb", layer: "D22Aug2018_Dams_Rumney", to: annotations/2018-08-22/dams.gpkg, features: 55}
+  - {source: "Dams.gdb", layer: "D22Aug2018_Dams_Rumney_Points", to: annotations/2018-08-22/dams_points.gpkg, features: 44}
+  - {source: "Ponds.gdb", layer: "P22Aug2018_Ponds_Rumney_A", to: annotations/2018-08-22/ponds_colony-a.gpkg, features: 4}
+  - {source: "Rumney_Canals2018.gdb", layer: "ColonyA_Rumney_Canals_22Aug2018", to: annotations/2018-08-22/canals_colony-a.gpkg, features: 46}
+  - {source: "Rumney_Canals2018.gdb", layer: "ColonyB_Rumney_Canals_22Aug2018", to: annotations/2018-08-22/canals_colony-b.gpkg, features: 1612}
+  - {source: "Rumney_Canals2018.gdb", layer: "ColonyC_Rumney_Canals_22Aug2018", to: annotations/2018-08-22/canals_colony-c.gpkg, features: 40}
+  - {source: "Rumney_Canals2018.gdb", layer: "ColonyD_Rumney_Canals_22Aug2018", to: annotations/2018-08-22/canals_colony-d.gpkg, features: 66}
+  - {source: "Rumney_Canals2018.gdb", layer: "ColonyE_Rumney_Canals_22Aug2018", to: annotations/2018-08-22/canals_colony-e.gpkg, features: 20}
+  - {source: "Rumney_Canals2018.gdb", layer: "ColonyF_Rumney_Canals_22Aug2018", to: annotations/2018-08-22/canals_colony-f.gpkg, features: 66}
+  - {source: "Rumney_Canals2018.gdb", layer: "ColonyG_Rumney_Canals_22Aug2018", to: annotations/2018-08-22/canals_colony-g.gpkg, features: 42}
+  - {source: "Rumney_Canals2018.gdb", layer: "ColonyH_Rumney_Canals_22Aug2018", to: annotations/2018-08-22/canals_colony-h.gpkg, features: 56}
+  - {source: "Trails.gdb", layer: "ColonyA_Rumney_Trails_22Aug2018", to: annotations/2018-08-22/trails_colony-a.gpkg, features: 1754}
+  - {source: "Trails.gdb", layer: "ColonyB_Rumney_Trails_22Aug2018", to: annotations/2018-08-22/trails_colony-b.gpkg, features: 20}
+  - {source: "Trails.gdb", layer: "ColonyC_Rumney_Trails_22Aug2018", to: annotations/2018-08-22/trails_colony-c.gpkg, features: 781}
+  - {source: "Trails.gdb", layer: "ColonyD_Rumney_Trails_22Aug2018", to: annotations/2018-08-22/trails_colony-d.gpkg, features: 711}
+  - {source: "Trails.gdb", layer: "ColonyE_Rumney_Trails_22Aug2018", to: annotations/2018-08-22/trails_colony-e.gpkg, features: 466}
+  - {source: "Trails.gdb", layer: "ColonyF_Rumney_Trails_22Aug2018", to: annotations/2018-08-22/trails_colony-f.gpkg, features: 574}
+  - {source: "Trails.gdb", layer: "ColonyG_Rumney_Trails_22Aug2018", to: annotations/2018-08-22/trails_colony-g.gpkg, features: 464}
+  - {source: "Trails.gdb", layer: "ColonyH_Rumney_Trails_22Aug2018", to: annotations/2018-08-22/trails_colony-h.gpkg, features: 978}
+  - {source: "Dams.gdb", layer: "D06Sept2019_Dams_Rumney", to: annotations/2019-09-06/dams.gpkg, features: 50, note: "dated 2019-09-06 by its name, but the 2019 photos were taken on 09-03 and 09-05; see open questions"}
+
+open_questions:
+  - "Canals.gdb holds an earlier, partial pass of the canal mapping (48-90% of each layer within 1 m of the matching Rumney_Canals2018.gdb layer, which is longer). Kept as variant pass-1. For 2018-06-21 (colony a) and 2018-07-17 (colony f) it is the only canal mapping. Keep both passes, or only the per-colony one where it exists?"
+  - "D06Sept2019_Dams_Rumney is named 06Sept2019, but no Rumney photos were taken that day (2019 photos: 09-03, eastern part; 09-05, the rest). Kept as 2019-09-06 for now: was it drawn on the 09-05 orthomosaic (then 2019-09-05)?"
+  - "2019 orthomosaics are in folder '14. 02Sept2019' but no photos were taken on 09-02. Tiles 1-2 fall inside the area photographed on 09-03 and tiles 3-6 inside the area of 09-05, so they are placed on those days."
+  - "RUMNEY_SIX_21June2018.tif has a local CRS without a name (LOCAL_CS, metres): its position cannot be read. Kept; the catalog will flag it. Is there a correctly georeferenced copy?"
+  - "Colony boundaries, lodges, dam widths and thicknesses and the river reach have no day in their names: placed under 2018. Do you know which survey they were drawn on?"
