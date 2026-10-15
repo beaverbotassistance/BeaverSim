@@ -337,6 +337,90 @@ for fn in (field.georeference, geotiff.arcgis_adjustment):
     print(f"{fn.__module__}.{fn.__name__}: {inspect.getdoc(fn).splitlines()[0]}")"""),
     ])
 
+CH04 = Chapter(
+    "04_catalogs_and_metadata", "4. Catalogues and metadata: STAC, records, checksums",
+    "Exercises of [chapter 4](../04_catalogs_and_metadata.md). Run the setup cell first.",
+    """import hashlib, json
+import pystac
+import yaml
+from data_acquisition.catalog import build, descriptors, stac
+from data_acquisition.catalog import summary as summaries
+from data_acquisition.readers import eml
+from data_acquisition.sources import checksums
+from data_acquisition.steps.curate import curate_item
+
+OUT = ROOT / "output/manual/stac/training_pond"
+""",
+    [
+        Exercise("**1. Build a catalogue.** Build the sample dataset with the reference summary, run `curate` on its "
+                 "items, and save it under `output/manual/stac/training_pond`. Walk the tree: catalogue, collections, "
+                 "items.",
+                 """s = summaries.load(str(ROOT / "docs/manual/solutions/training_pond.yaml"))
+...  # your code here (build.build, curate_item, stac.save)""",
+                 """s = summaries.load(str(ROOT / "docs/manual/solutions/training_pond.yaml"))
+catalog, report = build.build(SAMPLE, s)
+for item in catalog.get_items(recursive=True):
+    curate_item(item, s)
+path = stac.save(catalog, OUT)
+print("saved:", path, "| build report:", {k: v for k, v in report.items() if v} or "empty")
+for collection in catalog.get_children():
+    print("collection", collection.id)
+    for item in collection.get_items():
+        print("   item", item.id)"""),
+        Exercise("**2. Read an item.** Open the orthomosaic item's JSON. Find its footprint, time, `gsd`, projection "
+                 "fields, assets and their roles, and every `beaver:` property. Which descriptors are still missing?",
+                 """...  # your code here (the item file is OUT / "training_pond" / <item id> / <item id>.json)""",
+                 """item_id = "training_pond_2023-07-12_orthomosaic"
+d = json.loads((OUT / "training_pond" / item_id / f"{item_id}.json").read_text())
+print("footprint:", d["geometry"]["type"], "| bbox:", [round(v, 6) for v in d["bbox"]])
+print("time:", d["properties"]["datetime"], "| gsd:", d["properties"]["gsd"])
+print("projection:", {k: v for k, v in d["properties"].items() if k.startswith("proj:") and k != "proj:transform"})
+print("assets:", {k: v["roles"] for k, v in d["assets"].items()})
+for k, v in d["properties"].items():
+    if k.startswith("beaver:") and k != "beaver:origin":
+        print(f"  {k}: {str(v)[:100]}")
+print("missing:", descriptors.missing(pystac.Item.from_dict(d)))"""),
+        Exercise("**3. Validate.** Validate the catalogue against the STAC schemas with `stac.validate`.",
+                 """...  # your code here""",
+                 """errors = stac.validate(stac.load(OUT / "catalog.json"))
+print("valid" if not errors else errors)"""),
+        Exercise("**4. Verify a checksum.** Compute the MD5 of the sample orthomosaic; compare it with the record "
+                 "(`metadata.xml`) and with the item's `file:checksum`. Decode the multihash prefix.",
+                 """...  # your code here (hashlib.md5, eml.read, the item's assets)""",
+                 """ortho = DATASET / "ortho_2023-07-12.tif"
+md5 = hashlib.md5(ortho.read_bytes()).hexdigest()
+record = eml.read((DATASET / "metadata.xml").read_text())
+print("file:   ", md5)
+print("record: ", record["entities"]["ortho_2023-07-12.tif"]["checksum"])
+multihash = d["assets"]["orthomosaic"]["file:checksum"]
+print("item:   ", multihash, "-> code", multihash[:2], "(md5), length", int(multihash[2:4], 16), "bytes")
+print("all agree:", md5 == record["entities"]["ortho_2023-07-12.tif"]["checksum"][1] == multihash[4:])"""),
+        Exercise("**5. A multipart ETag.** Compute the S3 multipart ETag of the sample orthomosaic for a part size of "
+                 "5 MiB and of 64 KiB, by hand. Check both with `checksums.check(path, \"s3etag\", value)`. What does "
+                 "`check` return for an ETag of a part size it does not try?",
+                 """def s3_etag(path, part):
+    ...  # MD5 of the concatenated MD5 digests of the parts, then "-<number of parts>"
+""",
+                 """def s3_etag(path, part):
+    data = path.read_bytes()
+    digests = [hashlib.md5(data[i:i + part]).digest() for i in range(0, len(data), part)]
+    return f"{hashlib.md5(b''.join(digests)).hexdigest()}-{len(digests)}"
+
+for part in (5 * 1024 * 1024, 64 * 1024):
+    value = s3_etag(ortho, part)
+    print(f"part {part:>9,d} bytes: {value} -> check: {checksums.check(ortho, 's3etag', value)}")
+# 5 MiB: one part, checkable (True). 64 KiB: several parts of a size the pipeline does not try: None, undecided,
+# and the pipeline falls back to another checksum instead of guessing."""),
+        Exercise("**6. Find it in the code.** Where is the multihash prefix of each algorithm defined, and which "
+                 "function fills `beaver:provenance`?",
+                 """import inspect
+...  # your code here""",
+                 """import inspect
+print("stac.MULTIHASH =", stac.MULTIHASH)
+print(inspect.getsourcefile(build._provenance), inspect.getsourcelines(build._provenance)[1])
+print(inspect.getdoc(build._provenance))"""),
+    ])
+
 CH06 = Chapter(
     "06_what_the_pipeline_needs", "6. What the pipeline needs from you",
     "Exercises of [chapter 6](../06_what_the_pipeline_needs.md). Each exercise changes one thing in a copy of the "
@@ -440,7 +524,7 @@ for fn, needle in ((summaries.epoch, "date must be YYYY-MM-DD"), (build._raster_
             print(f"{inspect.getsourcefile(fn)}:{n}: {line.strip()}")'''),
     ])
 
-CHAPTERS = [CH00, CH01, CH02, CH03, CH06]
+CHAPTERS = [CH00, CH01, CH02, CH03, CH04, CH06]
 
 
 def notebook(chapter: Chapter, solutions: bool) -> nbformat.NotebookNode:
