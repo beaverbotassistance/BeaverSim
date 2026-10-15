@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import pystac
+from pyproj import CRS, Geod
 from pystac.extensions.eo import Band, EOExtension
 from pystac.extensions.file import FileExtension
 from pystac.extensions.projection import ProjectionExtension
@@ -34,10 +35,27 @@ def lonlat_box(bounds, crs: str) -> (Dict[str, Any], List[float]):
     return geom, bbox
 
 
+def raster_crs(info: Dict[str, Any]) -> str:
+    """A raster's CRS (``info`` from ``readers.geotiff.info``): its EPSG code, or its WKT for a CRS without one."""
+    return f"EPSG:{info['epsg']}" if info["epsg"] else info["crs"]
+
+
 def footprint(info: Dict[str, Any]) -> (Dict[str, Any], List[float]):
-    """Lon/lat polygon and bbox of a raster's bounds (``info`` from ``readers.geotiff.info``), in its CRS: the
-    EPSG code, or the WKT for a CRS without one."""
-    return lonlat_box(info["bounds"], f"EPSG:{info['epsg']}" if info["epsg"] else info["crs"])
+    """Lon/lat polygon and bbox of a raster's bounds (``info`` from ``readers.geotiff.info``), in its CRS."""
+    return lonlat_box(info["bounds"], raster_crs(info))
+
+
+def resolution_m(info: Dict[str, Any], bbox: List[float]) -> float:
+    """The finer pixel size of a raster in metres (STAC ``gsd`` and ``raster:spatial_resolution`` are metres): as
+    is for a projected CRS in metres, measured on the ellipsoid at the raster's centre for a geographic one."""
+    crs = CRS.from_user_input(raster_crs(info))
+    if not crs.is_geographic:
+        return min(info["resolution"]) * crs.axis_info[0].unit_conversion_factor
+    lon, lat = (bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2
+    geod = Geod(ellps="WGS84")
+    dx = geod.inv(lon, lat, lon + info["resolution"][0], lat)[2]
+    dy = geod.inv(lon, lat, lon, lat + info["resolution"][1])[2]
+    return min(dx, dy)
 
 
 def _utc(d: datetime.date, end: bool = False) -> datetime.datetime:
@@ -78,7 +96,8 @@ def raster_item(item_id: str, path: Path, info: Dict[str, Any], start: datetime.
         geom, bbox = footprint(info)
     except Exception as e:      # rasterio/PROJ raise several error types for a CRS they cannot transform
         raise ValueError(f"its CRS cannot be placed on the earth ({type(e).__name__})") from e
-    props = {"gsd": round(min(info["resolution"]), 4)}
+    gsd = round(resolution_m(info, bbox), 4)
+    props = {"gsd": gsd}
     asset = pystac.Asset(str(path.resolve()), title=title, roles=roles, media_type=pystac.MediaType.GEOTIFF)
     item = _item(item_id, geom, bbox, start, end, props, asset_key, asset)
 
@@ -90,7 +109,7 @@ def raster_item(item_id: str, path: Path, info: Dict[str, Any], start: datetime.
 
     RasterExtension.ext(asset, add_if_missing=True).bands = [
         RasterBand.create(data_type=DataType(dt), nodata=info["nodata"], unit=unit,
-                          spatial_resolution=round(min(info["resolution"]), 4))
+                          spatial_resolution=gsd)
         for dt in info["dtypes"]]
     if bands:
         EOExtension.ext(asset, add_if_missing=True).bands = [

@@ -63,11 +63,12 @@ def check_raster(item: pystac.Item, key: str, site: Dict[str, Any]) -> None:
     xform = geotiff.unapplied_georeference(path)
     if xform:
         add_quality(item, "unapplied_georeference",
-                    f"ArcGIS {xform['type']} (order {xform['order']}, {xform['gcps']} control points, shifts "
-                    f"{xform['shift_min']}..{xform['shift_max']} m) in {path.name}.aux.xml is not applied when the "
-                    "file is read; the footprint is the unadjusted position")
-    if info["nodata"] is None:
-        add_quality(item, "nodata_undeclared", "no nodata value; zero/black pixels may be outside the survey")
+                    f"ArcGIS {xform['type']} (order {xform['order']}, {xform['control_points']} control points) in "
+                    f"{path.name}.aux.xml is not applied when the file is read; the footprint is the unadjusted "
+                    "position")
+    if info["nodata"] is None and "alpha" not in info["colorinterp"]:     # an alpha band marks the empty area itself
+        add_quality(item, "nodata_undeclared", "no nodata value and no alpha band; zero/black pixels may be outside "
+                                               "the survey")
     names = [b.get("name") for b in item.assets[key].extra_fields.get("eo:bands", [])]
     if key in ELEVATION_PRODUCTS and "elevation" in names:      # check only the elevation bands
         data = data[[i for i, n in enumerate(names) if n == "elevation"]]

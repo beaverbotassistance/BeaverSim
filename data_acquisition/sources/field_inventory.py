@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Build the manifest of the field-season drive: every file the beaver dataset needs, and why.
+"""Inventory of the field-season drive: every file the beaver dataset may need, and why.
 
-The manifest is a single CSV with one row per source file (or per annotation layer) and a
+The inventory is a single CSV with one row per source file (or per annotation layer) and a
 ``role`` column:
 
 - ``raw_photo``:       drone photos, identified by camera model in EXIF (not by folder name)
@@ -16,8 +16,11 @@ Role-specific columns are left empty for the other roles.
 
 The drive is only read. Usage:
 
-    python -m data_acquisition.dataset.manifest --root "/media/<user>/Seagate Portable Drive" \\
-        --out output/dataset/manifest.csv
+    python -m data_acquisition.sources.field_inventory --root "/media/<user>/Seagate Portable Drive" \\
+        --out output/dataset/field_inventory.csv
+
+The field step (:mod:`data_acquisition.sources.field`) reads it to place photos by capture date and to
+leave out what the inventory excluded by rule (duplicates, video frames, corrupt or ungeoreferenced exports).
 """
 import argparse
 import csv
@@ -53,7 +56,7 @@ SITE_CENTRES = {"rumney_ranch": (48.9325, -113.1205), "pilling_ranch": (48.5570,
 # A photo farther than this from its folder's site centre is reassigned to the nearest site (km).
 # Willow Creek and Cut Bank Creek are only 1.2 km apart, so between them the folder is trusted.
 MISFILED_KM = 5.0
-# Sites that are not study sites (kept in the manifest, excluded from the dataset)
+# Sites that are not study sites (kept in the inventory, excluded from the dataset)
 NON_STUDY_SITES = {"bbc_mimicry": "filming set-up, not a study site", "yard": "test flight"}
 MONTHS = {"jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6, "june": 6, "jul": 7, "july": 7,
           "aug": 8, "sep": 9, "sept": 9, "oct": 10, "nov": 11, "dec": 12}
@@ -205,11 +208,13 @@ def read_photos(jpgs: List[os.DirEntry], root: Path, cache: Optional[Path], work
     if cache and cache.exists():
         with open(cache, newline="") as f:
             for r in csv.DictReader(f):
-                cached[(r.pop("source_path"), r.pop("bytes"), r.pop("mtime"))] = {k: v for k, v in r.items() if v != ""}
-    keys = [(os.path.relpath(e.path, root).replace(os.sep, "/"), str(e.stat().st_size), str(int(e.stat().st_mtime))) for e in jpgs]
+                key = (r.pop("source_path"), r.pop("bytes"), r.pop("mtime"))
+                cached[key] = {k: v for k, v in r.items() if v != ""}
+    keys = [(os.path.relpath(e.path, root).replace(os.sep, "/"), str(e.stat().st_size), str(int(e.stat().st_mtime)))
+            for e in jpgs]
     todo = [i for i, k in enumerate(keys) if k not in cached]
     with ThreadPoolExecutor(workers) as pool:
-        for i, info in zip(todo, pool.map(lambda i: read_photo(jpgs[i].path), todo)):
+        for i, info in zip(todo, pool.map(lambda i: read_photo(jpgs[i].path), todo), strict=True):
             cached[keys[i]] = info
     if cache:
         fields = ["camera", "taken_at", "lat", "lon", "alt_m", "width", "height", "error"]
@@ -222,19 +227,22 @@ def read_photos(jpgs: List[os.DirEntry], root: Path, cache: Optional[Path], work
     return [cached[k] for k in keys]
 
 
-def photo_rows(root: Path, files: List[os.DirEntry], workers: int = 4, cache: Optional[Path] = None) -> List[Dict[str, object]]:
+def photo_rows(root: Path, files: List[os.DirEntry], workers: int = 4,
+               cache: Optional[Path] = None) -> List[Dict[str, object]]:
     jpgs = [e for e in files if e.name.lower().endswith((".jpg", ".jpeg"))]
     infos = read_photos(jpgs, root, cache, workers)
 
     rows, seen = [], {}
-    for e, info in zip(jpgs, infos):
+    for e, info in zip(jpgs, infos, strict=True):
         rel = os.path.relpath(e.path, root).replace(os.sep, "/")
         site = site_of(rel)
         folder_date = survey_date_of(rel)
         if info.get("camera") not in CAMERA_MODELS:
             # Frames extracted from 4K drone video (May 2018 surveys): no EXIF at all
-            if not info.get("camera") and str(info.get("width")) == "3840" and str(info.get("height")) == "2160" and folder_date:
-                rows.append({"role": "video_frame", "site": site, "survey_date": folder_date, "folder_date": folder_date,
+            video_size = str(info.get("width")) == "3840" and str(info.get("height")) == "2160"
+            if not info.get("camera") and video_size and folder_date:
+                rows.append({"role": "video_frame", "site": site, "survey_date": folder_date,
+                             "folder_date": folder_date,
                              "source_path": rel, "bytes": e.stat().st_size, "width": 3840, "height": 2160,
                              "include": False, "note": "video frame: no EXIF, no GPS"})
             continue  # screenshots, other cameras, thumbnails
@@ -286,9 +294,11 @@ def ortho_rows(root: Path, files: List[os.DirEntry]) -> List[Dict[str, object]]:
                 row["bands"] = ds.count
                 crs = ds.crs
                 if crs is None:
-                    notes.append("not georeferenced (world file only)")
+                    # an ArcGIS sidecar may still georeference it: the field step applies those (layout file)
+                    notes.append("no embedded georeferencing (world file or ArcGIS sidecar only)")
                 else:
-                    row["crs"] = f"EPSG:{crs.to_epsg()}" if crs.to_epsg() else ("ESRI:102432 ARC zone 12" if "ARC_System" in crs.to_wkt() else crs.to_wkt()[:40])
+                    arc = "ESRI:102432 ARC zone 12" if "ARC_System" in crs.to_wkt() else crs.to_wkt()[:40]
+                    row["crs"] = f"EPSG:{crs.to_epsg()}" if crs.to_epsg() else arc
                     if crs.is_geographic:
                         lat = (ds.bounds.top + ds.bounds.bottom) / 2
                         row["gsd_m"] = round(ds.res[0] * 111320 * math.cos(math.radians(lat)), 4)
@@ -361,7 +371,7 @@ def annotation_rows(root: Path, files: List[os.DirEntry]) -> List[Dict[str, obje
 # MAIN
 # ============================================================
 
-def build_manifest(root: Path, out: Path, workers: int = 4) -> List[Dict[str, object]]:
+def build_inventory(root: Path, out: Path, workers: int = 4) -> List[Dict[str, object]]:
     root = Path(root)
     files = list(walk(root))
     print(f"files scanned: {len(files)}")
@@ -371,21 +381,22 @@ def build_manifest(root: Path, out: Path, workers: int = 4) -> List[Dict[str, ob
     print(f"+ orthomosaics: {len(rows)}")
     rows += photo_rows(root, files, workers, cache=Path(out).with_name("exif_cache.csv"))
     print(f"+ photos and video frames: {len(rows)}")
-    rows.sort(key=lambda r: (r["role"], r.get("site") or "", r.get("survey_date") or "", r["source_path"], r.get("layer") or ""))
+    rows.sort(key=lambda r: (r["role"], r.get("site") or "", r.get("survey_date") or "", r["source_path"],
+                             r.get("layer") or ""))
     out = Path(out)
     out.parent.mkdir(parents=True, exist_ok=True)
     with open(out, "w", newline="") as f:
         writer = csv.DictWriter(f, COLUMNS, extrasaction="ignore")
         writer.writeheader()
         writer.writerows(rows)
-    print(f"manifest written: {out} ({len(rows)} rows)")
+    print(f"inventory written: {out} ({len(rows)} rows)")
     return rows
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--root", required=True, help="drive root (folder containing '2018 Field Season')")
-    parser.add_argument("--out", default="output/dataset/manifest.csv")
+    parser.add_argument("--out", default="output/dataset/field_inventory.csv")
     parser.add_argument("--workers", type=int, default=4, help="threads reading photo EXIF")
     args = parser.parse_args()
-    build_manifest(Path(args.root), Path(args.out), args.workers)
+    build_inventory(Path(args.root), Path(args.out), args.workers)

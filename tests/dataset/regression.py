@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Regression snapshot of the dataset pipeline on the real datasets: did a code change alter the catalogs?
 
-``snapshot`` builds every summary under ``data_acquisition/summaries/`` and runs the ``curate`` checks on
+``snapshot`` builds every summary under ``data_acquisition/summaries/`` whose folders are under the
+given root (the open datasets, or ``beaver_dataset`` for the field data) and runs the ``curate`` checks on
 the items, all in memory (nothing is written next to the data; no checksums are hashed), and saves each
 item in a normalised form. ``compare`` lists what differs between two snapshots, item by item and field
 by field, and exits with 1 if anything does. Take a snapshot before a change, another after, compare.
@@ -35,10 +36,15 @@ def _normalise(value: Any, root: str) -> Any:
 
 
 def snapshot(root: Path) -> Dict[str, Any]:
+    """Every reviewed summary whose folders are under ``root`` (drafts and other roots' summaries skipped)."""
     out: Dict[str, Any] = {"root": str(root), "summaries": {}}
     for path in sorted(summaries.HERE.glob("*.yaml")):
-        started = time.time()
+        if path.name.endswith(".draft.yaml"):
+            continue
         s = summaries.load(str(path))
+        if not any((root / g["folder"]).exists() for g in s["groups"]):
+            continue                            # a dataset of another data root
+        started = time.time()
         catalog, report = build.build(root, s)
         items = {}
         for item in catalog.get_items(recursive=True):

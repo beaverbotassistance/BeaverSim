@@ -3,12 +3,12 @@
 
 Each Metashape project (``<name>.files/<chunk>/<frame>/frame.zip``) lists the photos it was built
 from. Paths are resolved relative to the project; Windows absolute paths and moved folders are
-matched by file name + EXIF capture time (stored by Metashape) against the manifest's EXIF cache;
+matched by file name + EXIF capture time (stored by Metashape) against the inventory's EXIF cache;
 photos without capture time (video frames) are matched by '<parent folder>/<file name>' within the same
 survey folder. The drive is only read.
 
 Usage:
-    python -m data_acquisition.dataset.audit --root "/media/<user>/Seagate Portable Drive" \\
+    python -m data_acquisition.sources.field_audit --root "/media/<user>/Seagate Portable Drive" \\
         --out output/dataset/missing_photos.csv
 """
 import argparse
@@ -20,7 +20,7 @@ import zipfile
 from pathlib import Path, PureWindowsPath
 from typing import Dict, List, Set, Tuple
 
-from data_acquisition.dataset.manifest import SEASON_FOLDERS, site_of, survey_date_of
+from data_acquisition.sources.field_inventory import SEASON_FOLDERS, site_of, survey_date_of
 
 
 def _key(path: str) -> Tuple[str, str]:
@@ -41,7 +41,8 @@ def project_photos(root: Path) -> List[Dict[str, str]]:
                     with zipfile.ZipFile(z) as f:
                         xml = f.read("doc.xml").decode("utf-8", "replace")
                 except Exception as e:
-                    rows.append({"project": project, "listed_path": "", "error": f"unreadable frame.zip: {type(e).__name__}"})
+                    rows.append({"project": project, "listed_path": "",
+                                 "error": f"unreadable frame.zip: {type(e).__name__}"})
                     continue
                 for block in xml.split("<camera ")[1:]:
                     path = re.search(r'<photo path="([^"]+)"', block)
@@ -57,7 +58,7 @@ def project_photos(root: Path) -> List[Dict[str, str]]:
 
 def find_missing(root: Path, exif_cache: Path) -> List[Dict[str, object]]:
     root = Path(root)
-    # Photos on the drive: (file name, capture time) -> path, from the manifest's EXIF cache
+    # Photos on the drive: (file name, capture time) -> path, from the inventory's EXIF cache
     by_name_time: Dict[Tuple[str, str], str] = {}
     with open(exif_cache, newline="") as f:
         for r in csv.DictReader(f):
@@ -102,7 +103,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--root", required=True)
     parser.add_argument("--out", default="output/dataset/missing_photos.csv")
-    parser.add_argument("--exif-cache", default="output/dataset/exif_cache.csv", help="written by the manifest builder")
+    parser.add_argument("--exif-cache", default="output/dataset/exif_cache.csv", help="written by field_inventory")
     args = parser.parse_args()
     rows = find_missing(Path(args.root), Path(args.exif_cache))
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)

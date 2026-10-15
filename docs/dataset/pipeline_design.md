@@ -106,7 +106,7 @@ Rules:
   that the summary doesn't describe, and described files that are missing, are reported.
 - **Workarounds are written in the summary as data** (e.g. "the repository's band descriptions are
   shifted; bands follow the methods text"), with a note that travels to the item's quality flags.
-- **Lessons from the earlier scripts** (`dataset/`, reference only; the first downloader `open_data/arcticdata.py` was replaced by `sources/dataone.py` and `readers/eml.py`) become rules of
+- **Lessons from the earlier scripts** (the first field-drive scripts, now `sources/field_inventory.py` and `sources/field_audit.py`; the first downloader `open_data/arcticdata.py` was replaced by `sources/dataone.py` and `readers/eml.py`) become rules of
   the readers they belong to. For drone photos: capture date from EXIF, not folder names; site from
   GPS when a photo is far from its folder's site; duplicates by capture time and size. For any
   file: detect split copies, non-georeferenced exports, corrupt files and empty layers. For
@@ -288,13 +288,17 @@ afterwards.
 
 ```
 data_acquisition/
-  catalog/      STAC helpers, descriptors, summary schema, build.py (summary → catalog)
-  readers/      geotiff, eml; later vector, photos
-  sources/      dataone (download); later stac_api (Sentinel, NAIP)
+  catalog/      STAC helpers, descriptors, summary schema, build.py (summary → catalog), evidence.py and
+                describe.py (drafting a summary with Claude), root.py (root catalog, sites.json)
+  readers/      by data type: geotiff (any GDAL raster, ArcGIS adjustments), vector, table, photos (EXIF),
+                files (companions); by metadata standard: eml, pangaea, zenodo, hydroshare, ckan
+  sources/      repository clients (dataone, zenodo, ...); field drives: field_inventory, field_audit,
+                field (layout file -> beaver_dataset/), field_alignment; later stac_api (Sentinel, NAIP)
   summaries/    one YAML file per dataset
+  field_layouts/ one YAML file per field site: how beaver_dataset/ is made from the field drive
+  sites.yaml    the site registry
   steps/        one module per step
   planner.py
-  dataset/      earlier scripts, reference only
   modules/      existing DEM/RGB conversion, reused where useful
 notebooks/dataset/inspect.ipynb, process.ipynb
 ```
@@ -325,6 +329,16 @@ The tool shows an annotation on its own image (and, after `coregister`, on the c
 measures its fit to the image edges (`data_acquisition/sources/field_alignment.py`), and lets the person
 accept it or shift it. Corrections are stored as separate, reviewed records (never by editing the
 exported layers), so the original annotation and every correction stay traceable.
+
+- **Order:** after milestone 7. Co-registration moves the imagery; inspecting before it would have to be
+  redone. Until milestone 8, later steps use the annotations as they are, as provisional (flagged).
+- **Stable ids:** corrections refer to an annotation by its layer and feature id, so no step may renumber
+  features. The field step keeps the original ids (`ogr2ogr -preserve_fid`).
+- **Scope:** the alignment check applies wherever a dataset holds annotations together with the imagery
+  they were drawn on; the tool works from the catalog (an annotation item and the imagery of its date),
+  not from the field-drive layout. None of the open datasets catalogued so far has that combination: the
+  drone surveys come without annotations, and the annotation datasets (dam points, dam traces) were drawn
+  on imagery they do not include.
 
 ## 13. Open questions
 

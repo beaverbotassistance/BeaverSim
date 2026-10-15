@@ -4,7 +4,7 @@
 The layout file (``data_acquisition/field_layouts/<site>.yaml``, see ``docs/dataset/field_naming.md``)
 says where each orthomosaic and annotation layer of the original folders goes, under the naming
 policy, or why it is left out. Photos are placed by their EXIF capture date, read from the drive
-inventory (``output/dataset/manifest.csv``, written by ``data_acquisition.dataset.manifest``).
+inventory (``output/dataset/field_inventory.csv``, written by :mod:`data_acquisition.sources.field_inventory`).
 
 - Photos and orthomosaics (with their sidecars) become **hard links** under the new names: no copy,
   and read-only, which also protects the original.
@@ -19,7 +19,10 @@ inventory (``output/dataset/manifest.csv``, written by ``data_acquisition.datase
   that made the data (e.g. ESRI's ARC System zones, which ArcGIS evaluates on a sphere), for both.
 
 The site folder gets ``manifest.csv`` (every file and its original), ``excluded.csv`` (what was left
-out, and why) and one ``survey.json`` per survey. The originals are never written to.
+out, and why), ``georeference.csv`` (the control-point fit of each orthomosaic whose ArcGIS adjustment was
+applied) and one ``survey.json`` per survey; ``alignment.csv`` is written by
+:mod:`data_acquisition.sources.field_alignment`. Files that a new plan no longer makes are removed (links
+and written files only). The originals are never written to.
 
 Always run with ``--dry-run`` first (the plan only). Building needs a reviewed layout file.
 
@@ -37,15 +40,15 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-import yaml
 import numpy as np
 import rasterio
+import yaml
 from pyproj import CRS, Transformer
 from pyproj.crs import CompoundCRS
 from rasterio.crs import CRS as RasterioCRS
 from rasterio.warp import transform as rasterio_transform
 
-from data_acquisition.readers import files
+from data_acquisition.readers import files, geotiff
 
 LAYOUTS = Path(__file__).resolve().parent.parent / "field_layouts"
 DATASET = "beaver_dataset"
@@ -152,7 +155,7 @@ def plan(drive: Path, layout: Dict[str, Any], inventory: List[Dict[str, str]]) -
             continue
         actions.append({"action": "link", "dest": f"{root}/{e['to']}", "source": src, "layer": ""})
         for s, d in _sidecars(drive, src, e["to"]):
-            if d.endswith(".tif.aux.xml") and "GeodataXform" in (drive / s).read_text(errors="replace"):
+            if d.endswith(".tif.aux.xml") and geotiff.arcgis_adjustment((drive / s).read_text(errors="replace")):
                 actions.append({"action": "georef", "dest": f"{root}/{d}", "source": s, "layer": ""})
                 d = d[:-len(".tif.aux.xml")] + ".arcgis.aux.xml"        # the original, for reference
             actions.append({"action": "link", "dest": f"{root}/{d}", "source": s, "layer": ""})
@@ -265,9 +268,11 @@ def _same_place(reference: Optional[str], written: Optional[str], extent: Option
                for p, q in zip(a, b, strict=True))
 
 
-def export_layer(src: Path, layer: str, dest: Path, corrections: List[Dict[str, str]]) -> Optional[str]:
+def export_layer(src: Path, layer: str, dest: Path, corrections: List[Dict[str, str]],
+                 expected: Optional[int] = None) -> Optional[str]:
     """Export one layer to a GeoPackage named as ``dest`` (its CRS replaced when a correction applies), then
-    compare it with its source; returns the difference found, or None."""
+    compare it with its source (and with the ``expected`` feature count of the layout file); returns the
+    differences found, or None."""
     name = dest.stem
     a = _layer_info(src, layer)
     crs = corrected_crs(a["crs"], corrections)
@@ -285,6 +290,8 @@ def export_layer(src: Path, layer: str, dest: Path, corrections: List[Dict[str, 
             srs.unlink()
     b = _layer_info(dest, name)
     diffs = [f"{k}: {a[k]} -> {b[k]}" for k in ("features", "geometry") if a[k] != b[k]]
+    if expected is not None and b["features"] != expected:
+        diffs.append(f"{b['features']} features, the layout file says {expected}")
     if (a["extent"] is None) != (b["extent"] is None) or (a["extent"] and any(
             abs(p - q) > 1e-6 for p, q in zip(a["extent"], b["extent"], strict=True))):
         diffs.append(f"extent: {a['extent']} -> {b['extent']}")
@@ -293,41 +300,18 @@ def export_layer(src: Path, layer: str, dest: Path, corrections: List[Dict[str, 
     return "; ".join(diffs) or None
 
 
-def _control_points(aux: str) -> Tuple[int, str, np.ndarray, np.ndarray, List[str]]:
-    """The control-point adjustment of an ArcGIS ``GeodataXform``: (order, target CRS WKT, source points, target
-    points, steps not applied). In a ``CompositeXform`` (a chain of steps) the step fitted to control points is
-    taken; other steps (given by coefficients only, e.g. an extra scaling) are returned as not applied."""
-    xform = re.search(r'<GeodataXform[^>]*xsi:type="typens:(\w+)"(.*?)</GeodataXform>', aux, re.S)
-    if xform.group(1) == "CompositeXform":
-        steps = re.findall(r'<(XF_\d+) xsi:type="typens:(\w+)">(.*?)</\1>', xform.group(2), re.S)
-    else:
-        steps = [("XF", xform.group(1), xform.group(2))]
-    fitted = [(name, kind, body) for name, kind, body in steps if "<SourceGCPs" in body]
-    if len(fitted) != 1 or fitted[0][1] != "PolynomialXform":
-        raise ValueError(f"{[(n, k) for n, k, _ in steps]}: expected one polynomial fitted to control points")
-    name, _, body = fitted[0]
-
-    def points(tag: str) -> np.ndarray:
-        block = re.search(rf"<{tag}[^>]*>(.*?)</{tag}>", body, re.S).group(1)
-        return np.array([float(v) for v in re.findall(r"<Double>([^<]+)</Double>", block)]).reshape(-1, 2)
-
-    order = re.search(r"<PolynomialOrder>(\d+)</PolynomialOrder>", body)
-    wkt = re.search(r"<WKT>(.*?)</WKT>", body, re.S).group(1)
-    skipped = [f"{n} ({k})" for n, k, _ in steps if n != name]
-    return int(order.group(1)) if order else 0, wkt, points("SourceGCPs"), points("TargetGCPs"), skipped
-
-
 def georeference(tif: Path, aux: Path, dest: Path, corrections: List[Dict[str, str]]) -> Dict[str, Any]:
     """Write ``dest`` (the ``.aux.xml`` of the linked ``tif``) with ArcGIS's georeferencing of ``tif`` applied:
     the first-order polynomial least-squares fit through its control points, as the file's geotransform, in the
     target CRS (corrected when the layout says so). Returns the fit's control points and residuals, and the
     steps of a chained adjustment that were not applied."""
-    order, wkt, source, target, skipped = _control_points(aux.read_text(errors="replace"))
-    if order != 1:
-        raise ValueError(f"{aux.name}: polynomial order {order} is not an affine adjustment; not applied")
+    xform = geotiff.arcgis_adjustment(aux.read_text(errors="replace"))
+    if xform is None or xform["source"] is None or xform["order"] != 1:
+        raise ValueError(f"{aux.name}: not a first-order polynomial fitted to control points; not applied")
+    wkt, source, target, skipped = xform["wkt"], xform["source"], xform["target"], xform["not_applied"]
     with rasterio.open(tif) as r:                # the original: its own transform, before any adjustment
         to_pixel = ~r.transform
-    pixels = np.array([to_pixel * tuple(p) for p in source])
+    pixels = np.array([to_pixel @ tuple(p) for p in source])
     design = np.c_[pixels, np.ones(len(pixels))]
     (a, d), (b, e), (c, f) = np.linalg.lstsq(design, target, rcond=None)[0].tolist()     # plain floats
     residuals = np.hypot(*(design @ np.array([[a, d], [b, e], [c, f]]) - target).T)
@@ -374,25 +358,21 @@ def execute(drive: Path, actions: List[Action], corrections: List[Dict[str, str]
             done["georef"] += 1
             continue
         if a["action"] == "link":
-            if dest.exists():
-                if not os.path.samefile(src, dest):
-                    if dest.stat().st_nlink == 1 and dest.name.endswith(".tif.aux.xml"):
-                        _clear(dest)            # a sidecar written by an earlier build, now linked again
-                        os.link(src, dest)
-                        _read_only(dest)
-                        done["link"] += 1
-                        continue
-                    raise FileExistsError(f"{dest} exists and is not a link to {src}")
+            if dest.exists() and os.path.samefile(src, dest):
                 done["link (already there)"] += 1
                 continue
+            if dest.exists():
+                if dest.stat().st_nlink > 1:         # a link to some other original: the plan changed its source
+                    raise FileExistsError(f"{dest} exists and is not a link to {src}")
+                _clear(dest)                        # a file written by an earlier build, now linked instead
             os.link(src, dest)
             _read_only(dest)                    # same file on disk: also protects the original
             done["link"] += 1
         elif a["action"] == "export":
             _clear(dest)
-            diff = export_layer(src, a["layer"], dest, corrections)
-            if diff or (a.get("features") and _layer_info(dest, dest.stem)["features"] != int(a["features"])):
-                problems.append(f"{a['dest']}: {diff or 'feature count differs from the layout file'}")
+            diff = export_layer(src, a["layer"], dest, corrections, int(a["features"]) if a.get("features") else None)
+            if diff:
+                problems.append(f"{a['dest']}: {diff}")
             _read_only(dest)
             done["export"] += 1
     if problems:
@@ -461,7 +441,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--drive", required=True, type=Path, help="the drive (holds the season folders)")
     parser.add_argument("--site", required=True, help="site slug; its layout file is field_layouts/<site>.yaml")
-    parser.add_argument("--inventory", type=Path, default=Path("output/dataset/manifest.csv"))
+    parser.add_argument("--inventory", type=Path, default=Path("output/dataset/field_inventory.csv"))
     parser.add_argument("--dry-run", action="store_true", help="write the plan only; touch nothing on the drive")
     args = parser.parse_args()
 

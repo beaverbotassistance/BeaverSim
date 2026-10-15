@@ -2,7 +2,6 @@
 import re
 from pathlib import Path
 
-
 DOI = re.compile(r"^(https?://(dx\.)?doi\.org/|doi:)?(10\.\d{4,}/\S+)$", re.I)
 
 

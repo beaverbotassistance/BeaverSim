@@ -13,19 +13,17 @@ import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from PIL import ExifTags, Image
 from pypdf import PdfReader
 from pyproj import CRS
 
 from data_acquisition.catalog import stac
-from data_acquisition.readers import RECORD_FILES, RECORDS, files, geotiff, vector
+from data_acquisition.readers import RECORD_FILES, RECORDS, files, geotiff, photos, vector
 
 METHODS_CHARS = 6000        # methods text kept per record (the rest is boilerplate)
 TEXT_EXTENSIONS = (".txt", ".md", ".csv", ".r", ".py", ".json", ".yaml", ".yml")
 TEXT_BYTES = 8000           # small text files (READMEs, settings, GCP lists) are included up to this size
 PDF_PAGES, PDF_CHARS = 8, 15000   # processing reports: the first pages hold the summary (camera, dates, GCP errors)
 VECTOR_SAMPLE_ROWS = 3
-PHOTOS = (".jpg", ".jpeg")
 PHOTO_FOLDER = 10           # a folder with at least this many photos is one evidence entry
 
 
@@ -93,18 +91,16 @@ def entries(folder: Path) -> List[Path]:
 
 def _exif(path: Path) -> Dict[str, Any]:
     """Camera model and capture time of a photo, from its EXIF."""
-    with Image.open(path) as im:
-        exif = im.getexif()
-        taken = exif.get_ifd(ExifTags.IFD.Exif).get(ExifTags.Base.DateTimeOriginal)
-        return {"camera": exif.get(ExifTags.Base.Model), "taken": taken}
+    e = photos.exif(path)
+    return {"camera": e["camera"], "taken": e["taken"].isoformat() if e["taken"] else None}
 
 
-def _photo_folder(folder: Path, photos: List[Path]) -> Dict[str, Any]:
+def _photo_folder(folder: Path, found: List[Path]) -> Dict[str, Any]:
     """One evidence entry for a folder of photos: count, size, and the first and last photo's EXIF."""
-    entry: Dict[str, Any] = {"photos": len(photos), "bytes": sum(p.stat().st_size for p in photos)}
+    entry: Dict[str, Any] = {"photos": len(found), "bytes": sum(p.stat().st_size for p in found)}
     try:
-        entry["first"] = {"name": photos[0].name, **_exif(photos[0])}
-        entry["last"] = {"name": photos[-1].name, **_exif(photos[-1])}
+        entry["first"] = {"name": found[0].name, **_exif(found[0])}
+        entry["last"] = {"name": found[-1].name, **_exif(found[-1])}
     except Exception as e:      # PIL raises many error types; an unreadable photo is evidence too
         entry["error"] = f"{type(e).__name__}: {e}"
     return entry
@@ -115,11 +111,11 @@ def _folder_files(folder: Path) -> List[Dict[str, Any]]:
     found = entries(folder)
     by_dir: Dict[Path, List[Path]] = {}
     for p in found:
-        if p.suffix.lower() in PHOTOS:
+        if p.suffix.lower() in photos.EXTENSIONS:
             by_dir.setdefault(p.parent, []).append(p)
-    grouped = {d for d, photos in by_dir.items() if len(photos) >= PHOTO_FOLDER}
+    grouped = {d for d, in_dir in by_dir.items() if len(in_dir) >= PHOTO_FOLDER}
     out = [{"name": p.relative_to(folder).as_posix(), "bytes": stac.size_of(p), **describe_file(p)}
-           for p in found if not (p.suffix.lower() in PHOTOS and p.parent in grouped)]
+           for p in found if not (p.suffix.lower() in photos.EXTENSIONS and p.parent in grouped)]
     out += [{"name": d.relative_to(folder).as_posix() + "/", **_photo_folder(d, by_dir[d])} for d in sorted(grouped)]
     return sorted(out, key=lambda e: e["name"])
 

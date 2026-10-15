@@ -10,9 +10,9 @@ resource has no files of its own; its members are returned as ``parts`` (resourc
 """
 import json
 import re
+from typing import Any, Dict
 
 from data_acquisition.sources import checksums
-from typing import Any, Dict
 
 LICENCES = {"creativecommons.org/licenses/by/4.0": "CC-BY-4.0",
             "creativecommons.org/licenses/by-nc/4.0": "CC-BY-NC-4.0",

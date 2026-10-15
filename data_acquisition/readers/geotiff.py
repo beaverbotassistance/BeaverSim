@@ -1,6 +1,5 @@
 """Raster reader (GeoTIFF and any other raster GDAL opens, e.g. ESRI ASCII grids): header facts, band
 names declared by the file, and value samples. The module keeps its name; GeoTIFF is the usual case."""
-import math
 import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -55,28 +54,47 @@ def sample(path: Path, size: int = 1024) -> np.ma.MaskedArray:
         return d.read(window=w, masked=True)
 
 
-def unapplied_georeference(path: Path) -> Optional[Dict[str, Any]]:
-    """An ArcGIS georeferencing adjustment stored in ``<file>.aux.xml`` (``GeodataXform``), which GDAL
-    does not apply, so the file's position as read here is the unadjusted one. Returns its type,
-    order, number of control-point pairs and the range of their shifts (in CRS units), or None.
-    """
-    aux = path.with_name(path.name + ".aux.xml")
-    if not aux.exists():
-        return None
-    text = aux.read_text(errors="replace")
-    xform = re.search(r'<GeodataXform[^>]*xsi:type="typens:(\w+)"(.*?)</GeodataXform>', text, re.S)
+def arcgis_adjustment(aux: str) -> Optional[Dict[str, Any]]:
+    """The ArcGIS georeferencing adjustment (``GeodataXform``) in the text of an ``.aux.xml``, or None.
+
+    Returns ``type`` (e.g. PolynomialXform, CompositeXform), and for the step fitted to control points:
+    ``order``, ``wkt`` (the CRS it maps into), ``source`` and ``target`` (n×2 arrays: the control points in
+    the file's own coordinates and in that CRS). A ``CompositeXform`` chains steps: the one fitted to control
+    points is taken, the others (given by coefficients only, e.g. an extra scaling) are listed in
+    ``not_applied``. ``source`` is None when no single step is fitted to control points."""
+    xform = re.search(r'<GeodataXform[^>]*xsi:type="typens:(\w+)"(.*?)</GeodataXform>', aux, re.S)
     if not xform:
         return None
-    body = xform.group(2)
+    if xform.group(1) == "CompositeXform":
+        steps = re.findall(r'<(XF_\d+) xsi:type="typens:(\w+)">(.*?)</\1>', xform.group(2), re.S)
+    else:
+        steps = [("XF", xform.group(1), xform.group(2))]
+    fitted = [(name, kind, body) for name, kind, body in steps if "<SourceGCPs" in body]
+    out: Dict[str, Any] = {"type": xform.group(1), "order": None, "wkt": None, "source": None, "target": None,
+                           "not_applied": [f"{n} ({k})" for n, k, _ in steps]}
+    if len(fitted) != 1:
+        return out
+    name, kind, body = fitted[0]
 
-    def points(tag: str) -> List[float]:
-        block = re.search(rf"<{tag}[^>]*>(.*?)</{tag}>", body, re.S)
-        return [float(v) for v in re.findall(r"<Double>([^<]+)</Double>", block.group(1))] if block else []
+    def points(tag: str) -> np.ndarray:
+        block = re.search(rf"<{tag}[^>]*>(.*?)</{tag}>", body, re.S).group(1)
+        return np.array([float(v) for v in re.findall(r"<Double>([^<]+)</Double>", block)]).reshape(-1, 2)
 
-    src, dst = points("SourceGCPs"), points("TargetGCPs")       # x1, y1, x2, y2, ...
-    pairs = [(src[i:i + 2], dst[i:i + 2]) for i in range(0, min(len(src), len(dst)) - 1, 2)]
-    shifts = [math.dist(a, b) for a, b in pairs]
     order = re.search(r"<PolynomialOrder>(\d+)</PolynomialOrder>", body)
-    return {"type": xform.group(1), "order": int(order.group(1)) if order else None, "gcps": len(pairs),
-            "shift_min": round(min(shifts), 2) if shifts else None,
-            "shift_max": round(max(shifts), 2) if shifts else None}
+    wkt = re.search(r"<WKT>(.*?)</WKT>", body, re.S)
+    out.update(order=int(order.group(1)) if order and kind == "PolynomialXform" else None,
+               wkt=wkt.group(1) if wkt else None, source=points("SourceGCPs"), target=points("TargetGCPs"),
+               not_applied=[f"{n} ({k})" for n, k, _ in steps if n != name])
+    return out
+
+
+def unapplied_georeference(path: Path) -> Optional[Dict[str, Any]]:
+    """An ArcGIS georeferencing adjustment in ``<file>.aux.xml`` (see :func:`arcgis_adjustment`), which GDAL
+    does not apply, so the file's position as read here is the unadjusted one: its type, order and number of
+    control points, or None."""
+    aux = path.with_name(path.name + ".aux.xml")
+    xform = arcgis_adjustment(aux.read_text(errors="replace")) if aux.exists() else None
+    if xform is None:
+        return None
+    return {"type": xform["type"], "order": xform["order"],
+            "control_points": 0 if xform["source"] is None else len(xform["source"])}

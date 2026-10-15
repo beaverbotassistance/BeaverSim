@@ -74,8 +74,8 @@ def test_georeference_applies_the_control_point_fit(tmp_path: Path, extra_step: 
         d.write(np.zeros((1, 80, 100), dtype="uint8"))
     adjust = Affine(0.0125, 0.0001, -7700800.0, 0.0001, -0.0135, 5448900.0)   # pixel -> ARC zone metres
     pixels = np.array([(5, 5), (90, 10), (50, 70), (10, 60), (80, 75)], dtype=float)
-    source = np.array([raw * tuple(p) for p in pixels])
-    target = np.array([adjust * tuple(p) for p in pixels])
+    source = np.array([raw @ tuple(p) for p in pixels])
+    target = np.array([adjust @ tuple(p) for p in pixels])
     aux = tmp_path / "original.tif.aux.xml"
     aux.write_text(_aux(source, target, extra_step))
 

@@ -1,6 +1,12 @@
 """Readers: rasters, vectors, tables, and the metadata-record readers' handling of checksums."""
+import datetime
 import json
 
+import numpy as np
+import pytest
+import rasterio
+
+from data_acquisition.catalog import stac
 from data_acquisition.readers import geotiff, hydroshare, table, vector
 from tests.dataset.conftest import ORIGIN, UTM3, write_tif
 
@@ -38,7 +44,10 @@ def test_unapplied_georeference(tmp_path):
         f'<Double>{ORIGIN[0] + 10}</Double><Double>{ORIGIN[1] + 1}</Double></TargetGCPs>'
         '</GeodataXform></Metadata></PAMDataset>')
     xform = geotiff.unapplied_georeference(tif)
-    assert xform == {"type": "PolynomialXform", "order": 1, "gcps": 2, "shift_min": 1.0, "shift_max": 5.0}
+    assert xform == {"type": "PolynomialXform", "order": 1, "control_points": 2}
+    adjustment = geotiff.arcgis_adjustment((tmp_path / "shifted.tif.aux.xml").read_text())
+    assert adjustment["target"].tolist() == [[ORIGIN[0] + 3, ORIGIN[1] + 4], [ORIGIN[0] + 10, ORIGIN[1] + 1]]
+    assert adjustment["not_applied"] == []
     assert geotiff.unapplied_georeference(write_tif(tmp_path / "plain.tif")) is None
 
 
@@ -68,3 +77,25 @@ def test_hydroshare_checksums_are_parsed():
     entities = hydroshare.read(json.dumps(record))["entities"]
     assert entities["a.csv"]["checksum"] == ("md5", "ab" * 16)
     assert entities["b.csv"]["checksum"] == ("s3etag", "cd" * 16 + "-2")
+
+
+def test_gsd_in_metres_for_a_raster_in_degrees(tmp_path):
+    from rasterio.transform import from_origin
+    path = tmp_path / "degrees.tif"
+    with rasterio.open(path, "w", driver="GTiff", width=10, height=10, count=1, dtype="uint8", crs="EPSG:4326",
+                       transform=from_origin(-113.1, 48.95, 1.8e-7, 1.2e-7)) as d:
+        d.write(np.zeros((1, 10, 10), dtype="uint8"))
+    info = geotiff.info(path)
+    item = stac.raster_item("x", path, info, datetime.date(2018, 6, 5), datetime.date(2018, 6, 5), "orthomosaic",
+                            ["data"], [{"name": "b1"}])
+    assert item.properties["gsd"] == pytest.approx(0.0132, abs=1e-4)      # 1.2e-7 degrees of latitude ~ 1.3 cm
+
+
+def test_raster_that_cannot_be_placed(tmp_path):
+    path = write_tif(tmp_path / "local.tif")
+    local = ('ENGCRS["unnamed",EDATUM["unknown"],CS[Cartesian,2],'
+             'AXIS["x",east,LENGTHUNIT["metre",1]],AXIS["y",north,LENGTHUNIT["metre",1]]]')
+    info = dict(geotiff.info(path), epsg=None, crs=local)
+    with pytest.raises(ValueError, match="cannot be placed"):
+        stac.raster_item("x", path, info, datetime.date(2018, 6, 5), datetime.date(2018, 6, 5), "orthomosaic",
+                         ["data"], [{"name": "b1"}])
