@@ -42,3 +42,8 @@ together. Each entry: what was found, the evidence, and a suggestion. Newest las
    no licence link means "private, no rights granted"
    ([collection spec](https://github.com/radiantearth/stac-spec/blob/master/collection-spec/collection-spec.md)).
    Suggestion: an SPDX `AND` expression for mixed licences, `other` for none. `build.build`.
+7. **The milestone table of `pipeline_design.md` (§12) is out of date.** Milestone 4 lists "photo and vector readers
+   + Montana summary", which exist now (the inspect notebook does not); the `describe` row still mentions the paid
+   API path, removed in the code review; the field step, the field layout files and the alignment check are not in
+   the table at all. The course therefore says "what exists today" rather than "milestone 1". Suggestion: update §12
+   (and §11, done) when milestone 2 is planned.
