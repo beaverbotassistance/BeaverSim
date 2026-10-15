@@ -5,7 +5,7 @@ site-specific (file naming, which report belongs to which product, band names a 
 wrong) is written here, so the builder and readers stay generic. Layout::
 
     schema: 1
-    dataset, title, [doi]                    doi: the dataset as a whole (e.g. a collection whose members are the groups)
+    dataset, title, [doi]                    doi: the dataset as a whole (e.g. a collection of the groups)
     authored: {by, date[, model, note]}      who wrote the file (a person, or claude + model)
     reviewed: {by, date} | null              a person who checked it; until then values count as "claude"
     source:   {kind, provider, url[, api, log]}
@@ -39,7 +39,9 @@ Time of a data file, one of:
 
 A report or metadata file (``role``) attaches to the items of its group whose product is in
 ``attach_to`` and whose date matches its own; without a date (its own or the group's) it attaches to
-all of them, e.g. a README or a ground-control file shared by every survey.
+all of them, e.g. a README or a ground-control file shared by every survey. When its group has none of
+the products in ``attach_to`` (e.g. a group holding only a time series), it attaches to matching items
+of any group of the same site.
 
 Scope: a group's ``download_filter`` (regex on file names) is also the set of files it covers. Files in its
 folder that do not match belong to another summary and are not reported as undescribed, so two
@@ -48,7 +50,8 @@ summaries can share a folder (e.g. one site of a multi-site record, and the reco
 Archives: a repository that publishes a zip lists only the zip. Extract it with
 ``data_acquisition.sources.archives`` (verified against the zip's CRC-32, read-only), list the zip with
 ``role: archive``, and give each extracted file ``archive: <path of the zip>`` (or set it on the group).
-Sidecars of a described raster (``.ovr``, ``.aux.xml``, ``.tfw``, ``.tfwx``, ``.msk``, ``.prj``) need not be listed.
+Companions of a listed file (raster sidecars such as ``.ovr`` or ``.aux.xml``, shapefile parts) are not
+listed; :mod:`data_acquisition.readers.files` says which they are.
 
 CRS a file does not declare: ``crs: EPSG:<code>`` on the file (or group), taken from the record or its text;
 used only when the file has no CRS of its own, and flagged in the catalog as coming from the summary.
@@ -68,9 +71,6 @@ Without ``x``/``y`` the table is non-spatial (e.g. model results per stream reac
 elsewhere): an item with its columns and row count and no footprint, its site set by the summary; declare
 the key it would join on with ``fields: {id: ...}``.
 
-A report or metadata file attaches to items of its own group; when its group has none of the products in
-``attach_to`` (e.g. a group holding only a time series), it attaches to matching items of any group.
-
 ``bands`` names the bands in file order for any product, including elevation products whose extra
 bands are not elevations (e.g. ``[elevation, uncertainty]``).
 
@@ -82,8 +82,9 @@ lists the registry sites inside it, checked against footprints. Manual site fiel
 the registry, so ``summary["sites"][slug]`` has the registry fields plus this summary's ``hints``.
 """
 import datetime
+import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 import yaml
 
@@ -98,8 +99,8 @@ POSITIONING = {"rtk", "ppk", "gcp", "gnss", "none"}
 FILE_FIELDS = {"path", "product", "variant", "role", "attach_to", "archive", "site", "date", "date_precision",
                "start_date", "end_date", "crs", "table", "layers", "fields",
                "platform", "instruments", "positioning", "bands", "unit", "vertical_datum", "notes"}
-GROUP_FIELDS = FILE_FIELDS - {"path", "product", "variant", "role", "attach_to"} | {"folder", "doi", "record", "download_filter",
-                                                                         "files", "evidence"}
+GROUP_FIELDS = (FILE_FIELDS - {"path", "product", "variant", "role", "attach_to"}
+                | {"folder", "doi", "record", "download_filter", "files", "evidence"})
 MANUAL_SITE_FIELDS = ("colonies", "land_status", "governance", "confirmed")
 FIELD_ROLES = {"time", "id", "group", "value"}
 LEVELS = ("region", "site")
@@ -123,8 +124,10 @@ def load(name_or_path: str) -> Dict[str, Any]:
     return summary
 
 
-def load_sites(path: Path = SITES) -> Dict[str, Dict[str, Any]]:
-    """The site registry: ``{slug: {name, crs, colonies, land_status, governance[, confirmed]}}``."""
+def load_sites(path: Optional[Path] = None) -> Dict[str, Dict[str, Any]]:
+    """The site registry (``SITES`` unless ``path`` is given): ``{slug: {name, crs, colonies, land_status,
+    governance[, confirmed, level, contains]}}``; empty if the file does not exist."""
+    path = path or SITES
     return (yaml.safe_load(path.read_text()) or {}).get("sites") or {} if path.exists() else {}
 
 
@@ -138,7 +141,8 @@ def check_sites(sites: Dict[str, Dict[str, Any]]) -> List[str]:
             p.append(f"sites.yaml {slug}: crs must be EPSG:<code>")
         for field in MANUAL_SITE_FIELDS:
             v = site.get(field)
-            if v is not None and not (isinstance(v, dict) and v.get("by") and ("value" in v or field == "confirmed")):
+            entered = isinstance(v, dict) and v.get("by") and ("value" in v or field == "confirmed")
+            if v is not None and not entered:
                 p.append(f"sites.yaml {slug}: {field} must be null or {{value, by, date}}")
         if site.get("level", "site") not in LEVELS:
             p.append(f"sites.yaml {slug}: level must be one of {LEVELS}")
@@ -148,17 +152,67 @@ def check_sites(sites: Dict[str, Dict[str, Any]]) -> List[str]:
     return p
 
 
-def used_sites(s: Dict[str, Any]) -> set:
+def used_sites(s: Dict[str, Any]) -> Set[str]:
     """Site slugs a summary's data files use."""
-    return {resolve(g, f).get("site") for g in s.get("groups") or [] for f in g.get("files") or [] if f.get("product")}
+    return {resolve(g, f).get("site") for g in s.get("groups") or [] for f in g.get("files") or []
+            if f.get("product")}
 
 
 def anchors(text: str) -> List[str]:
     """YAML anchors and aliases (``&name`` / ``*name``) in a summary's text: not allowed, because each value
     must be readable where it applies and editable for one site or file without changing the others."""
-    import re
     found = sorted(set(re.findall(r"(?m)(?:^|[\s:\-\[,])([&*][A-Za-z_][\w-]*)\s*$", text)))
     return [f"YAML anchors/aliases are not allowed, write each value out: {', '.join(found)}"] if found else []
+
+
+def _layers_problem(lay: Any) -> Optional[str]:
+    try:
+        groups = re.compile(lay.get("pattern", "")).groups if isinstance(lay, dict) else 0
+    except re.error:
+        groups = 0
+    if (isinstance(lay, dict) and groups == 1 and lay.get("date_precision", "year") in PRECISIONS
+            and set(lay) <= {"pattern", "date_precision"}):
+        return None
+    return "layers must be {pattern (a regex with one group), date_precision}"
+
+
+def _fields_problem(fld: Any) -> Optional[str]:
+    def column(v: Any) -> bool:
+        return isinstance(v, str) or (isinstance(v, list) and all(isinstance(x, str) for x in v))
+    if isinstance(fld, dict) and fld and set(fld) <= FIELD_ROLES and all(column(v) for v in fld.values()):
+        return None
+    return "fields must be {time, id, group, value}, each a column name (id may be a list)"
+
+
+def _table_problem(tbl: Any) -> Optional[str]:
+    if (isinstance(tbl, dict) and bool(tbl.get("x")) == bool(tbl.get("y"))
+            and set(tbl) <= {"skip", "x", "y", "z", "delimiter"}):
+        return None
+    return "table must be {skip[, x, y, z, delimiter]} (x and y together, or neither)"
+
+
+VALIDATORS = {"layers": _layers_problem, "fields": _fields_problem, "table": _table_problem}
+
+
+def _file_problems(f: Dict[str, Any], merged: Dict[str, Any], sites: Dict[str, Dict[str, Any]]) -> List[str]:
+    """Problems of one file entry (``merged``: with its group's defaults), without the location prefix."""
+    p = [f"unknown field {k}" for k in set(f) - FILE_FIELDS]
+    if bool(f.get("product")) == bool(f.get("role")):
+        p.append("needs exactly one of product or role")
+    elif f.get("product") and f["product"] not in PRODUCTS:
+        p.append(f"product must be one of {sorted(PRODUCTS)}")
+    elif f.get("role") and (f["role"] not in ROLES or not f.get("attach_to")):
+        p.append(f"role must be one of {sorted(ROLES)} with attach_to")
+    if merged.get("crs") is not None and not str(merged["crs"]).startswith("EPSG:"):
+        p.append("crs must be EPSG:<code>")
+    p += [problem for key, validate in VALIDATORS.items()
+          if merged.get(key) is not None and (problem := validate(merged[key]))]
+    if f.get("product"):
+        if merged.get("site") not in sites:
+            p.append(f"site {merged.get('site')!r} is not in data_acquisition/sites.yaml")
+        if set(merged.get("positioning") or []) - POSITIONING:
+            p.append(f"positioning must be from {sorted(POSITIONING)}")
+    return p
 
 
 def check(s: Dict[str, Any], sites: Optional[Dict[str, Dict[str, Any]]] = None) -> List[str]:
@@ -167,9 +221,7 @@ def check(s: Dict[str, Any], sites: Optional[Dict[str, Dict[str, Any]]] = None) 
     p = []
     if s.get("schema") != SCHEMA:
         p.append(f"schema must be {SCHEMA}")
-    for key in ("dataset", "title", "authored", "source", "groups"):
-        if not s.get(key):
-            p.append(f"missing {key}")
+    p += [f"missing {key}" for key in ("dataset", "title", "authored", "source", "groups") if not s.get(key)]
     if p:
         return p
     for who in ("authored", "reviewed"):
@@ -181,7 +233,7 @@ def check(s: Dict[str, Any], sites: Optional[Dict[str, Dict[str, Any]]] = None) 
             p.append(f"site {slug}: only hints belong in a summary; {sorted(extra)} go in data_acquisition/sites.yaml")
         if slug not in sites:
             p.append(f"site {slug} is not in data_acquisition/sites.yaml")
-    seen: Dict[tuple, str] = {}
+    seen: Dict[tuple, str] = {}         # (site, time, product, variant) -> path: two files must not share it
     for i, g in enumerate(s["groups"]):
         where = f"group {i} ({g.get('folder')})"
         p += [f"{where}: unknown field {k}" for k in set(g) - GROUP_FIELDS]
@@ -190,55 +242,22 @@ def check(s: Dict[str, Any], sites: Optional[Dict[str, Dict[str, Any]]] = None) 
             continue
         for f in g["files"]:
             fw = f"{where} {f.get('path')}"
-            p += [f"{fw}: unknown field {k}" for k in set(f) - FILE_FIELDS]
             merged = resolve(g, f)
-            if bool(f.get("product")) == bool(f.get("role")):
-                p.append(f"{fw}: needs exactly one of product or role")
-            elif f.get("product") and f["product"] not in PRODUCTS:
-                p.append(f"{fw}: product must be one of {sorted(PRODUCTS)}")
-            elif f.get("role") and (f["role"] not in ROLES or not f.get("attach_to")):
-                p.append(f"{fw}: role must be one of {sorted(ROLES)} with attach_to")
-            if merged.get("crs") is not None and not str(merged["crs"]).startswith("EPSG:"):
-                p.append(f"{fw}: crs must be EPSG:<code>")
-            lay = merged.get("layers")
-            if lay is not None:
-                import re
-                try:
-                    groups = re.compile(lay.get("pattern", "")).groups if isinstance(lay, dict) else 0
-                except re.error:
-                    groups = 0
-                if not (isinstance(lay, dict) and groups == 1 and lay.get("date_precision", "year") in PRECISIONS
-                        and set(lay) <= {"pattern", "date_precision"}):
-                    p.append(f"{fw}: layers must be {{pattern (a regex with one group), date_precision}}")
-            fld = merged.get("fields")
-            if fld is not None and not (isinstance(fld, dict) and fld and set(fld) <= FIELD_ROLES and all(
-                    isinstance(v, str) or (isinstance(v, list) and all(isinstance(x, str) for x in v))
-                    for v in fld.values())):
-                p.append(f"{fw}: fields must be {{time, id, group, value}}, each a column name (id may be a list)")
-            tbl = merged.get("table")
-            if tbl is not None and not (isinstance(tbl, dict) and bool(tbl.get("x")) == bool(tbl.get("y"))
-                                        and set(tbl) <= {"skip", "x", "y", "z", "delimiter"}):
-                p.append(f"{fw}: table must be {{skip[, x, y, z, delimiter]}} (x and y together, or neither)")
-            if f.get("product"):
-                if merged.get("site") not in sites:
-                    p.append(f"{fw}: site {merged.get('site')!r} is not in data_acquisition/sites.yaml")
-                try:
-                    if merged.get("layers"):            # dated per layer, by the layer names
-                        raise LookupError
-                    key = (merged.get("site"), epoch(merged)[2], f["product"], f.get("variant"))
-                    if key in seen:
-                        p.append(f"{fw}: same site, time and product as {seen[key]}; give each a variant")
-                    seen[key] = f.get("path")
-                except ValueError as e:
-                    p.append(f"{fw}: {e}")
-                except LookupError:
-                    pass
-                if set(merged.get("positioning") or []) - POSITIONING:
-                    p.append(f"{fw}: positioning must be from {sorted(POSITIONING)}")
+            p += [f"{fw}: {problem}" for problem in _file_problems(f, merged, sites)]
+            if not f.get("product") or merged.get("layers"):    # a layered file is dated per layer, by name
+                continue
+            try:
+                key = (merged.get("site"), epoch(merged)[2], f["product"], f.get("variant"))
+            except ValueError as e:
+                p.append(f"{fw}: {e}")
+                continue
+            if key in seen:
+                p.append(f"{fw}: same site, time and product as {seen[key]}; give each a variant")
+            seen[key] = f.get("path")
     return p
 
 
-def epoch(f: Dict[str, Any]) -> (datetime.date, datetime.date, str):
+def epoch(f: Dict[str, Any]) -> Tuple[datetime.date, datetime.date, str]:
     """(start, end, label) of a file's time: one day, a month, a year, or a start–end range.
 
     The label is used in item ids: ``2018-09-25``, ``2017-09``, ``2017``, ``2017-09-07_2018-09-25``.
@@ -266,8 +285,8 @@ def epoch(f: Dict[str, Any]) -> (datetime.date, datetime.date, str):
 
 
 def layer_epoch(name: str, spec: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-    """Time fields (``date``, ``date_precision``) for a layer named ``name``, or None if the pattern does not match."""
-    import re
+    """Time fields (``date``, ``date_precision``) for a layer named ``name``; None if the pattern does not
+    match or the captured value is not a valid date of that precision."""
     m = re.search(spec["pattern"], name)
     if not m:
         return None
@@ -295,11 +314,16 @@ def resolve(group: Dict[str, Any], file: Dict[str, Any]) -> Dict[str, Any]:
     return merged
 
 
-def author(s: Dict[str, Any]) -> (str, Dict[str, Optional[str]]):
+def by_claude(by: Any) -> bool:
+    """True if a ``by`` entry names Claude (``claude``, or ``claude (<model>)``) rather than a person."""
+    return str(by).startswith("claude")
+
+
+def author(s: Dict[str, Any]) -> Tuple[str, Dict[str, Optional[str]]]:
     """Descriptor source and who/when for values taken from this summary."""
     if s.get("reviewed"):
         return "manual", {"by": s["reviewed"]["by"], "date": str(s["reviewed"]["date"])}
     a = s["authored"]
-    if a["by"] == "claude":
+    if by_claude(a["by"]):
         return "claude", {"by": f"claude ({a.get('model', 'unknown model')})", "date": str(a["date"])}
     return "manual", {"by": a["by"], "date": str(a["date"])}

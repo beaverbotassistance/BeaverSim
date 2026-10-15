@@ -43,7 +43,7 @@ MANUAL_FIELDS = ("colonies", "land_status", "governance")
 def _set_entered(item: pystac.Item, field: str, entry: Dict[str, Any], value: Any) -> None:
     """Set a field entered in the registry, as ``claude`` or ``manual`` depending on who entered it."""
     by = str(entry["by"])
-    set_field(item, field, value, "claude" if by.startswith("claude") else "manual", by=by,
+    set_field(item, field, value, "claude" if summaries.by_claude(by) else "manual", by=by,
               date=str(entry.get("date")), note=entry.get("note"))
 
 

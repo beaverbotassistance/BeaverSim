@@ -76,7 +76,6 @@ def registry(tmp_path: Path, monkeypatch) -> Path:
                     "  test_region: {name: Test region, crs: 'EPSG:32603', colonies: null, land_status: null,\n"
                     "                governance: null, level: region, contains: [test_site]}\n")
     monkeypatch.setattr(summaries, "SITES", path)
-    monkeypatch.setattr(summaries, "load_sites", lambda p=path: summaries.yaml.safe_load(p.read_text())["sites"])
     return path
 
 
