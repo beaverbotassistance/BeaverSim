@@ -63,3 +63,8 @@ together. Each entry: what was found, the evidence, and a suggestion. Newest las
     `BEAVER_SITES` points to another registry (the registry it *lists* does follow `BEAVER_SITES`). Drafting the
     course's sample with Claude would write into the real summaries folder and registry. Suggestion: take the
     registry path from `load_sites`' resolution and allow an output folder for the draft.
+12. **`describing_a_dataset.md` is partly out of date.** Step 5 says "Fill the manual fields you can" in the draft,
+    but manual fields now live only in `data_acquisition/sites.yaml` (a summary may only give `hints`, anything else
+    blocks); step 2 describes the evidence as "file lists, GeoTIFF headers, metadata records", leaving out vector
+    layers, photo folders and report text. Suggestion: update the how-to (the course's chapter 9 has the current
+    picture).
