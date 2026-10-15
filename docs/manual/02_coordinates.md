@@ -158,6 +158,9 @@ processing milestones, so that the catalogue always describes the data as they a
 
 ## Exercises
 
+Notebook: [`notebooks/02_coordinates.ipynb`](notebooks/02_coordinates.ipynb) (work in a copy); solutions in
+[`solutions/notebooks/02_coordinates.ipynb`](solutions/notebooks/02_coordinates.ipynb).
+
 Use the sample data root ([00 Setup](00_setup.md)) and the Montana extract
 ([`docs/manual/data/montana_extract/`](data/montana_extract/README.md)).
 

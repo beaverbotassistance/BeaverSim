@@ -37,3 +37,16 @@ def test_reference_summary_builds_the_sample(tmp_path: Path, monkeypatch):
     out = stac.save(catalog, tmp_path / "stac" / "training_pond")
     assert stac.validate(stac.load(out)) == []
     assert isinstance(stac.load(out), pystac.Catalog)
+
+
+def test_solution_notebooks_run(tmp_path: Path):
+    """Every solution notebook runs to the end with the pipeline as it is (they make the sample root if needed)."""
+    import nbformat
+    from nbclient import NotebookClient
+    for path in sorted((MANUAL / "solutions" / "notebooks").glob("*.ipynb")):
+        nb = nbformat.read(path, as_version=4)
+        NotebookClient(nb, timeout=300, kernel_name="python3",
+                       resources={"metadata": {"path": str(path.parent)}}).execute()
+        errors = [o for c in nb.cells if c.cell_type == "code" for o in c.get("outputs", [])
+                  if o.get("output_type") == "error"]
+        assert not errors, f"{path.name}: {errors[0].get('ename')}: {errors[0].get('evalue')}"

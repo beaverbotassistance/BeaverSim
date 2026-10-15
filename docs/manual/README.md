@@ -13,7 +13,8 @@ those are later milestones, and the chapters that will cover them are marked as 
 
 - Read the chapters in order the first time. Part 1 is background, Part 2 is how to use the pipeline,
   Part 3 is how it works inside, for those who will change it.
-- Each chapter has exercises. Most run on a small **sample data root** that a script generates
+- Each chapter has exercises, in a notebook under [`notebooks/`](notebooks/) (work in a copy; the solutions
+  are in [`solutions/notebooks/`](solutions/notebooks/), try first). Most run on a small **sample data root** that a script generates
   ([00 Setup](00_setup.md)); a few use a real extract of the Montana field data that is committed with the
   course (`docs/manual/data/`), and one downloads a small open dataset.
 - Every concept links to a source you can check. Every chapter ends with **Where this lives**: the files and

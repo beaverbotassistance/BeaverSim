@@ -164,6 +164,9 @@ replace them.
 
 ## Exercises
 
+Notebook: [`notebooks/06_what_the_pipeline_needs.ipynb`](notebooks/06_what_the_pipeline_needs.ipynb) (work in a copy); solutions in
+[`solutions/notebooks/06_what_the_pipeline_needs.ipynb`](solutions/notebooks/06_what_the_pipeline_needs.ipynb).
+
 Use the sample data root and its reference summary
 ([`docs/manual/solutions/training_pond.yaml`](solutions/training_pond.yaml)). Copy the summary, change one
 thing at a time, and run `describe check` on your copy:
