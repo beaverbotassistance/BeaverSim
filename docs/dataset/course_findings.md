@@ -47,3 +47,5 @@ together. Each entry: what was found, the evidence, and a suggestion. Newest las
    API path, removed in the code review; the field step, the field layout files and the alignment check are not in
    the table at all. The course therefore says "what exists today" rather than "milestone 1". Suggestion: update §12
    (and §11, done) when milestone 2 is planned.
+8. **`--list` prints sizes in GB with three decimals,** so small datasets show `0.000 GB` (Baldwin dams: a 55 KB zip,
+   listed as `0.000 GB`, total `0.000 GB`). Suggestion: human-readable units (KB/MB/GB) in the clients' listing.
