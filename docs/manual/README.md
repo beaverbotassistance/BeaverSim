@@ -28,9 +28,9 @@ those are later milestones, and the chapters that will cover them are marked as 
 
 | # | Chapter | Status |
 |---|---|---|
-| 00 | [Setup: environment, drives, sample data](00_setup.md) | outline |
+| 00 | [Setup: environment, drives, sample data](00_setup.md) | draft, for review |
 | | **Part 1 – Background** | |
-| 01 | [Geospatial data: rasters, vectors, formats](01_geospatial_data.md) | outline |
+| 01 | [Geospatial data: rasters, vectors, formats](01_geospatial_data.md) | draft, for review |
 | 02 | [Coordinates: CRS, projections, units, heights](02_coordinates.md) | draft, for review |
 | 03 | [Drone surveys: from photos to maps](03_drone_surveys.md) | outline |
 | 04 | [Catalogues and metadata: STAC, records, checksums](04_catalogs_and_metadata.md) | outline |

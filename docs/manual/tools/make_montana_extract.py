@@ -3,16 +3,17 @@
 ``beaver_dataset/`` (needs the field-season drive).
 
 For each date: the orthomosaic chunk the annotations were drawn on and the full tile, both cut to the box
-and resampled to 5 cm (JPEG-compressed GeoTIFF); every annotation layer of that date clipped to the box
-(attributes and feature ids kept); three photos taken over the box, downscaled with their EXIF kept. The
-box is centred on the largest dam that lies on a chunk at both dates. A README records the sources and
-what was done to them. A few MB, committed under ``docs/manual/data/montana_extract/``.
+and resampled to 5 cm (JPEG-compressed GeoTIFF); the features of every annotation layer of that date that
+touch the box (unchanged: Z, M, attributes and feature ids); three photos taken over the box, downscaled
+with their EXIF kept. The box is centred on the largest dam that lies on a chunk at both dates. A README
+records the sources and what was done to them. A few MB, committed under ``docs/manual/data/montana_extract/``.
 
     python docs/manual/tools/make_montana_extract.py --site-dir "<drive>/beaver_dataset/sites/rumney_ranch"
 """
 import argparse
 import csv
 import json
+import subprocess
 import warnings
 from pathlib import Path
 from typing import List, Optional, Tuple
@@ -74,17 +75,16 @@ def cut_raster(tif: Path, bounds, out: Path) -> None:
 
 
 def cut_annotations(adir: Path, bounds, out_dir: Path) -> List[str]:
-    """Every layer of an annotations folder, clipped to the box; returns the files written."""
+    """Every layer of an annotations folder, reduced to the features that touch the box: copied with ``ogr2ogr``
+    (as the field step exports them), so geometries keep Z and M, attributes are unchanged and the feature ids
+    are those of ``beaver_dataset``, which corrections refer to. Returns the files written."""
     written = []
     area = box(*bounds)
     for layer in sorted(adir.glob("*.gpkg")):
-        frame = gpd.read_file(layer)
-        clipped = frame[frame.intersects(area)]
-        if clipped.empty:
+        if not gpd.read_file(layer).intersects(area).any():
             continue
-        clipped = clipped.copy()
-        clipped["source_fid"] = clipped.index        # the feature id in beaver_dataset, which corrections refer to
-        clipped.to_file(out_dir / layer.name, layer=layer.stem, driver="GPKG")
+        subprocess.run(["ogr2ogr", "-f", "GPKG", str(out_dir / layer.name), str(layer), layer.stem,
+                        "-spat", *map(str, bounds), "-preserve_fid"], check=True, capture_output=True)
         written.append(layer.name)
     return written
 

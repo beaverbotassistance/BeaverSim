@@ -45,6 +45,120 @@ class Chapter(NamedTuple):
     exercises: List[Exercise]
 
 
+CH00 = Chapter(
+    "00_setup", "0. Setup: environment, drives, sample data",
+    "Exercises of [chapter 0](../00_setup.md). Run the setup cell first: it makes the sample data root.",
+    '''import subprocess
+from data_acquisition.catalog import summary as summaries''',
+    [
+        Exercise("**1.** List the files of the sample data root with their sizes. Which file is the largest, and why?",
+                 '''...  # your code here (Path.rglob, stat().st_size)''',
+                 '''for p in sorted(SAMPLE.rglob("*")):
+    if p.is_file():
+        print(f"{p.stat().st_size:>9,d}  {p.relative_to(SAMPLE)}")
+# The orthomosaic is the largest: four bands of noisy colour texture, which compress poorly. The DSM is tiny
+# although it holds 4-byte heights: a smooth surface compresses to almost nothing. The GeoPackage's ~100 KB is
+# mostly the SQLite container (pages, indexes, metadata tables), not its two dams.'''),
+        Exercise("**2.** Print the versions of GDAL and PROJ inside rasterio, of PROJ inside pyproj, and of the "
+                 "system's "
+                 "`ogr2ogr`. How many different versions of PROJ do you have?",
+                 '''import pyproj, rasterio
+...  # your code here''',
+                 '''import pyproj, rasterio
+print("rasterio: GDAL", rasterio.__gdal_version__, "| PROJ", rasterio.__proj_version__)
+print("pyproj:   PROJ", pyproj.proj_version_str)
+print("system:  ", subprocess.run(["ogr2ogr", "--version"], capture_output=True, text=True).stdout.strip())
+# Usually three copies of GDAL/PROJ: rasterio's, pyproj's and the system's. Chapter 2 shows why it matters.'''),
+        Exercise("**3.** Read `pytest.ini`: which plugins are disabled, and why?",
+                 '''...  # your code here''',
+                 '''print((ROOT / "pytest.ini").read_text())
+# The ROS plugins (launch_testing, launch_ros, ament_*): ROS adds them to the Python path of every terminal on
+# machines where it is installed, and they are incompatible with this version of pytest.'''),
+        Exercise("**4.** Print the path of the site registry the pipeline uses, with and without `BEAVER_SITES`, and "
+                 "the "
+                 "sites in each.",
+                 '''...  # your code here (summaries.load_sites, summaries.SITES, os.environ)''',
+                 '''print("with BEAVER_SITES:   ", os.environ["BEAVER_SITES"], list(summaries.load_sites()))
+saved = os.environ.pop("BEAVER_SITES")
+print("without BEAVER_SITES:", summaries.SITES, len(summaries.load_sites()), "sites")
+os.environ["BEAVER_SITES"] = saved'''),
+    ])
+
+CH01 = Chapter(
+    "01_geospatial_data", "1. Geospatial data: rasters, vectors, formats",
+    "Exercises of [chapter 1](../01_geospatial_data.md). Run the setup cell first.",
+    '''import subprocess, json
+import matplotlib.pyplot as plt
+import numpy as np
+import pyogrio
+import rasterio
+from data_acquisition.readers import files, geotiff''',
+    [
+        Exercise("**1. A raster's header.** Open the sample's `ortho_2023-07-12.tif` and print its width, height, band "
+                 "count, data types, resolution, geotransform, colour interpretation and nodata. Explain each.",
+                 '''with rasterio.open(DATASET / "ortho_2023-07-12.tif") as r:
+    ...  # your code here''',
+                 '''with rasterio.open(DATASET / "ortho_2023-07-12.tif") as r:
+    print("size:", r.width, "x", r.height, "| bands:", r.count, "| types:", r.dtypes)
+    print("resolution:", r.res, "| nodata:", r.nodata)
+    print("colour interpretation:", [c.name for c in r.colorinterp])
+    print("geotransform:", r.transform)
+# 400 x 400 pixels of 5 cm (20 m square); four uint8 bands, red, green, blue and alpha; no nodata value (the
+# alpha band marks the empty corners). The geotransform: pixel width 0.05, no rotation, left edge at x = 368000;
+# pixel height -0.05 (rows go south), top edge at y = 5420040.'''),
+        Exercise("**2. Nodata and alpha.** How many pixels of the sample orthomosaic are transparent (alpha 0)? How "
+                 "many "
+                 "pixels of the sample DSM are nodata? Read the DSM with `masked=True` and compare the minimum with "
+                 "and "
+                 "without the mask.",
+                 '''...  # your code here''',
+                 '''with rasterio.open(DATASET / "ortho_2023-07-12.tif") as r:
+    alpha = r.read(4)
+print("transparent pixels:", int((alpha == 0).sum()), "of", alpha.size)
+with rasterio.open(DATASET / "dsm_2023-07-12.tif") as r:
+    raw, masked = r.read(1), r.read(1, masked=True)
+    print("nodata value:", r.nodata, "| nodata pixels:", int((raw == r.nodata).sum()))
+print("minimum without mask:", raw.min(), "| with mask:", masked.min())
+# Without the mask, -9999 would be taken for a height 11 km below sea level.'''),
+        Exercise("**3. Vectors.** List the layers of the sample's `dams_2023-07-12.gpkg` and of the extract's "
+                 "`2018-07-26/annotations/dams.gpkg`: geometry type, number of features, attribute names. Compare the "
+                 "geometry type pyogrio reports with the one `ogrinfo` reports for the extract's layer: what is lost?",
+                 '''...  # your code here (pyogrio.list_layers, pyogrio.read_info, subprocess ogrinfo -json -so)''',
+                 '''for path in (DATASET / "dams_2023-07-12.gpkg", EXTRACT / "2018-07-26/annotations/dams.gpkg"):
+    for name, geometry in pyogrio.list_layers(path):
+        info = pyogrio.read_info(path, layer=name)
+        print(f"{path.name}: layer {name}, {geometry}, {info['features']} features, fields {list(info['fields'])}")
+out = subprocess.run(["ogrinfo", "-json", "-so", str(EXTRACT / "2018-07-26/annotations/dams.gpkg"), "dams"],
+                     capture_output=True, text=True).stdout
+print("ogrinfo:", json.loads(out)["layers"][0]["geometryFields"][0]["type"])
+# pyogrio reads 'MultiPolygon Z'; the file holds 'MultiPolygonZM'. pyogrio (and GeoPandas) drop the M values.'''),
+        Exercise("**4. Companions.** Which companion files does the pipeline expect for `orthomosaic_part-3.tif`, and "
+                 "for `dams.shp`?",
+                 '''...  # your code here (files.companions)''',
+                 '''print(sorted(files.companions("orthomosaic_part-3.tif")))
+print(sorted(files.companions("dams.shp")))'''),
+        Exercise("**5. Draw both.** Plot the extract's 26 July orthomosaic chunk and draw the dam outlines on it.",
+                 '''...  # your code here (rasterio, pyogrio.read_dataframe, matplotlib)''',
+                 '''day = EXTRACT / "2018-07-26"
+with rasterio.open(day / "orthomosaic_chunk.tif") as r:
+    image, to_pixel, crs = r.read(), ~r.transform, r.crs
+dams = pyogrio.read_dataframe(day / "annotations/dams.gpkg").to_crs(crs.to_wkt())
+fig, ax = plt.subplots(figsize=(6, 6))
+ax.imshow(np.moveaxis(image, 0, -1))
+for geom in dams.geometry:
+    for part in geom.geoms:
+        xy = np.array([to_pixel @ tuple(p[:2]) for p in part.exterior.coords])
+        ax.plot(xy[:, 0], xy[:, 1], color="yellow")
+ax.set_axis_off(); plt.show()'''),
+        Exercise("**6. Find it in the code.** Which function decides whether a file is a raster, and which file "
+                 "extensions does it try before opening a file?",
+                 '''import inspect
+...  # your code here''',
+                 '''import inspect
+print(inspect.getsource(geotiff.is_raster))
+print("always rasters:", geotiff.EXTENSIONS, "| opened to check:", geotiff.PROBE)'''),
+    ])
+
 CH02 = Chapter(
     "02_coordinates", "2. Coordinates: CRS, projections, units, heights",
     "Exercises of [chapter 2](../02_coordinates.md). Run the setup cell first.",
@@ -246,7 +360,7 @@ for fn, needle in ((summaries.epoch, "date must be YYYY-MM-DD"), (build._raster_
             print(f"{inspect.getsourcefile(fn)}:{n}: {line.strip()}")'''),
     ])
 
-CHAPTERS = [CH02, CH06]
+CHAPTERS = [CH00, CH01, CH02, CH06]
 
 
 def notebook(chapter: Chapter, solutions: bool) -> nbformat.NotebookNode:

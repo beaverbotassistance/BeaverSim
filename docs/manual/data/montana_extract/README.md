@@ -16,7 +16,7 @@ of every file.
 <date>/
   orthomosaic_chunk.tif       the chunk the annotations were drawn on, with its ArcGIS georeferencing applied
   orthomosaic_full_tile.tif   the same area from the full tile, with its own (earlier) georeferencing
-  annotations/<layer>.gpkg    every annotation layer of that date, clipped to the box
+  annotations/<layer>.gpkg    the features of each annotation layer of that date that touch the box
   photos/DJI_*.JPG            three photos taken over the box
 extract.json                  the box, the source of every file, and the alignment rows of the clipped outlines
 ```
@@ -27,6 +27,6 @@ extract.json                  the box, the source of every file, and the alignme
   pixels), RGB only (the alpha band dropped), JPEG-compressed. Their CRS and georeferencing are those of
   `beaver_dataset`: the ArcGIS adjustment applied, and the ARC System zone written on a sphere
   ([field naming](../../../dataset/field_naming.md)).
-- **Annotations:** the features of each layer that touch the box, unchanged (geometry, Z and M, attributes),
-  with a `source_fid` column giving the feature's id in `beaver_dataset`, which corrections refer to.
+- **Annotations:** the features of each layer that touch the box, copied whole and unchanged (geometry with
+  Z and M, attributes) with `ogr2ogr`; their feature ids are those of `beaver_dataset`, which corrections refer to.
 - **Photos:** downscaled to 800 pixels on the longest side; EXIF (camera, time, GPS) kept.
