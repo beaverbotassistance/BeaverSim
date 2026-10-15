@@ -869,7 +869,103 @@ print("rules: describe.RULES in", inspect.getsourcefile(describe), "line",
 print(inspect.getsource(evidence._raster))"""),
     ])
 
-CHAPTERS = [CH00, CH01, CH02, CH03, CH04, CH05, CH06, CH07, CH08, CH09]
+CH10 = Chapter(
+    "10_building_and_curating", "10. Building and curating catalogues",
+    "Exercises of [chapter 10](../10_building_and_curating.md). Run the setup cell first.",
+    """import copy, datetime, json, shutil, tempfile
+import yaml
+from data_acquisition.catalog import build, stac
+from data_acquisition.catalog import summary as summaries
+from data_acquisition.steps import curate
+
+REFERENCE = yaml.safe_load((ROOT / "docs/manual/solutions/training_pond.yaml").read_text())
+
+
+def load(s):
+    path = Path(tempfile.mkdtemp()) / "summary.yaml"
+    path.write_text(yaml.safe_dump(copy.deepcopy(s), sort_keys=False))
+    return summaries.load(str(path))
+
+
+def files(s):
+    return s["groups"][0]["files"]""",
+    [
+        Exercise("**1. Build.** Build the sample with the reference summary. Then copy any small file into the dataset "
+                 "folder and build again: what does the report say? Remove the copy.",
+                 """s = load(REFERENCE)
+...  # your code here""",
+                 """s = load(REFERENCE)
+catalog, report = build.build(SAMPLE, s)
+print(len(list(catalog.get_items(recursive=True))), "items; report:", {k: v for k, v in report.items() if v} or "empty")
+stray = DATASET / "README_copy.txt"
+shutil.copy(DATASET / "README.txt", stray)
+catalog, report = build.build(SAMPLE, s)
+print("with a stray file:", {k: v for k, v in report.items() if v})
+stray.unlink()"""),
+        Exercise("**2. Flags.** Curate the items and list every flag with its source. Which ones need action?",
+                 """...  # your code here (curate.curate_item)""",
+                 """catalog, _ = build.build(SAMPLE, s)
+for item in catalog.get_items(recursive=True):
+    curate.curate_item(item, s)
+    print(item.id, [(q["flag"], q["source"]) for q in item.properties["beaver:quality"]])
+# needs_inspection asks for a person; not_in_record says the record does not list the photos (worth knowing, no
+# action); crs_from_summary and the note record what the summary supplied."""),
+        Exercise("**3. Make flags appear.** In copies of the reference summary, give the orthomosaic the wrong band "
+                 "order, the grid a CRS of the wrong UTM zone (`EPSG:32611`), and the DSM a date outside the record's "
+                 "period. Which flag does each produce, and who raises it?",
+                 """...  # your code here""",
+                 """def flags_of(s, item_suffix):
+    catalog, _ = build.build(SAMPLE, load(s))
+    item = next(i for i in catalog.get_items(recursive=True) if i.id.endswith(item_suffix))
+    curate.curate_item(item, load(s))
+    return [(q["flag"], q["source"]) for q in item.properties["beaver:quality"]]
+
+wrong = copy.deepcopy(REFERENCE); files(wrong)[0]["bands"] = ["blue", "green", "red", "alpha"]
+print("bands:", flags_of(wrong, "orthomosaic"))
+wrong = copy.deepcopy(REFERENCE); files(wrong)[2]["crs"] = "EPSG:32611"
+print("CRS:  ", flags_of(wrong, "dtm"))
+wrong = copy.deepcopy(REFERENCE); files(wrong)[1]["date"] = datetime.date(2021, 5, 1)
+print("date: ", flags_of(wrong, "dsm"))"""),
+        Exercise("**4. Verify.** Curate with `verify_files=True`. What was each file checked against, and why do the "
+                 "photos get `checksum_unknown`?",
+                 """...  # your code here""",
+                 """catalog, _ = build.build(SAMPLE, s)
+for item in catalog.get_items(recursive=True):
+    curate.curate_item(item, s, verify_files=True)
+    flags = [q["flag"] for q in item.properties["beaver:quality"] if q["flag"].startswith("checksum")]
+    print(f"{item.id:40s} verified: {item.properties['beaver:provenance'].get('verified')} {flags}")
+# The photos are not in the record and were not downloaded by a client: nothing states their checksum."""),
+        Exercise("**5. Rebuild.** Remove the DSM from a copy of the summary, rebuild into a scratch copy of the sample "
+                 "root, and compare the collection's links with the item folders on disk.",
+                 """scratch = Path(tempfile.mkdtemp()) / "root"
+shutil.copytree(SAMPLE, scratch, ignore=shutil.ignore_patterns("stac"))
+...  # your code here""",
+                 """scratch = Path(tempfile.mkdtemp()) / "root"
+shutil.copytree(SAMPLE, scratch, ignore=shutil.ignore_patterns("stac"))
+for name, s2 in (("full", REFERENCE), ("without the DSM", copy.deepcopy(REFERENCE))):
+    if name != "full":
+        s2["groups"][0]["files"] = [f for f in files(s2) if f["path"] != "dsm_2023-07-12.tif"]
+    catalog, _ = build.build(scratch, load(s2))
+    stac.save(catalog, scratch / "stac/training_pond")
+collection = scratch / "stac/training_pond/training_pond"
+links = [l["href"].split("/")[1] for l in json.loads((collection / "collection.json").read_text())["links"]
+         if l["rel"] == "item"]
+print("linked:", links)
+print("on disk:", sorted(p.name for p in collection.iterdir() if p.is_dir()))
+# The DSM's folder is still on disk but no longer linked: follow links, do not scan folders."""),
+        Exercise("**6. Find it in the code.** Where does `curate` clear the previous automatic flags, and where does "
+                 "`build` write the report?",
+                 """import inspect
+...  # your code here""",
+                 """import inspect
+for fn, needle in ((curate.curate_item, '!= "auto"'), (build.main, "build_report.json")):
+    source, first = inspect.getsourcelines(fn)
+    for n, line in enumerate(source, first):
+        if needle in line:
+            print(f"{inspect.getsourcefile(fn)}:{n}: {line.strip()}")"""),
+    ])
+
+CHAPTERS = [CH00, CH01, CH02, CH03, CH04, CH05, CH06, CH07, CH08, CH09, CH10]
 
 
 def notebook(chapter: Chapter, solutions: bool) -> nbformat.NotebookNode:
