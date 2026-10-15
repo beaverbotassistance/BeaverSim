@@ -755,7 +755,121 @@ for fn in (http.fetch, downloads.finish, downloads.log):
     print(f"{fn.__module__}.{fn.__name__}: {inspect.getdoc(fn).splitlines()[0]}")"""),
     ], network=True)
 
-CHAPTERS = [CH00, CH01, CH02, CH03, CH04, CH05, CH06, CH07, CH08]
+CH09 = Chapter(
+    "09_describing_a_dataset", "9. Describing a dataset: summaries and Claude",
+    "Exercises of [chapter 9](../09_describing_a_dataset.md). Run the setup cell first.",
+    """import copy, datetime, difflib, json, subprocess, tempfile
+import rasterio
+import yaml
+from data_acquisition.catalog import build, describe, evidence
+from data_acquisition.catalog import summary as summaries
+
+OUT = ROOT / "output/manual/describe/training_pond"
+REFERENCE = yaml.safe_load((ROOT / "docs/manual/solutions/training_pond.yaml").read_text())
+
+
+def check(s):
+    \"\"\"Check a summary (a dict) and build it in memory; print what the pipeline says.\"\"\"
+    path = Path(tempfile.mkdtemp()) / "my_summary.yaml"
+    path.write_text(yaml.safe_dump(copy.deepcopy(s), sort_keys=False))
+    try:
+        loaded = summaries.load(str(path))
+    except ValueError as e:
+        print("BLOCKS:\\n", str(e).split("\\n", 1)[1])
+        return None
+    catalog, report = build.build(SAMPLE, loaded)
+    print("valid; build report:", {k: v for k, v in report.items() if v} or "empty")
+    return catalog""",
+    [
+        Exercise("**1. Evidence.** Gather the evidence and the prompt for the sample dataset into "
+                 "`output/manual/describe/training_pond`. For each file, what did code read? What did it read about "
+                 "the photos, and why so little?",
+                 """...  # your code here: describe prompt --root SAMPLE --folders "repo/*" --dataset training_pond""",
+                 """subprocess.run([sys.executable, "-m", "data_acquisition.catalog.describe", "prompt",
+                "--root", str(SAMPLE), "--folders", "repo/*", "--dataset", "training_pond",
+                "--source-kind", "dataone", "--out", str(OUT)], cwd=ROOT, check=True, capture_output=True)
+ev = json.loads((OUT / "evidence.json").read_text())
+for f in ev["folders"][0]["files"]:
+    print(f"{f['name']:45s} {[k for k in f if k not in ('name', 'bytes')]}")
+print("photo folders become one entry from", evidence.PHOTO_FOLDER, "photos up; the sample has 6, read one by one, "
+      "and code reads nothing from a single photo")"""),
+        Exercise("**2. The rules.** Read the rules in `prompt.md`. Which of them stop Claude from inventing values?",
+                 """...  # your code here (describe.RULES)""",
+                 """for line in describe.RULES.split("\\n- "):
+    if any(w in line.lower() for w in ("never", "only", "invent", "unclear", "disagree")):
+        print("-", " ".join(line.split())[:220])"""),
+        Exercise("**3. By hand.** Write a summary for the sample from the evidence alone, starting from the skeleton; "
+                 "make it pass `check`; compare it with the reference summary.",
+                 """mine = {
+    "schema": 1, "dataset": "training_pond", "title": "...",
+    "authored": {"by": "A Student", "date": datetime.date.today()}, "reviewed": None,
+    "source": {"kind": "dataone", "provider": "..."},
+    "groups": [{"folder": "repo/doi_10.5555_training.pond", "record": {"path": "metadata.xml", "format": "eml"},
+                "site": "training_pond", "files": [
+                    # one entry per file: {"path": ..., "product": ..., "date": datetime.date(...)} or role + attach_to
+                ]}],
+}
+check(mine)""",
+                 """mine = {
+    "schema": 1, "dataset": "training_pond", "title": "Training Pond drone survey, July 2023",
+    "authored": {"by": "A Student", "date": datetime.date.today()}, "reviewed": None,
+    "source": {"kind": "dataone", "provider": "Example repository (invented)"},
+    "groups": [{"folder": "repo/doi_10.5555_training.pond", "record": {"path": "metadata.xml", "format": "eml"},
+                "site": "training_pond", "positioning": ["gnss"], "files": [
+        {"path": "ortho_2023-07-12.tif", "product": "orthomosaic", "date": datetime.date(2023, 7, 12)},
+        {"path": "dsm_2023-07-12.tif", "product": "dsm", "date": datetime.date(2023, 7, 12)},
+        {"path": "dem_2022.asc", "product": "dtm", "date": datetime.date(2022, 8, 1), "date_precision": "month",
+         "crs": "EPSG:32612"},
+        {"path": "dams_2023-07-12.gpkg", "product": "annotations", "date": datetime.date(2023, 7, 12)},
+        {"path": "photos_2023-07-12", "product": "photos", "date": datetime.date(2023, 7, 12)},
+        {"path": "README.txt", "role": "metadata", "attach_to": ["orthomosaic", "dsm", "dtm", "annotations", "photos"]},
+    ]}],
+}
+check(mine)
+ref_files = {f["path"]: f for f in REFERENCE["groups"][0]["files"]}
+for f in mine["groups"][0]["files"]:
+    extra = {k: v for k, v in ref_files[f["path"]].items() if k not in f}
+    if extra:
+        print(f"the reference also gives {f['path']}: {extra}")"""),
+        Exercise("**4. Review a draft.** `docs/manual/data/flawed_draft.yaml` passes the check but has four mistakes a "
+                 "reviewer should catch. Find them with the evidence.",
+                 """flawed = yaml.safe_load((ROOT / "docs/manual/data/flawed_draft.yaml").read_text())
+check(flawed)
+...  # your code here: compare its values with the evidence (headers, record, methods text)""",
+                 """flawed = yaml.safe_load((ROOT / "docs/manual/data/flawed_draft.yaml").read_text())
+check(flawed)
+files = {f["path"]: f for f in flawed["groups"][0]["files"]}
+with rasterio.open(DATASET / "ortho_2023-07-12.tif") as r:
+    print("1. bands: draft", files["ortho_2023-07-12.tif"]["bands"], "| file declares", [c.name for c in r.colorinterp])
+methods = (DATASET / "metadata.xml").read_text()
+print("2. dem_2022.asc: draft date", files["dem_2022.asc"]["date"], "| methods text:",
+      methods[methods.find("The 2022"):methods.find("The 2022") + 90])
+print("3. positioning: draft", flawed["groups"][0]["positioning"], "| nothing in the evidence mentions RTK")
+print("4. dams: draft product", files["dams_2023-07-12.gpkg"]["product"], "| methods: 'Dams were mapped by hand on the "
+      "orthomosaic' -> annotations, not surveyed points")
+catalog = check(flawed)
+ortho = next(i for i in catalog.get_items(recursive=True) if i.id.endswith("orthomosaic"))
+print("the build flags the bands:", [q["flag"] for q in ortho.properties["beaver:quality"]])"""),
+        Exercise("**5. (Optional) Draft with Claude.** Run the prompt in a Claude Code session on the sample. The "
+                 "prompt writes into `data_acquisition/summaries/` and may add a site to "
+                 "`data_acquisition/sites.yaml`: delete "
+                 "the draft and undo any registry change afterwards (`git status`, `git restore`).",
+                 """# Done in a Claude Code session, not here. Afterwards:
+print(subprocess.run(["git", "status", "--short"], cwd=ROOT, capture_output=True, text=True).stdout)""",
+                 """# Done in a Claude Code session, not here. Afterwards, check what it changed:
+status = subprocess.run(["git", "status", "--short"], cwd=ROOT, capture_output=True, text=True).stdout
+print(status or "nothing changed")"""),
+        Exercise("**6. Find it in the code.** Where are the drafting rules, and which function decides what evidence "
+                 "a raster gets?",
+                 """import inspect
+...  # your code here""",
+                 """import inspect
+print("rules: describe.RULES in", inspect.getsourcefile(describe), "line",
+      next(n for n, l in enumerate(inspect.getsource(describe).splitlines(), 1) if l.startswith("RULES")))
+print(inspect.getsource(evidence._raster))"""),
+    ])
+
+CHAPTERS = [CH00, CH01, CH02, CH03, CH04, CH05, CH06, CH07, CH08, CH09]
 
 
 def notebook(chapter: Chapter, solutions: bool) -> nbformat.NotebookNode:
