@@ -4,7 +4,8 @@ For each file of each folder: its size, and by type the raster header (driver, C
 nodata, lon/lat box), the vector layers (CRS, geometry types, fields, a few sample rows), the metadata
 record (title, licence, creators, dates, methods text, entities), or the text of small text files and of
 the first pages of PDF reports. Companions of a file (raster sidecars, shapefile parts) are left out; a
-File Geodatabase folder is one entry. A file that cannot be read is listed with its error.
+File Geodatabase folder is one entry, and so is a folder of photos (count, size, camera and capture time
+of its first and last photo). A file that cannot be read is listed with its error.
 """
 import datetime
 import os
@@ -12,6 +13,7 @@ import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+from PIL import ExifTags, Image
 from pypdf import PdfReader
 from pyproj import CRS
 
@@ -23,6 +25,8 @@ TEXT_EXTENSIONS = (".txt", ".md", ".csv", ".r", ".py", ".json", ".yaml", ".yml")
 TEXT_BYTES = 8000           # small text files (READMEs, settings, GCP lists) are included up to this size
 PDF_PAGES, PDF_CHARS = 8, 15000   # processing reports: the first pages hold the summary (camera, dates, GCP errors)
 VECTOR_SAMPLE_ROWS = 3
+PHOTOS = (".jpg", ".jpeg")
+PHOTO_FOLDER = 10           # a folder with at least this many photos is one evidence entry
 
 
 def _lonlat(bbox: Optional[List[float]]) -> Optional[List[float]]:
@@ -86,6 +90,39 @@ def entries(folder: Path) -> List[Path]:
     return out
 
 
+def _exif(path: Path) -> Dict[str, Any]:
+    """Camera model and capture time of a photo, from its EXIF."""
+    with Image.open(path) as im:
+        exif = im.getexif()
+        taken = exif.get_ifd(ExifTags.IFD.Exif).get(ExifTags.Base.DateTimeOriginal)
+        return {"camera": exif.get(ExifTags.Base.Model), "taken": taken}
+
+
+def _photo_folder(folder: Path, photos: List[Path]) -> Dict[str, Any]:
+    """One evidence entry for a folder of photos: count, size, and the first and last photo's EXIF."""
+    entry: Dict[str, Any] = {"photos": len(photos), "bytes": sum(p.stat().st_size for p in photos)}
+    try:
+        entry["first"] = {"name": photos[0].name, **_exif(photos[0])}
+        entry["last"] = {"name": photos[-1].name, **_exif(photos[-1])}
+    except Exception as e:      # PIL raises many error types; an unreadable photo is evidence too
+        entry["error"] = f"{type(e).__name__}: {e}"
+    return entry
+
+
+def _folder_files(folder: Path) -> List[Dict[str, Any]]:
+    """The evidence entries of one folder: each file, except folders of photos, which are one entry each."""
+    found = entries(folder)
+    by_dir: Dict[Path, List[Path]] = {}
+    for p in found:
+        if p.suffix.lower() in PHOTOS:
+            by_dir.setdefault(p.parent, []).append(p)
+    grouped = {d for d, photos in by_dir.items() if len(photos) >= PHOTO_FOLDER}
+    out = [{"name": p.relative_to(folder).as_posix(), "bytes": stac.size_of(p), **describe_file(p)}
+           for p in found if not (p.suffix.lower() in PHOTOS and p.parent in grouped)]
+    out += [{"name": d.relative_to(folder).as_posix() + "/", **_photo_folder(d, by_dir[d])} for d in sorted(grouped)]
+    return sorted(out, key=lambda e: e["name"])
+
+
 def describe_file(path: Path) -> Dict[str, Any]:
     """What can be read of one file (keys ``raster``, ``vector``, ``record`` or ``text``), or its ``error``."""
     entry: Dict[str, Any] = {}
@@ -109,7 +146,5 @@ def gather(root: Path, patterns: List[str]) -> Dict[str, Any]:
     """Evidence for every folder matching ``patterns`` (globs relative to ``root``), subfolders included."""
     folders = sorted({p for pattern in patterns for p in root.glob(pattern) if p.is_dir()})
     return {"root": str(root), "gathered": datetime.date.today().isoformat(),
-            "folders": [{"folder": os.path.relpath(folder, root).replace(os.sep, "/"),
-                         "files": [{"name": p.relative_to(folder).as_posix(), "bytes": stac.size_of(p),
-                                    **describe_file(p)} for p in entries(folder)]}
+            "folders": [{"folder": os.path.relpath(folder, root).replace(os.sep, "/"), "files": _folder_files(folder)}
                         for folder in folders]}

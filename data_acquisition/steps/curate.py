@@ -206,7 +206,8 @@ def curate_item(item: pystac.Item, summary: Dict[str, Any], verify_files: bool =
         kind = item.properties.get("beaver:kind") or (    # catalogs built before items recorded their kind
             "table" if item.properties.get("beaver:table") else
             "raster" if geotiff.is_raster(stac.asset_path(asset)) else "vector")
-        (check_raster if kind == "raster" else check_vector)(item, key, site)
+        if kind != "photos":            # a photo folder's checks (dates, positions) are made when it is built
+            (check_raster if kind == "raster" else check_vector)(item, key, site)
         if verify_files:
             verify(item, key)
 

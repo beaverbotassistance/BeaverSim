@@ -52,6 +52,8 @@ Rules:
   record's creation date as the latest possible), and say in `evidence` where each limit comes from; never use an
   upload or publication date as if it were the acquisition date.
 - Name the bands of multi-band rasters in `bands`, including elevation products with extra bands.
+- A survey's photos are one data file: `product: photos`, `path` the folder holding them (camera subfolders
+  included; the evidence lists each folder of photos as one entry, with count and first/last EXIF).
 - A vector file whose layers are separate epochs (e.g. one layer of dams per year, the year in the layer name)
   gets `layers: {{pattern, date_precision}}` instead of a date: each layer becomes an item dated by its name.
 - A vector file whose rows carry their own time or grouping (e.g. one row per dam per image) stays one item and

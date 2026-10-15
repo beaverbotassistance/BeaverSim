@@ -22,7 +22,7 @@ import pystac
 from data_acquisition.catalog import descriptors, stac
 from data_acquisition.catalog import summary as summaries
 from data_acquisition.catalog.descriptors import add_quality, set_field
-from data_acquisition.readers import RECORD_FILES, RECORDS, entity_bands, files, geotiff, table, vector
+from data_acquisition.readers import RECORD_FILES, RECORDS, entity_bands, files, geotiff, photos, table, vector
 from data_acquisition.sources import downloads
 
 COMMON_NAMES = {"blue": "blue", "green": "green", "red": "red", "red edge": "rededge", "rededge": "rededge",
@@ -133,6 +133,23 @@ def _raster_item(f, path, item_id, start, end, checksum, entity) -> Tuple[pystac
     return item, flags + band_flags
 
 
+def _photos_item(f, path, item_id, start, end) -> Tuple[pystac.Item, List[Flag]]:
+    """A folder of photos: one survey's flights."""
+    info = photos.info(path)
+    item = stac.photos_item(item_id, path, info, start, end, f["product"], ["data"], title=f"{path.name}/")
+    flags = []
+    if info["first"] and not (start <= info["first"].date() and info["last"].date() <= end):
+        flags.append(("photo_dates", f"photos taken {info['first']:%Y-%m-%d}..{info['last']:%Y-%m-%d}, outside "
+                                     f"the item's {start}..{end}", "build"))
+    if info["no_position"]:
+        flags.append(("photos_without_position", f"{len(info['no_position'])} of {info['count']} photos have no GPS "
+                                                 "position; the footprint is from the others", "build"))
+    if info["unreadable"]:
+        flags.append(("photos_unreadable", f"EXIF unreadable in {len(info['unreadable'])} photos: "
+                                           f"{', '.join(info['unreadable'][:5])}", "build"))
+    return item, flags
+
+
 def _fields_flags(f, layers) -> List[Flag]:
     """Declared attribute columns (``fields``) that the file does not have."""
     columns = {c for l in layers["layers"] for c in l["fields"]}
@@ -198,7 +215,10 @@ def data_item(s: Dict[str, Any], f: Dict[str, Any], path: Path, rel: str, group:
     checksum = stac.multihash(algorithm, value) if algorithm in stac.MULTIHASH and not archive else None
 
     layers = None
-    if f.get("table"):
+    if f["product"] == "photos" and path.is_dir():
+        kind = "photos"
+        item, flags = _photos_item(f, path, item_id, start, end)
+    elif f.get("table"):
         kind = "table"
         item, layers, flags = _table_item(s, f, path, item_id, start, end, checksum)
     elif vector.is_vector(path):
@@ -240,15 +260,16 @@ def data_item(s: Dict[str, Any], f: Dict[str, Any], path: Path, rel: str, group:
 
 def _undescribed(folder: Path, root: Path, described: set, group: Dict[str, Any]) -> List[str]:
     """Files in ``folder`` that the group does not describe: not listed, not a companion of a listed file,
-    not inside a listed geodatabase, and within the group's ``download_filter`` when it has one (files
-    outside it belong to another summary)."""
+    not inside a listed geodatabase or folder of photos, and within the group's ``download_filter`` when it
+    has one (files outside it belong to another summary)."""
     covered = described | {c for d in described for c in files.companions(d)}
+    folders = tuple(d.rstrip("/") + "/" for d in described if (folder / d).is_dir())   # e.g. a folder of photos
     scope = group.get("download_filter")
     out = []
     for p in sorted(folder.rglob("*")):
         rel = p.relative_to(folder).as_posix()
-        if (p.is_file() and rel not in covered and not p.name.endswith(".part") and not files.inside_container(rel)
-                and (not scope or rel in RECORD_FILES or re.search(scope, rel))):
+        if (p.is_file() and rel not in covered and not rel.startswith(folders) and not p.name.endswith(".part")
+                and not files.inside_container(rel) and (not scope or rel in RECORD_FILES or re.search(scope, rel))):
             out.append(os.path.relpath(p, root))
     return out
 
@@ -315,7 +336,7 @@ def build(root: Path, s: Dict[str, Any]) -> Tuple[pystac.Catalog, Dict[str, List
                         continue
                     lf = {k: v for k, v in f.items() if k not in ("start_date", "end_date")} | time
                     place(data_item(s, lf, path, rel, g, record, log, layer=layer["name"]), gi, lf, g, folder, rel)
-            elif f.get("table") or geotiff.is_raster(path) or vector.is_vector(path):
+            elif f.get("table") or geotiff.is_raster(path) or vector.is_vector(path) or photos.is_photo_folder(path):
                 try:
                     item = data_item(s, f, path, rel, g, record, log)
                 except (ValueError, KeyError) as e:

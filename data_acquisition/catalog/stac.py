@@ -13,6 +13,7 @@ from pystac.extensions.file import FileExtension
 from pystac.extensions.projection import ProjectionExtension
 from pystac.extensions.raster import DataType, RasterBand, RasterExtension
 from rasterio.warp import transform_bounds, transform_geom
+from shapely.geometry import MultiPoint, mapping
 
 # multihash prefixes (code, digest length) for the file extension's checksum field
 MULTIHASH = {"md5": "d510", "sha256": "1220"}
@@ -135,6 +136,30 @@ def vector_item(item_id: str, path: Path, info: Dict[str, Any], start: datetime.
         if info["bounds"]:
             proj.bbox = info["bounds"]
     _file_fields(asset, size_of(path), checksum)
+    return item
+
+
+def photos_item(item_id: str, path: Path, info: Dict[str, Any], start: datetime.date, end: datetime.date,
+                asset_key: str, roles: List[str], title: Optional[str] = None) -> pystac.Item:
+    """Item for a folder of photos: footprint around the photos' positions (their convex hull, or their
+    box when they are fewer than three or in a line), and the folder as the asset.
+
+    ``info`` comes from :func:`data_acquisition.readers.photos.info`; the positions are lon/lat (EPSG:4326),
+    so no projection is recorded. ``beaver:photos`` holds the count, cameras and capture time span.
+    """
+    geom = bbox = None
+    if info["positions"]:
+        points = MultiPoint(info["positions"])
+        hull = points.convex_hull
+        shape = hull if hull.geom_type == "Polygon" else points.envelope.buffer(1e-5)
+        geom, bbox = mapping(shape), list(shape.bounds)
+    props = {"beaver:photos": {"count": info["count"], "cameras": info["cameras"],
+                               "first": info["first"].isoformat() if info["first"] else None,
+                               "last": info["last"].isoformat() if info["last"] else None,
+                               "without_position": len(info["no_position"]), "unreadable": len(info["unreadable"])}}
+    asset = pystac.Asset(str(path.resolve()), title=title, roles=roles, media_type="image/jpeg")
+    item = _item(item_id, geom, bbox, start, end, props, asset_key, asset)
+    _file_fields(asset, info["bytes"], None)
     return item
 
 

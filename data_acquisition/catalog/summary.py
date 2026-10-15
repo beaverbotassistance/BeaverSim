@@ -22,7 +22,8 @@ File fields (on a file, or on its group as a default):
     site, date, platform, instruments, positioning, bands, unit, vertical_datum, notes
 
 Products: orthomosaic, multispectral, dsm, dtm, chm (canopy height model), dod (DEM of difference),
-uncertainty (precision or error maps), photos; vector products: annotations (features mapped by people
+uncertainty (precision or error maps), photos (``path`` is a folder: one survey's photos, subfolders
+included, read from their EXIF); vector products: annotations (features mapped by people
 from imagery or in the field: dams, lodges, ponds, canals, colony outlines), survey_points (surveyed
 points: ground control, topographic survey), model_output (model results, e.g. BRAT reach capacities).
 A vector file with several layers is one item; its layers are listed in the catalog.
