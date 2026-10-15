@@ -372,6 +372,8 @@ def notebook(chapter: Chapter, solutions: bool) -> nbformat.NotebookNode:
              new_code_cell(SETUP), new_code_cell(chapter.imports)]
     for e in chapter.exercises:
         cells += [new_markdown_cell(e.prompt), new_code_cell(e.solution if solutions else e.starter)]
+    for i, cell in enumerate(cells):
+        cell["id"] = f"{chapter.name[:2]}-{i:02d}"          # stable ids: a rebuild changes nothing in git
     nb = new_notebook(cells=cells)
     nb.metadata["kernelspec"] = {"name": "python3", "display_name": "Python 3", "language": "python"}
     return nb
