@@ -112,11 +112,10 @@ Rules:
   file: detect split copies, non-georeferenced exports, corrupt files and empty layers. For
   downloads: verify against repository checksums.
 
-**Who writes the summary.** A person, or Claude. `catalog/describe.py` gathers the evidence (file
-list, headers, metadata records) and writes a prompt with the drafting rules. A **Claude Code
-session** drafts the summary from it, which is covered by a Claude Pro/Max subscription and is the
-default path. The same rules can run through the **Claude API** (`describe draft`), which is billed
-separately per token, for unattended use. Either way the draft is schema-checked and reviewed.
+**Who writes the summary.** A person, or Claude. `catalog/evidence.py` gathers the evidence (file
+list, headers, vector layers, metadata records, report text) and `catalog/describe.py` writes a prompt
+with the drafting rules. A **Claude Code session** drafts the summary from it, which a Claude Pro/Max
+subscription covers (no API credits needed). The draft is schema-checked and reviewed.
 Summary values are recorded with source `claude` (model and date) until the file has a `reviewed`
 entry, then as `manual`. Land status and governance are always entered by a person. How-to:
 [describing_a_dataset.md](describing_a_dataset.md).

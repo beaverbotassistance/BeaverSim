@@ -133,28 +133,16 @@ products and dates found, and which manual fields are still empty. `build` write
 and the quality flags, and writes `curate_report.csv`. `--verify` hashes every file against the
 repository checksum, which takes about 1–2 minutes per 10 GB on a USB drive.
 
-## Claude subscription vs Claude API
+## Why a Claude Code session, not the Claude API
 
-- **Claude Code** (step 3) is included in a Claude Pro or Max subscription. This is the default
-  path.
-- **The Claude API** is a separate product with its own billing: prepaid credits in the Claude
-  Console, charged per token. A Pro or Max subscription does not include API credits; signing in
-  with `ant auth login` asks you to buy them. The API path drafts without a Claude Code session:
-
-  ```
-  python -m data_acquisition.catalog.describe draft --root "<root>" --folders "<glob>" \
-      --dataset <dataset_slug> --source-kind <kind> [--context <doc>]
-  ```
-
-  It uses the same rules and the same check, plus one automatic correction round. Use it only
-  when drafting needs to run unattended or over many datasets. Credentials come from
-  `ANTHROPIC_API_KEY` or an `ant auth login` profile. The Anthropic CLI (`ant`) is installed in
-  the project venv, because `/usr/bin/ant` on this machine is Apache Ant.
+Drafting runs in a Claude Code session (step 3), which a Claude Pro or Max subscription covers. The
+Claude API is a separate product, billed per token from prepaid credits in the Claude Console, and a
+subscription does not include them. The pipeline does not use the API, so it needs no API key.
 
 ## Rules the draft follows
 
-Both paths use the same rules, in `SYSTEM` in
-[`describe.py`](../../data_acquisition/catalog/describe.py):
+The rules are in `RULES` in [`describe.py`](../../data_acquisition/catalog/describe.py), and
+every prompt includes them:
 
 - Only the evidence and context documents are used, and values are never invented. Anything
   unclear is left empty and becomes an open question.
