@@ -11,8 +11,6 @@ from typing import Any, Dict, List, Optional
 import pyogrio
 
 EXTENSIONS = (".gpkg", ".shp", ".geojson", ".json", ".kml", ".kmz", ".gdb", ".fgb", ".gpx")
-# files that belong to a shapefile (``x.shp``) and need not be listed on their own
-SHAPEFILE_PARTS = (".shx", ".dbf", ".prj", ".cpg", ".sbn", ".sbx", ".qix", ".shp.xml", ".fix")
 
 
 def is_vector(path: Path) -> bool:
@@ -95,3 +93,10 @@ def _info(path: Path, sample_rows: int) -> Dict[str, Any]:
     verticals = sorted({l["vertical_crs"] for l in layers if l["vertical_crs"]})
     return {"layers": layers, "crs": crs, "epsg": _epsg(crs) if crs else None, "bounds": bounds,
             "vertical_crs": verticals, "features": sum(l["features"] for l in layers)}
+
+
+def one_layer(info: Dict[str, Any], name: str) -> Dict[str, Any]:
+    """``info`` (from :func:`info`) restricted to the layer ``name``, in the same shape."""
+    layer = next(l for l in info["layers"] if l["name"] == name)
+    return {"layers": [layer], "crs": layer["crs"], "epsg": layer["epsg"], "bounds": layer["bounds"],
+            "vertical_crs": [layer["vertical_crs"]] if layer["vertical_crs"] else [], "features": layer["features"]}

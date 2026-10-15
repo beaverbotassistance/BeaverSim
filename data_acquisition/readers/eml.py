@@ -7,12 +7,11 @@ summary drafter, to interpret; nothing here guesses from prose.
 import re
 import urllib.parse
 import xml.etree.ElementTree as ET
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 LICENCES = {"publicdomain/zero/1.0": "CC0-1.0", "licenses/by/4.0": "CC-BY-4.0",
             "licenses/by-nc/4.0": "CC-BY-NC-4.0", "licenses/by-sa/4.0": "CC-BY-SA-4.0"}
 ENTITY_KINDS = ("otherEntity", "spatialRaster", "spatialVector", "dataTable")
-NOT_BANDS = ("elevation", "band type")
 
 
 def _text(el: Optional[ET.Element]) -> str:
@@ -44,11 +43,3 @@ def read(xml: str) -> Dict[str, Any]:
             "creators": [_text(c.find(".//surName")) for c in ds.findall("creator")],
             "dates": sorted(_text(e) for e in ds.iter("calendarDate")), "bounds": bounds,
             "methods": " ".join(_text(m) for m in ds.iter("methodStep")), "entities": entities}
-
-
-def bands(entity: Dict[str, Any]) -> List[str]:
-    """Band names an entity's attributes give (attribute names, or enumerated band codes), lower case."""
-    names = [a["name"] for a in entity["attributes"] if a["name"].lower() not in NOT_BANDS]
-    if not names:
-        names = [d for a in entity["attributes"] for _, d in a["codes"]]
-    return [n.lower() for n in names]

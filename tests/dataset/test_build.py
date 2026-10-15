@@ -69,7 +69,7 @@ def test_descriptors_come_from_the_reviewer(root, summary):
 def test_curate_checks(root, summary):
     items, _, _, s = _build(root, summary)
     for item in items.values():
-        curate_item(item, s, verify=False)
+        curate_item(item, s)
     ortho = items["test_site_2021-08-03_orthomosaic"]
     assert descriptors.get_field(ortho, "season") == "summer"
     assert {q["flag"] for q in ortho.properties["beaver:quality"]} >= {"nodata_undeclared"}

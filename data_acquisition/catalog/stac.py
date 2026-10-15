@@ -42,6 +42,27 @@ def _utc(d: datetime.date, end: bool = False) -> datetime.datetime:
     return datetime.datetime.combine(d, datetime.time.max if end else datetime.time(), datetime.timezone.utc)
 
 
+def _item(item_id: str, geom: Optional[Dict[str, Any]], bbox: Optional[List[float]], start: datetime.date,
+          end: datetime.date, props: Dict[str, Any], asset_key: str, asset: pystac.Asset) -> pystac.Item:
+    """Item with one asset. One day (``start == end``) gives ``datetime`` at midnight UTC of that day; a
+    longer span (a month, a year, two epochs) gives ``start_datetime`` / ``end_datetime`` and no ``datetime``."""
+    if start == end:
+        item = pystac.Item(item_id, geom, bbox, _utc(start), properties=props)
+    else:
+        item = pystac.Item(item_id, geom, bbox, None, properties=props,
+                           start_datetime=_utc(start), end_datetime=_utc(end, end=True))
+    item.add_asset(asset_key, asset)
+    return item
+
+
+def _file_fields(asset: pystac.Asset, size: int, checksum: Optional[str]) -> None:
+    """``file:size`` and, when the record gives one, ``file:checksum`` (a multihash)."""
+    file_ext = FileExtension.ext(asset, add_if_missing=True)
+    file_ext.size = size
+    if checksum:
+        file_ext.checksum = checksum
+
+
 def raster_item(item_id: str, path: Path, info: Dict[str, Any], start: datetime.date, end: datetime.date,
                 asset_key: str, roles: List[str], bands: List[Dict[str, Optional[str]]], unit: Optional[str] = None,
                 checksum: Optional[str] = None, title: Optional[str] = None) -> pystac.Item:
@@ -49,23 +70,16 @@ def raster_item(item_id: str, path: Path, info: Dict[str, Any], start: datetime.
 
     ``info`` comes from :func:`data_acquisition.readers.geotiff.info`. ``bands`` is one dict per band:
     ``{"name": ..., "common_name": ...}`` (common_name may be None); band names are written as
-    ``eo:bands`` for every product.
-    Time: one day (``start == end``) gives ``datetime`` at midnight UTC of that day; a longer span
-    (a month, a year, two epochs) gives ``start_datetime`` / ``end_datetime`` and no ``datetime``.
+    ``eo:bands`` for every product. Time as in :func:`_item`.
     """
     geom, bbox = footprint(info)
     props = {"gsd": round(min(info["resolution"]), 4)}
-    if start == end:
-        item = pystac.Item(item_id, geom, bbox, _utc(start), properties=props)
-    else:
-        item = pystac.Item(item_id, geom, bbox, None, properties=props,
-                           start_datetime=_utc(start), end_datetime=_utc(end, end=True))
-    item.add_asset(asset_key, pystac.Asset(str(path.resolve()), title=title, roles=roles,
-                                           media_type=pystac.MediaType.GEOTIFF))
-    asset = item.assets[asset_key]
+    asset = pystac.Asset(str(path.resolve()), title=title, roles=roles, media_type=pystac.MediaType.GEOTIFF)
+    item = _item(item_id, geom, bbox, start, end, props, asset_key, asset)
 
     proj = ProjectionExtension.ext(item, add_if_missing=True)
-    proj.epsg, proj.bbox, proj.shape, proj.transform = info["epsg"], list(info["bounds"]), info["shape"], info["transform"]
+    proj.epsg, proj.bbox = info["epsg"], list(info["bounds"])
+    proj.shape, proj.transform = info["shape"], info["transform"]
 
     RasterExtension.ext(asset, add_if_missing=True).bands = [
         RasterBand.create(data_type=DataType(dt), nodata=info["nodata"], unit=unit,
@@ -75,10 +89,7 @@ def raster_item(item_id: str, path: Path, info: Dict[str, Any], start: datetime.
         EOExtension.ext(asset, add_if_missing=True).bands = [
             Band.create(name=b["name"], common_name=b.get("common_name")) for b in bands]
 
-    file_ext = FileExtension.ext(asset, add_if_missing=True)
-    file_ext.size = path.stat().st_size
-    if checksum:
-        file_ext.checksum = checksum
+    _file_fields(asset, path.stat().st_size, checksum)
     return item
 
 
@@ -112,13 +123,9 @@ def vector_item(item_id: str, path: Path, info: Dict[str, Any], start: datetime.
                                                       [bbox[0], bbox[3]], [bbox[0], bbox[1]]]]} if bbox else None)
     props = {"beaver:layers": [{k: l[k] for k in ("name", "geometry_type", "features", "fields")}
                                for l in info["layers"]]}
-    if start == end:
-        item = pystac.Item(item_id, geom, bbox, _utc(start), properties=props)
-    else:
-        item = pystac.Item(item_id, geom, bbox, None, properties=props,
-                           start_datetime=_utc(start), end_datetime=_utc(end, end=True))
-    item.add_asset(asset_key, pystac.Asset(str(path.resolve()), title=title, roles=roles,
-                                           media_type=VECTOR_MEDIA.get(path.suffix.lower())))
+    asset = pystac.Asset(str(path.resolve()), title=title, roles=roles,
+                         media_type=VECTOR_MEDIA.get(path.suffix.lower()))
+    item = _item(item_id, geom, bbox, start, end, props, asset_key, asset)
     if info["crs"]:
         proj = ProjectionExtension.ext(item, add_if_missing=True)
         if info["epsg"]:
@@ -127,10 +134,7 @@ def vector_item(item_id: str, path: Path, info: Dict[str, Any], start: datetime.
             proj.wkt2 = info["crs"]
         if info["bounds"]:
             proj.bbox = info["bounds"]
-    file_ext = FileExtension.ext(item.assets[asset_key], add_if_missing=True)
-    file_ext.size = size_of(path)
-    if checksum:
-        file_ext.checksum = checksum
+    _file_fields(asset, size_of(path), checksum)
     return item
 
 

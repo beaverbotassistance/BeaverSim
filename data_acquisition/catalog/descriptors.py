@@ -59,7 +59,6 @@ def add_quality(item: pystac.Item, flag: str, detail: str, source: str = "auto")
     entry = {"flag": flag, "detail": detail, "source": source}
     if entry not in flags:
         flags.append(entry)
-    item.properties.setdefault(PREFIX + "origin", {})["quality"] = {"source": "auto"}
 
 
 def missing(item: pystac.Item) -> List[str]:

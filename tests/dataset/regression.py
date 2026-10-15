@@ -42,7 +42,7 @@ def snapshot(root: Path) -> Dict[str, Any]:
         catalog, report = build.build(root, s)
         items = {}
         for item in catalog.get_items(recursive=True):
-            curate_item(item, s, verify=False)
+            curate_item(item, s)
             items[item.id] = _normalise(item.to_dict(include_self_link=False, transform_hrefs=False),
                                         str(root.resolve()))
         out["summaries"][path.stem] = {"report": report, "items": items}

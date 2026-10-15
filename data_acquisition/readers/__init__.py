@@ -9,6 +9,8 @@ entities}``, where ``entities`` maps a file name to ``{url, pid, size, checksum:
 None, attributes: [...]}``; optional ``size_exact: False`` when the record rounds sizes, and
 ``concept_id`` when the record is one version of a versioned dataset (e.g. a Zenodo concept DOI).
 """
+from typing import Any, Dict, List
+
 from data_acquisition.readers import ckan, eml, hydroshare, pangaea, zenodo
 
 RECORDS = {
@@ -19,3 +21,12 @@ RECORDS = {
     "zenodo_json": {"read": zenodo.read, "file": "metadata.json", "media": "application/json"},
 }
 RECORD_FILES = {spec["file"]: name for name, spec in RECORDS.items()}   # file name -> format
+NOT_BANDS = ("elevation", "band type")      # attribute names records use for a raster's values, not its bands
+
+
+def entity_bands(entity: Dict[str, Any]) -> List[str]:
+    """Band names a record gives for one of its files (attribute names, or enumerated band codes), lower case."""
+    names = [a["name"] for a in entity["attributes"] if a["name"].lower() not in NOT_BANDS]
+    if not names:
+        names = [d for a in entity["attributes"] for _, d in a["codes"]]
+    return [n.lower() for n in names]

@@ -34,7 +34,7 @@ import yaml
 
 from data_acquisition.catalog import stac
 from data_acquisition.catalog import summary as summaries
-from data_acquisition.readers import RECORD_FILES, RECORDS, geotiff, vector
+from data_acquisition.readers import RECORD_FILES, RECORDS, files, geotiff, vector
 
 MODEL = "claude-opus-5-5"
 METHODS_CHARS = 6000        # methods text kept per record (the rest is boilerplate)
@@ -90,17 +90,11 @@ def _entries(folder: Path) -> List[Path]:
     sidecars and shapefile parts are left out (they belong to their main file)."""
     out = []
     for p in sorted(folder.rglob("*")):
-        if any(parent.suffix.lower() == ".gdb" for parent in p.relative_to(folder).parents):
-            continue                                    # inside a geodatabase
-        if p.is_dir() and p.suffix.lower() == ".gdb":
+        if files.inside_container(p.relative_to(folder).as_posix()):
+            continue
+        if p.is_dir() and p.suffix.lower() in files.CONTAINERS:
             out.append(p)
-        elif p.is_file() and not p.name.endswith(".part"):
-            name = p.name.lower()
-            if any(name.endswith(ext) for ext in summaries.SIDECARS + vector.SHAPEFILE_PARTS) and \
-                    (p.with_name(p.name.split(".")[0] + ".tif").exists() or p.with_suffix(".shp").exists()
-                     or any(p.with_name(p.name[:-len(ext)]).exists() for ext in summaries.SIDECARS
-                            if name.endswith(ext))):
-                continue
+        elif p.is_file() and not p.name.endswith(".part") and not files.is_companion(p):
             out.append(p)
     return out
 

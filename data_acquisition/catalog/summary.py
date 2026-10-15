@@ -94,7 +94,6 @@ PRODUCTS = {"orthomosaic", "multispectral", "dsm", "dtm", "chm", "dod", "uncerta
             "annotations", "survey_points", "model_output"}
 PRECISIONS = ("day", "month", "year", "unknown")
 ROLES = {"report", "metadata", "archive"}
-SIDECARS = (".ovr", ".aux.xml", ".tfw", ".tfwx", ".msk", ".prj")   # GDAL/ArcGIS sidecars of a raster
 POSITIONING = {"rtk", "ppk", "gcp", "gnss", "none"}
 FILE_FIELDS = {"path", "product", "variant", "role", "attach_to", "archive", "site", "date", "date_precision",
                "start_date", "end_date", "crs", "table", "layers", "fields",
