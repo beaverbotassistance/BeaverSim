@@ -30,11 +30,11 @@ those are later milestones, and the chapters that will cover them are marked as 
 | 00 | [Setup: environment, drives, sample data](00_setup.md) | outline |
 | | **Part 1 – Background** | |
 | 01 | [Geospatial data: rasters, vectors, formats](01_geospatial_data.md) | outline |
-| 02 | [Coordinates: CRS, projections, units, heights](02_coordinates.md) | outline |
+| 02 | [Coordinates: CRS, projections, units, heights](02_coordinates.md) | draft, for review |
 | 03 | [Drone surveys: from photos to maps](03_drone_surveys.md) | outline |
 | 04 | [Catalogues and metadata: STAC, records, checksums](04_catalogs_and_metadata.md) | outline |
 | 05 | [Data governance: licences, land, Indigenous data](05_data_governance.md) | outline |
-| 06 | [What the pipeline needs from you](06_what_the_pipeline_needs.md) | outline |
+| 06 | [What the pipeline needs from you](06_what_the_pipeline_needs.md) | draft, for review |
 | | **Part 2 – Using the pipeline (milestone 1)** | |
 | 07 | [The pipeline at a glance](07_pipeline_at_a_glance.md) | outline |
 | 08 | [Bringing in an open dataset](08_open_datasets.md) | outline |
