@@ -1371,7 +1371,162 @@ print("chm:", attached(chm))
             print(f"{inspect.getsourcefile(fn)}:{n}: {line.strip()}")"""),
     ])
 
-CHAPTERS = [CH00, CH01, CH02, CH03, CH04, CH05, CH06, CH07, CH08, CH09, CH10, CH11, CH12, CH13, CH14]
+CH15 = Chapter(
+    "15_curate", "15. curate and the descriptors",
+    "Exercises of [chapter 15](../15_curate.md). Run the setup cell first.",
+    """import copy, datetime, os, shutil, tempfile
+import numpy as np
+import pystac, rasterio, yaml
+from rasterio.transform import from_origin
+from data_acquisition.catalog import build, descriptors, stac
+from data_acquisition.catalog import summary as summaries
+from data_acquisition.readers import geotiff
+from data_acquisition.steps import curate
+
+REFERENCE = yaml.safe_load((ROOT / "docs/manual/solutions/training_pond.yaml").read_text())
+
+
+def load(s):
+    path = Path(tempfile.mkdtemp()) / "summary.yaml"
+    path.write_text(yaml.safe_dump(copy.deepcopy(s), sort_keys=False))
+    return summaries.load(str(path))
+
+
+def scratch_root():
+    root = Path(tempfile.mkdtemp()) / "root"
+    shutil.copytree(SAMPLE, root, ignore=shutil.ignore_patterns("stac"))
+    for p in root.rglob("*"):          # writable copies: the sample's files are read-only like downloads
+        if p.is_file():
+            p.chmod(0o644)
+    return root
+
+
+s = load(REFERENCE)
+catalog, _ = build.build(SAMPLE, s)
+items = {i.id.split("_")[-1]: i for i in catalog.get_items(recursive=True)}
+print(sorted(items))""",
+    [
+        Exercise("**1. Descriptors.** On a copy of one sample item, set `colonies` as `manual` without `by`, "
+                 "as `claude` "
+                 "with `by`, and an unknown field. Which calls fail? What does `descriptors.missing` return before and "
+                 "after?",
+                 """item = items["orthomosaic"].clone()
+...  # your code here (descriptors.set_field, descriptors.missing)""",
+                 """item = items["orthomosaic"].clone()
+print("missing before:", descriptors.missing(item))
+for args, kwargs in ((("colonies", ["a"], "manual"), {}),
+                     (("colonies", ["a"], "claude"), {"by": "claude (claude-opus-5-5)", "date": "2026-10-19"}),
+                     (("colour", "green", "auto"), {})):
+    try:
+        descriptors.set_field(item, *args, **kwargs)
+        print("ok:  ", args, "->", item.properties["beaver:origin"][args[0]])
+    except (KeyError, ValueError) as e:
+        print("fails:", args, "->", e)
+print("missing after:", descriptors.missing(item))
+# A claude value fills the field (no longer missing) but is not confirmed: its origin says so."""),
+        Exercise("**2. Seasons.** Compute the season of 15 January, 15 April, 15 July and 15 October at 48° N and at "
+                 "45° S. Then run `curate._season` on the sample's items: why is the DTM's season `summer`?",
+                 """...  # your code here (descriptors.season, curate._season)""",
+                 """for month in (1, 4, 7, 10):
+    d = datetime.date(2023, month, 15)
+    print(d, "48N:", descriptors.season(d, 48), "| 45S:", descriptors.season(d, -45))
+for name, item in sorted(items.items()):
+    print(f"{name:12s}", curate._season(item))
+# The DTM is dated to August 2022 (a month): 1-31 August is all summer at 48° N, and shorter than 92 days."""),
+        Exercise("**3. Make checks fire.** In a scratch copy of the sample, add a five-band multispectral raster with "
+                 "values 0-255 and a DSM whose empty cells are -32767 without a declared nodata, describe them, build "
+                 "and curate. Which flags appear?",
+                 """root = scratch_root()
+folder = root / "repo/doi_10.5555_training.pond"
+...  # your code here (rasterio: write the two rasters; add two entries to a copy of the summary)""",
+                 """root = scratch_root()
+folder = root / "repo/doi_10.5555_training.pond"
+profile = {"driver": "GTiff", "width": 100, "height": 100, "crs": "EPSG:32612",
+           "transform": from_origin(368000, 5420040, 0.2, 0.2)}
+rng = np.random.default_rng(0)
+with rasterio.open(folder / "ms_2023-07-12.tif", "w", count=5, dtype="uint8", **profile) as d:
+    d.write(rng.integers(0, 256, (5, 100, 100), dtype="uint8"))
+heights = np.full((1, 100, 100), 1250.0, dtype="float32")
+heights[:, :, :40] = -32767                     # empty cells, value written but not declared as nodata
+with rasterio.open(folder / "dsm_raw_2023-07-12.tif", "w", count=1, dtype="float32", **profile) as d:
+    d.write(heights)
+s3 = copy.deepcopy(REFERENCE)
+s3["groups"][0]["files"] += [
+    {"path": "ms_2023-07-12.tif", "product": "multispectral", "date": datetime.date(2023, 7, 12)},
+    {"path": "dsm_raw_2023-07-12.tif", "product": "dsm", "variant": "raw", "date": datetime.date(2023, 7, 12)}]
+s3 = load(s3)
+catalog3, report = build.build(root, s3)
+for item in catalog3.get_items(recursive=True):
+    if item.id.endswith(("multispectral", "dsm_raw")):
+        curate.curate_item(item, s3)
+        print(item.id, [(q["flag"], q["detail"]) for q in item.properties["beaver:quality"]])
+# multispectral: not_reflectance (values 0-255) and nodata_undeclared; DSM: elevation_range (-32767 m)
+# and nodata_undeclared. Two different problems with one cause in the DSM: the nodata value is not declared."""),
+        Exercise("**4. Verification.** For each sample item, which source would `_checksum_verdict` use? "
+                 "Then reproduce "
+                 "finding 20 in a scratch copy: verify, change the DTM, verify again.",
+                 """...  # your code here (curate._checksum_verdict(asset, path, provenance))""",
+                 """for name, item in sorted(items.items()):
+    key = next(k for k, a in item.assets.items() if "data" in (a.roles or []))
+    asset = item.assets[key]
+    print(f"{name:12s}", curate._checksum_verdict(asset, stac.asset_path(asset),
+                                                  item.properties["beaver:provenance"]))
+root = scratch_root()
+catalog4, _ = build.build(root, s)
+out = stac.save(catalog4, root / "stac/training_pond")
+curate.curate(out, s, verify_files=True)
+dtm = root / "repo/doi_10.5555_training.pond/dem_2022.asc"
+dtm.write_text(dtm.read_text().replace("-9999", "-9998", 1))
+curate.curate(out, s, verify_files=True)
+item = next(i for i in stac.load(out).get_items(recursive=True) if i.id.endswith("dtm"))
+print("verified:", item.properties["beaver:provenance"].get("verified"))
+print("flags:", [q["flag"] for q in item.properties["beaver:quality"]])"""),
+        Exercise("**5. Add a check.** Write, outside the pipeline, a check `no_overviews` for rasters wider or taller "
+                 "than a limit that have no overviews, apply it after `curate_item`, and test it with a small limit.",
+                 """def check_overviews(item, key, limit=4096):
+    ...  # your code here (geotiff.info(...)["overviews"], descriptors.add_quality)""",
+                 """OVERVIEW_LIMIT = 4096      # pixels: above this, a raster without overviews is slow to display whole
+
+
+def check_overviews(item, key, limit=OVERVIEW_LIMIT):
+    \"\"\"Flag a raster larger than ``limit`` pixels on a side that has no overviews.\"\"\"
+    header = geotiff.info(stac.asset_path(item.assets[key]))
+    height, width = header["shape"]
+    if max(height, width) > limit and not header["overviews"]:
+        descriptors.add_quality(item, "no_overviews", f"{width} x {height} pixels, no overviews (gdaladdo)")
+
+
+for name, item in sorted(items.items()):
+    if item.properties["beaver:kind"] != "raster":
+        continue
+    curate.curate_item(item, s)
+    check_overviews(item, name, limit=100)
+    print(f"{name:12s}", [q["flag"] for q in item.properties["beaver:quality"] if q["source"] == "auto"])
+# The orthomosaic (400 pixels) and the DSM (200) exceed the limit of 100 without overviews; the DTM (20) does not.
+
+# a test, as it would go in tests/dataset/ (with a raster that has overviews too)
+def test_no_overviews(tmp_path):
+    path = tmp_path / "big.tif"
+    profile = {"driver": "GTiff", "width": 300, "height": 300, "count": 1, "dtype": "uint8", "crs": "EPSG:32612",
+               "transform": from_origin(368000, 5420040, 0.1, 0.1)}
+    with rasterio.open(path, "w", **profile) as d:
+        d.write(np.zeros((1, 300, 300), dtype="uint8"))
+    item = pystac.Item("t", None, None, datetime.datetime(2023, 7, 12), {})
+    item.add_asset("dsm", pystac.Asset(str(path), roles=["data"]))
+    check_overviews(item, "dsm", limit=200)
+    assert [q["flag"] for q in item.properties["beaver:quality"]] == ["no_overviews"]
+    with rasterio.open(path, "r+") as d:
+        d.build_overviews([2, 4])
+    item.properties["beaver:quality"] = []
+    check_overviews(item, "dsm", limit=200)
+    assert item.properties["beaver:quality"] == []
+
+
+test_no_overviews(Path(tempfile.mkdtemp()))
+print("test passed")"""),
+    ])
+
+CHAPTERS = [CH00, CH01, CH02, CH03, CH04, CH05, CH06, CH07, CH08, CH09, CH10, CH11, CH12, CH13, CH14, CH15]
 
 
 def notebook(chapter: Chapter, solutions: bool) -> nbformat.NotebookNode:

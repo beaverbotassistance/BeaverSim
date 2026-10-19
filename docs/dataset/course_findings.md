@@ -106,3 +106,12 @@ together. Each entry: what was found, the evidence, and a suggestion. Newest las
     (the inventory's uses PIL's private `_getexif`), against the rule that code is organised by data type, and no
     test covers either (`tests/dataset/test_readers.py` has none for photos). Suggestion: one EXIF reader in
     `readers/photos.py`, honouring the altitude flag, used by both, with a test.
+20. **A failed verification keeps the last success.** `curate.verify` writes `verified: <date> (<against>)` into the
+    provenance on success, but on a mismatch only adds `checksum_mismatch`, leaving the earlier `verified`. Tested on
+    a scratch copy of the course's sample: verify, change one value in `dem_2022.asc`, verify again; the DTM item
+    then says `verified: 2026-10-19 (repository md5)` and `checksum_mismatch` at once. Suggestion: remove `verified`
+    (or record the failure in it) when the check fails or cannot be made.
+21. **`snow_likely` is checked only for items with one date.** `curate_item` tests the month only when
+    `item.datetime` is set; an item dated to a month or with a start and end (e.g. "March 2019" at 66° N) is never
+    flagged, though its whole period may lie in the snow months. Suggestion: flag when every month of the item's
+    period is a snow month (and say "possibly" when only some are).
