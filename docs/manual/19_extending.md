@@ -1,26 +1,95 @@
-# Extending the pipeline
+# 19. Extending the pipeline
 
-> Status: outline. Learning goals, sections and exercises; the text is still to be written.
+Sooner or later a dataset arrives that the pipeline cannot take: a repository without a client, a record format
+without a reader, a product it has no name for, a file type it cannot read. This chapter says where each kind of
+extension goes, what it must touch, and what Claude may and may not write. It closes Part 3.
 
 ## You will learn
 
-- Add a reader, a product or a source by the rules
+- The rules every extension follows
+- Where a new record format, product, source, data type, check or step goes, and what each touches
+- Where Claude helps, and where it must not
+- A checklist for any change
 
-## Sections
+## 1. The rules
 
-1. A new metadata reader
-2. A new product
-3. A new source client
-4. Where Claude helps and where it must not (summaries are data, not code)
+From the design ([`pipeline_design.md`, §1 and §11](../dataset/pipeline_design.md)) and every chapter so far:
+
+- **Code by data type and metadata standard, never by site or source.** A reader knows GeoTIFFs or EML, not "the
+  Seward dataset". A client knows the Zenodo API, not one Zenodo record.
+- **What belongs to one dataset or site is data**: a summary, a layout file, a registry entry.
+- **Describe, never change**: the originals are read-only; anything derived is a new file, recorded.
+- **Never guess**: absent stays absent; disagreements are flagged, not resolved silently.
+- **Every value says where it came from** (chapter 15).
+
+An extension that needs to break one of these is a design question: write it down in
+[`pipeline_design.md`](../dataset/pipeline_design.md) and discuss it first.
+
+## 2. Where each extension goes
+
+| Extension | Goes in | Also touches | Example in the code |
+|---|---|---|---|
+| a **metadata standard** | `readers/<format>.py`, returning the common record shape ([chapter 13](13_readers.md)) | one entry in `RECORDS` (`readers/__init__.py`); a test | `readers/pangaea.py` |
+| a **repository** | `sources/<repository>.py`, by the client contract ([chapter 16](16_sources.md)) | its record reader if new; a test of what it adds | `sources/zenodo.py` |
+| a **product** | `PRODUCTS` in `catalog/summary.py` and the docstring's product list | `METRIC_BANDS` in `catalog/build.py` if its values are a measure in metres; a plausibility check in `curate` if one makes sense; the product table of [chapter 6](06_what_the_pipeline_needs.md) | `chm` (canopy height): one name, one band name |
+| a **data type** | `readers/<type>.py` | `build.data_item` (the kind decision) and a `_<kind>_item`; `stac.<kind>_item`; `evidence.describe_file`; a `curate` check; tests | photos (`readers/photos.py`, `_photos_item`, `stac.photos_item`) |
+| a **check** | `check_raster` or `check_vector` in `steps/curate.py` ([chapter 15](15_curate.md)) | a constant, a test, the flag tables | `snow_likely` |
+| a **step** | `steps/<step>.py`, declaring its inputs and outputs ([design §7](../dataset/pipeline_design.md#7-steps)) | new items linked to their inputs (`derived_from`), a standard figure | only `curate` so far; the others are later milestones |
+
+The describing prompt lists `PRODUCTS` itself (`describe.RULES`), so a new product is offered to Claude without
+changing the prompt.
+
+**A data type is the largest extension**: it touches the builder's dispatch, the STAC helpers, the evidence and
+`curate`. Point clouds (`.las`, `.laz`) are the likely first case; plan one with the design.
+
+## 3. Where Claude helps, and where it must not
+
+| Claude may | Reviewed by | Must not |
+|---|---|---|
+| draft a summary from evidence ([chapter 9](09_describing_a_dataset.md)) | a person, who sets `reviewed` | invent a value; resolve a disagreement silently |
+| draft a layout file ([chapter 11](11_field_data.md)) | a person, who sets `reviewed` | build from an unreviewed layout (the field step refuses) |
+| add a new site to the registry with its name and CRS | a person, who fills the manual fields | fill colonies, land status or governance (hints only) |
+| write a client or reader for a new **standard** (intake, [chapter 8](08_open_datasets.md)) | a person, as any code | write code for one dataset or site; download before the listing is approved |
+
+Everything Claude writes is labelled `claude` in the catalogue until a person reviews it (chapter 15).
+
+## 4. A checklist for any extension
+
+1. Is it data or code? If it is about one dataset or site, it is data: stop here and write the summary, layout or
+   registry entry.
+2. Find the row of §2 and the existing example; follow its shape, names and comment style.
+3. Follow [chapter 18](18_testing.md): snapshot, failing test, change, tests, snapshot and compare, lint.
+4. Update the docstrings, the design, and the course chapters it touches.
 
 ## Exercises
 
-1. Add a toy product end to end, with a test.
+Notebook: [`notebooks/19_extending.ipynb`](notebooks/19_extending.ipynb) (work in a copy); solutions in
+[`solutions/notebooks/19_extending.ipynb`](solutions/notebooks/19_extending.ipynb).
+
+The exercise changes the pipeline only inside the notebook's session (with `monkeypatch`-style assignments that are
+undone at the end), never its files.
+
+1. **A toy product, end to end.** Add a product `water_depth` (a raster of depths in metres, band name `depth`) to
+   `PRODUCTS` and `METRIC_BANDS` for this session. In a scratch copy of the sample, describe the DSM as a
+   `water_depth` (variant `toy`) too, build and curate. What does the item get from the new entries? Then undo them.
+2. **A test for it.** Write the test that would go with the change, using pytest's `monkeypatch` fixture so that
+   the additions are undone after the test, and run it.
+3. **Data or code?** For each case, say whether it is data (which file) or code (which row of §2): a new Zenodo
+   dataset; a repository serving records in DataCite XML; a site's colony boundaries; a survey whose rasters are in
+   feet; a dataset of LiDAR point clouds; a summary value Claude got wrong.
 
 ## Where this lives
 
-- [`data_acquisition/`](../../data_acquisition/)
+- [`data_acquisition/readers/__init__.py`](../../data_acquisition/readers/__init__.py) (`RECORDS`),
+  [`catalog/summary.py`](../../data_acquisition/catalog/summary.py) (`PRODUCTS`),
+  [`catalog/build.py`](../../data_acquisition/catalog/build.py) (`METRIC_BANDS`, `data_item`),
+  [`steps/curate.py`](../../data_acquisition/steps/curate.py),
+  [`sources/`](../../data_acquisition/sources/), [`intake.py`](../../data_acquisition/intake.py).
+- [`docs/dataset/pipeline_design.md`](../dataset/pipeline_design.md): the design and its open questions.
 
 ## Sources
 
-- (links to the sources of each concept, checked when the chapter is written)
+- pytest, [`monkeypatch`](https://docs.pytest.org/en/stable/how-to/monkeypatch.html)
+- ASPRS, [LAS specification](https://github.com/ASPRSorg/LAS)
+  (point clouds, the likely next data type)
+- DataCite, [metadata schema](https://schema.datacite.org/)

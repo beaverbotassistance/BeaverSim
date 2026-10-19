@@ -1865,8 +1865,98 @@ else:
     print("no drive: skipped")"""),
     ])
 
+CH19 = Chapter(
+    "19_extending", "19. Extending the pipeline",
+    "Exercises of [chapter 19](../19_extending.md). Run the setup cell first. The pipeline is changed only inside "
+    "this session, and the changes are undone; no file of the pipeline is edited.",
+    """import copy, datetime, os, shutil, subprocess, tempfile, textwrap
+import yaml
+from data_acquisition.catalog import build
+from data_acquisition.catalog import summary as summaries
+from data_acquisition.steps import curate
+
+REFERENCE = yaml.safe_load((ROOT / "docs/manual/solutions/training_pond.yaml").read_text())""",
+    [
+        Exercise("**1. A toy product, end to end.** Add a product `water_depth` (band name `depth`, metres) to "
+                 "`PRODUCTS` and `METRIC_BANDS` for this session. In a scratch copy of the sample, describe the DSM as "
+                 "a `water_depth` (variant `toy`) too, build and curate. What does the item get? "
+                 "Then undo the changes.",
+                 """...  # your code here (summaries.PRODUCTS.add, build.METRIC_BANDS[...] = ...)""",
+                 """summaries.PRODUCTS.add("water_depth")
+build.METRIC_BANDS["water_depth"] = "depth"
+try:
+    root = Path(tempfile.mkdtemp()) / "root"
+    shutil.copytree(SAMPLE, root, ignore=shutil.ignore_patterns("stac"))
+    s = copy.deepcopy(REFERENCE)
+    s["groups"][0]["files"].append({"path": "dsm_2023-07-12.tif", "product": "water_depth", "variant": "toy",
+                                    "date": datetime.date(2023, 7, 12)})
+    path = Path(tempfile.mkdtemp()) / "summary.yaml"
+    path.write_text(yaml.safe_dump(s, sort_keys=False))
+    s = summaries.load(str(path))
+    catalog, report = build.build(root, s)
+    item = next(i for i in catalog.get_items(recursive=True) if i.id.endswith("water_depth_toy"))
+    curate.curate_item(item, s)
+    asset = item.assets["water_depth"]
+    print(item.id)
+    print("bands:", asset.extra_fields.get("eo:bands"), "| raster:", asset.extra_fields.get("raster:bands"))
+    print("flags:", [q["flag"] for q in item.properties["beaver:quality"]])
+finally:
+    summaries.PRODUCTS.discard("water_depth")
+    del build.METRIC_BANDS["water_depth"]
+print("undone:", "water_depth" not in summaries.PRODUCTS and "water_depth" not in build.METRIC_BANDS)
+# Two lines made a product: its band is named "depth" with unit m (METRIC_BANDS). No plausibility check applies:
+# curate's elevation range is for dsm and dtm only, and a depth range would be a new check (chapter 15)."""),
+        Exercise("**2. A test for it.** Write the test that would go with the change, using pytest's `monkeypatch` so "
+                 "the additions are undone after the test, and run it.",
+                 """scratch = Path(tempfile.mkdtemp())
+...  # write scratch / "test_water_depth.py" and run it with the repository's settings""",
+                 """scratch = Path(tempfile.mkdtemp())
+(scratch / "test_water_depth.py").write_text(textwrap.dedent('''
+    from data_acquisition.catalog import build
+    from data_acquisition.catalog import summary as summaries
+
+
+    def test_water_depth_is_a_metric_product(monkeypatch):
+        monkeypatch.setattr(summaries, "PRODUCTS", summaries.PRODUCTS | {"water_depth"})
+        monkeypatch.setitem(build.METRIC_BANDS, "water_depth", "depth")
+        header = {"count": 1, "colorinterp": ["gray"]}
+        assert build._bands("water_depth", None, header, None) == (["depth"], [])
+        problems = summaries.check({"schema": 1, "dataset": "t", "title": "t",
+                                    "authored": {"by": "me", "date": "2026-10-19"}, "source": {"kind": "folder",
+                                    "provider": "p"}, "groups": [{"folder": "f", "site": "s", "files": [
+                                    {"path": "d.tif", "product": "water_depth", "date": "2023-07-12"}]}]}, {})
+        assert not any("product must be" in p for p in problems)
+'''))
+env = {k: v for k, v in os.environ.items() if k != "BEAVER_SITES"}
+out = subprocess.run([sys.executable, "-m", "pytest", "-q", "--color=no", "-c", str(ROOT / "pytest.ini"),
+                      "--rootdir", str(ROOT), str(scratch / "test_water_depth.py")],
+                     cwd=ROOT, capture_output=True, text=True, env=env)
+print((out.stdout + out.stderr).strip().splitlines()[-1])
+# In the real change, the two additions would be edits to summary.py and build.py, and the test would need no
+# monkeypatch; here it keeps the pipeline untouched."""),
+        Exercise("**3. Data or code?** For each case, say whether it is data (which file) or code (which row "
+                 "of §2): a new Zenodo dataset; a repository serving records in DataCite XML; a site's colony "
+                 "boundaries; a survey "
+                 "whose rasters are in feet; a dataset of LiDAR point clouds; a summary value Claude got wrong.",
+                 """answers = {
+    "a new Zenodo dataset": ...,
+    # ...
+}""",
+                 """answers = {
+    "a new Zenodo dataset": "data: a summary (the Zenodo client exists)",
+    "records in DataCite XML": "code: a metadata standard (readers/datacite.py + RECORDS), and a client if the "
+                               "repository is new",
+    "a site's colony boundaries": "data: the site registry (colonies, entered by a person), later define_aoi",
+    "rasters in feet": "data: the summary's `unit` (and a note); conversion is a later step",
+    "LiDAR point clouds": "code: a data type (reader, builder kind, STAC item, evidence, check); plan with the design",
+    "a wrong summary value": "data: correct the summary, with its evidence, and review it again",
+}
+for case, answer in answers.items():
+    print(f"{case:28s} {answer}")"""),
+    ])
+
 CHAPTERS = [CH00, CH01, CH02, CH03, CH04, CH05, CH06, CH07, CH08, CH09, CH10, CH11, CH12, CH13, CH14, CH15, CH16,
-            CH17, CH18]
+            CH17, CH18, CH19]
 
 
 def notebook(chapter: Chapter, solutions: bool) -> nbformat.NotebookNode:
