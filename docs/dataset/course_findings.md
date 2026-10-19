@@ -147,3 +147,15 @@ together. Each entry: what was found, the evidence, and a suggestion. Newest las
     `python -m pytest tests/dataset` gives 1 failure and 22 errors ("site 'test_site' is not in
     data_acquisition/sites.yaml"). Introduced with `BEAVER_SITES` itself (commit `e6651e2`, before the course's
     no-pipeline-changes rule). Suggestion: `monkeypatch.delenv("BEAVER_SITES", raising=False)` in the fixture.
+27. **`beaver_dataset/` still holds the output of the removed build tool, and `field_naming.md` is partly out of
+    date.** On the drive, `beaver_dataset/README.md`, `manifest.csv` and `excluded.csv` (9 October) describe the
+    old layout of `data_acquisition/dataset/build.py` (`raw/`, `reference/`, `products/`), removed in the code
+    review; `sites/cut_bank_creek/` (2,235 files), `sites/pilling_ranch/` (21,355) and `sites/willow_creek/`
+    (16,646, Montana's Willow Creek under the Alaska site's slug) are that tool's links. Only
+    `sites/rumney_ranch/` comes from the current field step. `field_naming.md` says photo copies are found by
+    being "byte-identical" (the inventory compares capture time and size) and lists ungeoreferenced `SmallChunks/`
+    exports among the rules (the layout file decides those), besides the 25 km of finding 15. Found while writing
+    the Mac rebuild guide (`rumney_rebuild_guide.md`), which reproduced the Rumney build read-only with the current
+    code: inventory, plan, manifest, georeference fits and alignment identical; only one `excluded.csv` reason
+    reworded since the build (commit f655273). Suggestion: move the legacy files and folders aside (e.g.
+    `beaver_dataset_legacy/`, which exists) until the other sites get layout files; update `field_naming.md`.
