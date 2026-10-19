@@ -1760,8 +1760,111 @@ plt.show()
 # outline, such ridges become second peaks: why single values are noisy and medians are read."""),
     ])
 
+CH18 = Chapter(
+    "18_testing", "18. Testing a change",
+    "Exercises of [chapter 18](../18_testing.md). Run the setup cell first.",
+    """import collections, copy, json, os, subprocess, tempfile, textwrap
+import yaml
+from data_acquisition.catalog import build
+from data_acquisition.catalog import summary as summaries
+from data_acquisition.steps import curate
+from tests.dataset import regression
+
+PYTEST = [sys.executable, "-m", "pytest", "-q", "--color=no", "-c", str(ROOT / "pytest.ini"), "--rootdir", str(ROOT)]
+
+
+def run(args):
+    \"\"\"Run a command from the repository root, without BEAVER_SITES: the tests' registry fixture does not
+    override it (finding 26), so tests run with it set would read the sample's registry and fail.\"\"\"
+    env = {k: v for k, v in os.environ.items() if k != "BEAVER_SITES"}
+    out = subprocess.run(args, cwd=ROOT, capture_output=True, text=True, env=env)
+    return (out.stdout + out.stderr).strip()""",
+    [
+        Exercise("**1. Run the suite.** Run all the dataset tests, then only those whose name contains `layers`. How many "
+                 "are there per file?",
+                 """...  # your code here (run(PYTEST + [...]))""",
+                 """print(run(PYTEST + ["tests/dataset", "--ignore=tests/dataset/test_manual.py"]).splitlines()[-1])
+print(run(PYTEST + ["tests/dataset", "-k", "layers", "-v"]))
+listed = run(PYTEST + ["tests/dataset", "--collect-only"]).splitlines()
+print(collections.Counter(line.split("::")[0] for line in listed if "::" in line))
+# test_manual.py is left out of the first run: it runs this very notebook (and every other solution)."""),
+        Exercise("**2. Write a test with the fixtures.** In a scratch folder, write a test that uses `root`, `registry` "
+                 "and `summary` to build the synthetic dataset and checks it has no missing or unsupported files and "
+                 "eight items. Run it with the repository's settings and fixtures.",
+                 """scratch = Path(tempfile.mkdtemp())
+...  # write scratch / "test_mine.py"; run(PYTEST + ["-p", "tests.dataset.conftest", str(scratch / "test_mine.py")])""",
+                 """scratch = Path(tempfile.mkdtemp())
+(scratch / "test_mine.py").write_text(textwrap.dedent('''
+    from data_acquisition.catalog import build
+    from data_acquisition.catalog import summary as summaries
+
+
+    def test_every_dataset_file_becomes_an_item(root, registry, summary):
+        s = summaries.load(str(registry.parent / "test_dataset.yaml"))      # the fixture writes it there
+        catalog, report = build.build(root, s)
+        assert not report["missing"] and not report["unsupported"]
+        assert len(list(catalog.get_items(recursive=True))) == 8
+'''))
+print(run(PYTEST + ["-p", "tests.dataset.conftest", str(scratch / "test_mine.py")]))
+# -p loads conftest.py as a plugin, so its fixtures are available to a test outside tests/dataset/."""),
+        Exercise("**3. A snapshot of the sample.** With `regression._normalise` and `regression.compare`, take a "
+                 "snapshot of the sample's items, change `curate.ELEVATION_RANGE` to (-500, 1000), take another, and "
+                 "compare. Which differences appear?",
+                 """def snapshot():
+    ...  # build the sample with the reference summary, curate each item, normalise it
+    return {"summaries": {"training_pond": {"report": ..., "items": ...}}}""",
+                 """s = summaries.load(str(ROOT / "docs/manual/solutions/training_pond.yaml"))
+
+
+def snapshot():
+    \"\"\"As regression.snapshot, for the sample root and the reference summary.\"\"\"
+    catalog, report = build.build(SAMPLE, s)
+    items = {}
+    for item in catalog.get_items(recursive=True):
+        curate.curate_item(item, s)
+        items[item.id] = regression._normalise(item.to_dict(include_self_link=False, transform_hrefs=False),
+                                               str(SAMPLE.resolve()))
+    return {"summaries": {"training_pond": {"report": report, "items": items}}}
+
+
+before = snapshot()
+saved = curate.ELEVATION_RANGE
+curate.ELEVATION_RANGE = (-500.0, 1000.0)          # "the change"
+try:
+    after = snapshot()
+finally:
+    curate.ELEVATION_RANGE = saved
+differences = regression.compare(before, after)
+# Only the elevation items' quality flags change (the sample's heights are about 1,310 m): the change did what it
+# meant and nothing else. A difference anywhere else would be a side effect to explain."""),
+        Exercise("**4. Lint.** Run ruff on the pipeline with its defaults and with `--select E,F,W --line-length 120`. "
+                 "How many findings each, and of which kinds?",
+                 """PIPELINE = ["data_acquisition/catalog", "data_acquisition/sources", "data_acquisition/readers",
+            "data_acquisition/steps", "data_acquisition/intake.py", "tests/dataset"]
+...  # your code here""",
+                 """PIPELINE = ["data_acquisition/catalog", "data_acquisition/sources", "data_acquisition/readers",
+            "data_acquisition/steps", "data_acquisition/intake.py", "tests/dataset"]
+ruff = [sys.executable, "-m", "ruff", "check", "--isolated", "--output-format", "json", "--line-length", "120"]
+for name, extra in (("defaults", []), ("E, F, W", ["--select", "E,F,W"])):
+    out = subprocess.run(ruff + extra + PIPELINE, cwd=ROOT, capture_output=True, text=True).stdout
+    found = json.loads(out)
+    kinds = collections.Counter((f["code"] or "?").rstrip("0123456789") for f in found)
+    print(f"{name:9s} {len(found):4d} findings", dict(kinds.most_common(6)))
+# --isolated ignores any personal ruff settings. The defaults are dominated by UP (type-hint style); the E, F, W
+# findings are the ones the code means to follow (finding 25)."""),
+        Exercise("**5. (Optional, needs the drive.)** Take a snapshot of the open datasets and compare it with itself.",
+                 """DRIVE = Path("/media/<user>/Seagate Portable Drive")   # your drive
+...  # regression.snapshot(DRIVE / "open_datasets")""",
+                 """DRIVE = None      # e.g. Path("/media/<user>/Seagate Portable Drive"); left None, this cell does nothing
+if DRIVE is not None and (DRIVE / "open_datasets").exists():
+    snap = regression.snapshot(DRIVE / "open_datasets")
+    regression.compare(snap, snap)
+else:
+    print("no drive: skipped")"""),
+    ])
+
 CHAPTERS = [CH00, CH01, CH02, CH03, CH04, CH05, CH06, CH07, CH08, CH09, CH10, CH11, CH12, CH13, CH14, CH15, CH16,
-            CH17]
+            CH17, CH18]
 
 
 def notebook(chapter: Chapter, solutions: bool) -> nbformat.NotebookNode:

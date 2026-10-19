@@ -49,7 +49,7 @@ those are later milestones, and the chapters that will cover them are marked as 
 | 15 | [`curate` and the descriptors](15_curate.md) | draft, for review |
 | 16 | [Sources: downloads and checksums](16_sources.md) | draft, for review |
 | 17 | [The field step, inside](17_field_step_internals.md) | draft, for review |
-| 18 | [Testing a change](18_testing.md) | outline |
+| 18 | [Testing a change](18_testing.md) | draft, for review |
 | 19 | [Extending the pipeline](19_extending.md) | outline |
 | | **Appendices** | |
 | A | [Glossary](A_glossary.md) | outline |

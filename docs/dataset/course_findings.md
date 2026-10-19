@@ -104,8 +104,9 @@ together. Each entry: what was found, the evidence, and a suggestion. Newest las
     altitude as a positive number and a flag (`GPSAltitudeRef`, 1 = below sea level); `readers.photos.exif` and
     `field_inventory.read_photo` both read the number alone, so a photo 400 m below sea level reads +400 m (tested
     with a synthetic JPEG; harmless for our sites, all well above sea level). The two functions duplicate one job
-    (the inventory's uses PIL's private `_getexif`), against the rule that code is organised by data type, and no
-    test covers either (`tests/dataset/test_readers.py` has none for photos). Suggestion: one EXIF reader in
+    (the inventory's uses PIL's private `_getexif`), against the rule that code is organised by data type; the
+    reader's test (`test_photo_reader` in `tests/dataset/test_evidence.py`) does not check the altitude, and the
+    inventory's reader has no test. Suggestion: one EXIF reader in
     `readers/photos.py`, honouring the altitude flag, used by both, with a test.
 20. **A failed verification keeps the last success.** `curate.verify` writes `verified: <date> (<against>)` into the
     provenance on success, but on a mismatch only adds `checksum_mismatch`, leaving the earlier `verified`. Tested on
@@ -133,3 +134,16 @@ together. Each entry: what was found, the evidence, and a suggestion. Newest las
     then draws nothing (found in the course's chapter 17, whose plots disappeared). Milestone 2's notebooks will
     import pipeline modules. Suggestion: choose the backend in `main` (or draw with `matplotlib.figure.Figure`,
     which needs no backend), not at import.
+25. **No lint configuration.** `requirements-dev.txt` pins ruff 0.17.0, but the repository has no ruff settings
+    (no `ruff.toml`, no `[tool.ruff]`), so `ruff check` uses its defaults: on the pipeline (`catalog`, `sources`,
+    `readers`, `steps`, `intake.py`, `tests/dataset`) 503 findings at 120 columns, 447 of them `UP` (`typing.List`
+    instead of `list`), a style the code deliberately does not follow. With the rules the code does follow
+    (`--select E,F,W --line-length 120`), 22 remain: 13 ambiguous names `l` (E741), 8 lines of 121-123 characters
+    (E501), a lambda assigned to a name (E731). Each person's own ruff settings change the result again. Suggestion: a `ruff.toml` with
+    `line-length = 120` and the selected rules (excluding the legacy `data_acquisition/modules/`), and fix the 22.
+26. **The tests fail when `BEAVER_SITES` is set.** `summary.load_sites` prefers the `BEAVER_SITES` environment
+    variable to `summary.SITES`, but the tests' `registry` fixture (`tests/dataset/conftest.py`) only patches
+    `SITES`. In a terminal where `BEAVER_SITES` is set (the course's chapters 0 and 6 tell students to export it),
+    `python -m pytest tests/dataset` gives 1 failure and 22 errors ("site 'test_site' is not in
+    data_acquisition/sites.yaml"). Introduced with `BEAVER_SITES` itself (commit `e6651e2`, before the course's
+    no-pipeline-changes rule). Suggestion: `monkeypatch.delenv("BEAVER_SITES", raising=False)` in the fixture.
