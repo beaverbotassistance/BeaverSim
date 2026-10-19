@@ -1780,7 +1780,8 @@ def run(args):
     out = subprocess.run(args, cwd=ROOT, capture_output=True, text=True, env=env)
     return (out.stdout + out.stderr).strip()""",
     [
-        Exercise("**1. Run the suite.** Run all the dataset tests, then only those whose name contains `layers`. How many "
+        Exercise("**1. Run the suite.** Run all the dataset tests, then only those whose name contains `layers`. "
+                 "How many "
                  "are there per file?",
                  """...  # your code here (run(PYTEST + [...]))""",
                  """print(run(PYTEST + ["tests/dataset", "--ignore=tests/dataset/test_manual.py"]).splitlines()[-1])
@@ -1788,7 +1789,8 @@ print(run(PYTEST + ["tests/dataset", "-k", "layers", "-v"]))
 listed = run(PYTEST + ["tests/dataset", "--collect-only"]).splitlines()
 print(collections.Counter(line.split("::")[0] for line in listed if "::" in line))
 # test_manual.py is left out of the first run: it runs this very notebook (and every other solution)."""),
-        Exercise("**2. Write a test with the fixtures.** In a scratch folder, write a test that uses `root`, `registry` "
+        Exercise("**2. Write a test with the fixtures.** In a scratch folder, write a test that uses `root`, "
+                 "`registry` "
                  "and `summary` to build the synthetic dataset and checks it has no missing or unsupported files and "
                  "eight items. Run it with the repository's settings and fixtures.",
                  """scratch = Path(tempfile.mkdtemp())
@@ -1855,7 +1857,7 @@ for name, extra in (("defaults", []), ("E, F, W", ["--select", "E,F,W"])):
         Exercise("**5. (Optional, needs the drive.)** Take a snapshot of the open datasets and compare it with itself.",
                  """DRIVE = Path("/media/<user>/Seagate Portable Drive")   # your drive
 ...  # regression.snapshot(DRIVE / "open_datasets")""",
-                 """DRIVE = None      # e.g. Path("/media/<user>/Seagate Portable Drive"); left None, this cell does nothing
+                 """DRIVE = None      # e.g. Path("/media/<user>/Seagate Portable Drive"); None: this cell does nothing
 if DRIVE is not None and (DRIVE / "open_datasets").exists():
     snap = regression.snapshot(DRIVE / "open_datasets")
     regression.compare(snap, snap)
