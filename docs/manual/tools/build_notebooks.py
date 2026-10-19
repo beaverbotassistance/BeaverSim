@@ -1618,7 +1618,150 @@ print("the bad file is still there:", copy.exists(), oct(copy.stat().st_mode & 0
 # Refused, but left in place and writable (finding 9): delete it before downloading again."""),
     ])
 
-CHAPTERS = [CH00, CH01, CH02, CH03, CH04, CH05, CH06, CH07, CH08, CH09, CH10, CH11, CH12, CH13, CH14, CH15, CH16]
+CH17 = Chapter(
+    "17_field_step_internals", "17. The field step, inside",
+    "Exercises of [chapter 17](../17_field_step_internals.md). Run the setup cell first. They build a miniature "
+    "drive in a scratch folder from the Montana extract; the real drive is not needed.",
+    """import csv, json, os, shutil, stat, tempfile
+import geopandas as gpd
+import matplotlib.pyplot as plt
+import numpy as np
+import rasterio
+from pyproj import CRS
+from rasterio.windows import Window
+from scipy import ndimage
+from data_acquisition.readers import photos
+from data_acquisition.sources import field, field_alignment
+%matplotlib inline
+# field_alignment switches matplotlib to a file-only backend when imported (finding 24): back to inline plots
+
+DAY = EXTRACT / "2018-07-26"
+BASE = "2018 Field Season/Drone Flights/Test Site/"
+SITE = "test_site\"""",
+    [
+        Exercise("**1. A drive in miniature.** Make a scratch drive from the extract (26 July: the full tile, the "
+                 "chunk, the photos, the dams), write a layout for it, and run `plan`, `execute` and `write_records`. "
+                 "Read every record.",
+                 """drive = Path(tempfile.mkdtemp()) / "drive"
+...  # your code here: copy the files under drive / BASE, build inventory rows for the photos, write a layout""",
+                 """drive = Path(tempfile.mkdtemp()) / "drive"
+folder = drive / BASE / "01. 26July2018"
+(folder / "SmallChunks").mkdir(parents=True)
+(folder / "100MEDIA").mkdir()
+shutil.copy(DAY / "orthomosaic_full_tile.tif", folder / "26July2018_4.tif")
+shutil.copy(DAY / "orthomosaic_chunk.tif", folder / "SmallChunks/26July2018_4_3.tif")
+shutil.copy(DAY / "annotations/dams.gpkg", drive / BASE / "Dams.gpkg")
+inventory = []
+for p in sorted((DAY / "photos").glob("*.JPG")):
+    shutil.copy(p, folder / "100MEDIA" / p.name)
+    inventory.append({"role": "raw_photo", "site": SITE, "survey_date": "2018-07-26", "include": "True", "note": "",
+                      "source_path": f"{BASE}01. 26July2018/100MEDIA/{p.name}",
+                      "taken_at": photos.exif(p)["taken"].isoformat()})
+layout = {"schema": 1, "site": SITE, "authored": {"by": "me", "date": "2026-10-19"}, "base": BASE,
+          "photos": "by_exif_date",
+          "orthomosaics": [
+              {"source": "01. 26July2018/26July2018_4.tif", "to": "surveys/2018-07-26/orthomosaic_part-4.tif"},
+              {"source": "01. 26July2018/SmallChunks/26July2018_4_3.tif",
+               "to": "surveys/2018-07-26/orthomosaic_part-4_chunk-3.tif"}],
+          "annotations": [{"source": "Dams.gpkg", "layer": "dams", "to": "annotations/2018-07-26/dams.gpkg",
+                           "features": 1}]}
+print("layout problems:", field.check_layout(layout))
+actions, excluded = field.plan(drive, layout, inventory)
+done = field.execute(drive, actions, [])
+fits = done.pop("fits")
+print("done:", done)
+field.write_records(drive, SITE, actions, excluded, inventory, fits)
+site = drive / "beaver_dataset/sites" / SITE
+for name in ("manifest.csv", "excluded.csv", "georeference.csv", "surveys/2018-07-26/survey.json"):
+    print(f"--- {name}\\n{(site / name).read_text()}")
+# No georeference.csv rows: these copies have no ArcGIS sidecar. On the drive, the chunk's sidecar would have made
+# a georef action, and the original sidecar would be linked as orthomosaic_part-4_chunk-3.arcgis.aux.xml."""),
+        Exercise("**2. Links.** For one linked file, compare it with its original (`os.path.samefile`, `st_nlink`, "
+                 "permissions). Run `execute` again: what is done the second time?",
+                 """...  # your code here""",
+                 """link = site / "surveys/2018-07-26/orthomosaic_part-4.tif"
+original = folder / "26July2018_4.tif"
+print("same file:", os.path.samefile(link, original), "| names:", link.stat().st_nlink)
+print("permissions: link", oct(link.stat().st_mode & 0o777), "| original", oct(original.stat().st_mode & 0o777))
+written = site / "annotations/2018-07-26/dams.gpkg"
+print("export: names", written.stat().st_nlink, "| permissions", oct(written.stat().st_mode & 0o777))
+print("again:", {k: v for k, v in field.execute(drive, actions, []).items() if k != "fits"})
+# One file with two names, read-only under both. The second run keeps the links ("already there") and makes the
+# export again."""),
+        Exercise("**3. Pruning.** Drop the chunk from the layout, put a file of your own in the site folder, "
+                 "plan again "
+                 "and `prune`. What is removed, and what happens to the original chunk?",
+                 """...  # your code here""",
+                 """(site / "my_notes.txt").write_text("a person's notes")
+smaller = dict(layout, orthomosaics=layout["orthomosaics"][:1])
+actions2, _ = field.plan(drive, smaller, inventory)
+print("removed:", field.prune(drive, SITE, actions2))
+print("original chunk still there:", (folder / "SmallChunks/26July2018_4_3.tif").exists())
+# The chunk's link is gone and its original kept. But my_notes.txt is deleted too: prune removes every file the
+# plan does not make (finding 23 in docs/dataset/course_findings.md)."""),
+        Exercise("**4. Two PROJ versions.** With `field._same_place`, compare the extract layer's CRS with itself, and "
+                 "with the same CRS on the WGS 84 ellipsoid, over the layer's extent.",
+                 """...  # your code here (field._layer_info gives the CRS and extent)""",
+                 """info = field._layer_info(DAY / "annotations/dams.gpkg", "dams")
+sphere = info["crs"]
+horizontal = CRS.from_wkt(sphere).sub_crs_list[0]
+ellipsoid = CRS.from_proj4(horizontal.to_proj4().replace("+R=6378137", "+datum=WGS84")).to_wkt()
+print("extent:", info["extent"])
+print("same CRS:", field._same_place(sphere, sphere, info["extent"]))
+print("ellipsoid:", field._same_place(horizontal.to_wkt(), ellipsoid, info["extent"]))
+for proj in ("pyproj", "gdal"):
+    print(proj, "sphere", field._lonlat(sphere, [info["extent"][:2]], proj),
+          "| ellipsoid", field._lonlat(ellipsoid, [info["extent"][:2]], proj))
+# Under pyproj's PROJ (9.5) both read the same; under GDAL's (9.8) the ellipsoid lands ~30 km away. Checking with
+# one PROJ only would have missed it."""),
+        Exercise("**5. The score surface.** Recompute `best_shift`'s score for the extract's dam on every shift of the "
+                 "coarse grid, on the chunk and on the full tile, and plot the two surfaces.",
+                 """...  # your code here: best_shift's steps (window, grey, gaussian_filter, sobel, outline points)""",
+                 """def surface(tif, geom):
+    \"\"\"The score of every shift of the coarse grid, as best_shift computes it.\"\"\"
+    with rasterio.open(tif) as r:
+        res = abs(r.transform.a)
+        pad = int(field_alignment.MAX_SHIFT / res) + 20
+        minx, miny, maxx, maxy = geom.bounds
+        (r0, c0), (r1, c1) = r.index(minx, maxy), r.index(maxx, miny)
+        window = Window(c0 - pad, r0 - pad, c1 - c0 + 2 * pad, r1 - r0 + 2 * pad)
+        grey = r.read([1, 2, 3], window=window).astype(float).mean(0)
+        to_px = ~r.window_transform(window)
+    smooth = ndimage.gaussian_filter(grey, 2)
+    grad = np.hypot(ndimage.sobel(smooth, 0), ndimage.sobel(smooth, 1))
+    pts = field_alignment._outline_points(geom, to_px, res)
+    steps = np.arange(-field_alignment.MAX_SHIFT, field_alignment.MAX_SHIFT + 1e-9, field_alignment.COARSE)
+    scores = np.array([[ndimage.map_coordinates(grad, [pts[:, 1] - dn / res, pts[:, 0] + de / res], order=1).mean()
+                        for de in steps] for dn in steps])
+    return steps, scores
+
+
+dams = gpd.read_file(DAY / "annotations/dams.gpkg")
+fig, axes = plt.subplots(1, 2, figsize=(10, 4.5))
+for ax, kind in zip(axes, ("chunk", "full_tile")):
+    tif = DAY / f"orthomosaic_{kind}.tif"
+    with rasterio.open(tif) as r:
+        geom = dams.to_crs(r.crs.to_wkt()).geometry.iloc[0]
+    steps, scores = surface(tif, geom)
+    n, e = np.unravel_index(scores.argmax(), scores.shape)
+    im = ax.imshow(scores, origin="lower", extent=[steps[0], steps[-1], steps[0], steps[-1]], cmap="viridis")
+    ax.plot(steps[e], steps[n], "r+", markersize=14)
+    ax.set_title(f"{kind}: best {steps[e]:+.1f} m east, {steps[n]:+.1f} m north")
+    ax.set_xlabel("shift east (m)")
+    ax.set_ylabel("shift north (m)")
+    fig.colorbar(im, ax=ax, shrink=0.8)
+    print(kind, "coarse best:", round(steps[e], 2), round(steps[n], 2), "| best_shift:",
+          tuple(round(v, 2) for v in field_alignment.best_shift(tif, geom)))
+plt.tight_layout()
+plt.show()
+# One clear peak each: at the centre on the chunk (the outline was drawn on it), 0.6 m south on the full tile. Both
+# surfaces are stretched north-south: the dam runs that way, and sliding an outline along its own length keeps much
+# of it on edges, so a shift along a feature is less well determined than across it. Where other edges lie near an
+# outline, such ridges become second peaks: why single values are noisy and medians are read."""),
+    ])
+
+CHAPTERS = [CH00, CH01, CH02, CH03, CH04, CH05, CH06, CH07, CH08, CH09, CH10, CH11, CH12, CH13, CH14, CH15, CH16,
+            CH17]
 
 
 def notebook(chapter: Chapter, solutions: bool) -> nbformat.NotebookNode:

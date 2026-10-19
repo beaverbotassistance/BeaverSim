@@ -85,7 +85,8 @@ together. Each entry: what was found, the evidence, and a suggestion. Newest las
     north-east") and `field_naming.md` ("newer PROJ: 25 km off") give the northward part only. Measured on a
     dam (chapter 2: 48.9245° N, 113.1391° W under the sphere; 49.1495° N, 112.9018° W under the ellipsoid) and on
     the extract's box centre, the shift is 30.4 km at a bearing of 35°: 25.0 km north, 17.4 km east. Suggestion:
-    "about 30 km north-east" in both. The course now says 30 km.
+    "about 30 km north-east" in both, and in the comment of `test_same_place_catches_a_different_earth_model`
+    (`tests/dataset/test_field.py`). The course now says 30 km.
 16. **`field.plan`'s docstring omits `georef` actions.** It says "``link`` and ``export`` actions", but `plan`
     also makes a `georef` action for each orthomosaic with an ArcGIS adjustment. Suggestion: name all three.
 17. **A photo folder's footprint is where the camera was, not what it saw.** `stac.photos_item` uses the convex hull
@@ -121,3 +122,14 @@ together. Each entry: what was found, the evidence, and a suggestion. Newest las
     the MD5 is not read (tested with a hand-built header). Often harmless, as a GCS object's plain ETag is its MD5
     and is read next, but not for composite objects, whose ETag is not. Suggestion: split the header's values on
     commas before matching `md5=`.
+23. **`prune` deletes any file it did not plan, not only its own.** Its docstring says it removes "links … and
+    files the field step wrote", but it removes every file in the site folder that the new plan does not make,
+    except the record names. Tested on a scratch drive (course chapter 17): a person's `my_notes.txt` in
+    `beaver_dataset/sites/<site>/` was deleted by the next build, with no copy (it was not a link). Anything later
+    stored there by hand, or by milestone 8's inspection tool, would be lost the same way. Suggestion: prune only
+    what the previous `manifest.csv` lists (links and written files), and report anything else as unknown.
+24. **Importing `field_alignment` switches off inline plots.** The module calls `matplotlib.use("Agg")` at import
+    (for `--sheet`), which changes the backend for the whole process: in a notebook that imports it, `plt.show()`
+    then draws nothing (found in the course's chapter 17, whose plots disappeared). Milestone 2's notebooks will
+    import pipeline modules. Suggestion: choose the backend in `main` (or draw with `matplotlib.figure.Figure`,
+    which needs no backend), not at import.
