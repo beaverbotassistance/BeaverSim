@@ -41,7 +41,7 @@ those are later milestones, and the chapters that will cover them are marked as 
 | 08 | [Bringing in an open dataset](08_open_datasets.md) | draft, for review |
 | 09 | [Describing a dataset: summaries and Claude](09_describing_a_dataset.md) | draft, for review |
 | 10 | [Building and curating catalogues](10_building_and_curating.md) | draft, for review |
-| 11 | [Field data: from a field drive to `beaver_dataset/`](11_field_data.md) | outline |
+| 11 | [Field data: from a field drive to `beaver_dataset/`](11_field_data.md) | draft, for review |
 | 12 | [Inspecting a dataset (milestone 2)](12_inspecting.md) | waits for milestone 2 |
 | | **Part 3 – Inside the pipeline** | |
 | 13 | [Readers](13_readers.md) | outline |

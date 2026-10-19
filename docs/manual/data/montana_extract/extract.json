@@ -39,18 +39,20 @@
      "east_m": "-0.05",
      "north_m": "0.05",
      "shift_m": "0.071",
-     "fit_found": "True"
+     "fit_found": "True",
+     "feature_id": 45
     },
     {
      "date": "2018-07-26",
      "layer": "dams",
-     "fid": "45",
-     "kind": "chunk",
-     "image": "orthomosaic_part-4_chunk-3.tif",
-     "east_m": "0.05",
-     "north_m": "-0.05",
-     "shift_m": "0.071",
-     "fit_found": "True"
+     "fid": "44",
+     "kind": "full tile",
+     "image": "orthomosaic_part-4.tif",
+     "east_m": "-0.3",
+     "north_m": "-0.5",
+     "shift_m": "0.583",
+     "fit_found": "True",
+     "feature_id": 45
     }
    ]
   },
@@ -78,7 +80,20 @@
      "east_m": "0.0",
      "north_m": "-0.05",
      "shift_m": "0.05",
-     "fit_found": "True"
+     "fit_found": "True",
+     "feature_id": 45
+    },
+    {
+     "date": "2018-08-06",
+     "layer": "dams",
+     "fid": "42",
+     "kind": "full tile",
+     "image": "orthomosaic_part-4.tif",
+     "east_m": "0.0",
+     "north_m": "0.1",
+     "shift_m": "0.1",
+     "fit_found": "True",
+     "feature_id": 45
     }
    ]
   }

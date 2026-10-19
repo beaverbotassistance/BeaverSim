@@ -4,7 +4,7 @@ Every pixel of an orthomosaic and every vertex of a dam outline is a pair of num
 nothing until you know **what system they are in**. Getting this wrong does not produce an error: it
 produces data that sits in the wrong place, sometimes by centimetres, sometimes by kilometres. This
 chapter explains the systems, how files describe them, and how the pipeline checks them, ending with a
-real case from our own data where the same numbers land 25 km apart depending on the software.
+real case from our own data where the same numbers land 30 km apart depending on the software.
 
 ## You will learn
 
@@ -118,7 +118,7 @@ The defence is to check positions by **effect**, not by text: transform a few po
 and compare where they land. Two WKT texts can differ and mean the same place; the field step's check does
 exactly this ([`field._same_place`](../../data_acquisition/sources/field.py)).
 
-## Case: the ARC System zone, 25 km apart
+## Case: the ARC System zone, 30 km apart
 
 The Rumney Ranch annotations were drawn in ArcGIS in the CRS "WGS_1984_ARC_System_Zone_12"
 (`ESRI:102432`), an Equidistant Cylindrical projection. That projection has two forms: one on a **sphere**
@@ -132,12 +132,12 @@ For years PROJ, the library almost every open-source GIS tool uses, had only the
 ambiguity did not matter. **PROJ 9.8.0 (2 March 2026) added the ellipsoidal form**
 ([PROJ news, 9.8.0](https://proj.org/en/stable/news.html): "Add support for Equidistant Cylindrical
 ellipsoidal method (EPSG:1028)"). Since then the same description is evaluated on the ellipsoid, and every
-Rumney layer moves about **25 km north-east**.
+Rumney layer moves about **30 km north-east** (25 km north and 17 km east).
 
 In our own environment both behaviours coexist: pyproj ships PROJ 9.5.1 and puts a Rumney dam at
 48.9245° N, 113.1391° W; rasterio and GDAL ship PROJ 9.8.1 and put the same coordinates at 49.1495° N,
 112.9018° W. Which is right? ArcGIS itself wrote latitude and longitude columns into some layers: with the
-sphere they agree to 0.19 m, with the ellipsoid they are 25 km off.
+sphere they agree to 0.19 m, with the ellipsoid they are 30 km off.
 
 **How the pipeline handles it:** the correction is data, not code. The layout file of the site declares it,
 with its evidence
@@ -176,7 +176,7 @@ Use the sample data root ([00 Setup](00_setup.md)) and the Montana extract
 5. **Two PROJ versions.** Take the first vertex of a dam in the extract (the dams are MultiPolygons:
    `geometry.iloc[0].geoms[0].exterior.coords[0]`). Transform it to EPSG:4326 with
    `pyproj` (PROJ 9.5) and with `rasterio.warp.transform` (PROJ 9.8), first using the CRS written in the file,
-   then using `+proj=eqc +lat_ts=-52.28859923 +datum=WGS84 +units=m`. Which pairs agree and which are 25 km
+   then using `+proj=eqc +lat_ts=-52.28859923 +datum=WGS84 +units=m`. Which pairs agree and which are 30 km
    apart? Why does the file in the extract not show the problem?
 6. **Find it in the code.** Which function writes the WKT2 of a raster into its STAC item when there is no
    EPSG code? Which flag does `curate` raise for a raster whose CRS differs from the site's, and in which

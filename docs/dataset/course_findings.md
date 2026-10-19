@@ -30,7 +30,7 @@ together. Each entry: what was found, the evidence, and a suggestion. Newest las
    download folder). To decide with the Red Canyon annotations, if any were drawn on them.
 4. **The ARC-zone ambiguity is handled for Montana only.** The correction lives in the Rumney layout file. No
    `.prj` in `open_datasets/` uses an ESRI Equidistant Cylindrical zone (checked), but layers inside
-   geodatabases or GeoPackages were not checked, and any future ESRI data in such a zone would land 25 km off
+   geodatabases or GeoPackages were not checked, and any future ESRI data in such a zone would land about 30 km off
    under PROJ ≥ 9.8 (rasterio, QGIS). Suggestion: a curate check that flags CRSs whose method is spherical in
    ESRI's definition but ellipsoidal when read.
 5. **A folder of photos has `media_type: image/jpeg`** on its STAC asset, although the asset is a folder, not a
@@ -74,3 +74,17 @@ together. Each entry: what was found, the evidence, and a suggestion. Newest las
     that follow links are fine; anything that scans the folder (`rglob("*.json")`, as several checks in this
     project's history did) still sees the old item. Suggestion: `stac.save` clears the dataset's catalogue folder
     (only `stac/<dataset>/`) before writing, or `build` removes item folders it did not write.
+14. **`alignment.csv`'s `fid` is a row position, not the feature id.** `field_alignment.check` reads each layer with
+    `gpd.read_file`, whose index is the row position (0-based), and writes it as `fid`; the exported GeoPackages keep
+    the FileGDB's feature ids (`-preserve_fid`, 1-based, with gaps). On Rumney the two differ for every feature: the
+    extract's dam is feature 45 on both 26 July and 6 August 2018, but row 44 and row 42 in `alignment.csv`. Anyone
+    (or milestone 8's correction tool) joining alignment rows to features by `fid` gets the wrong feature.
+    Suggestion: read with `pyogrio.read_dataframe(..., fid_as_index=True)` (or `gpd.read_file(..., fid_as_index=True)`)
+    and rewrite `alignment.csv`. The course's extract tool now records both (`fid` as written, and `feature_id`).
+15. **The ARC-zone offset is 30 km, not 25 km.** The Rumney layout file (`crs_corrections`, "about 25 km
+    north-east") and `field_naming.md` ("newer PROJ: 25 km off") give the northward part only. Measured on a
+    dam (chapter 2: 48.9245° N, 113.1391° W under the sphere; 49.1495° N, 112.9018° W under the ellipsoid) and on
+    the extract's box centre, the shift is 30.4 km at a bearing of 35°: 25.0 km north, 17.4 km east. Suggestion:
+    "about 30 km north-east" in both. The course now says 30 km.
+16. **`field.plan`'s docstring omits `georef` actions.** It says "``link`` and ``export`` actions", but `plan`
+    also makes a `georef` action for each orthomosaic with an ArcGIS adjustment. Suggestion: name all three.

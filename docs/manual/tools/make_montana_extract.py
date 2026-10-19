@@ -20,6 +20,7 @@ from typing import List, Optional, Tuple
 
 import geopandas as gpd
 import numpy as np
+import pyogrio
 import rasterio
 from PIL import Image
 from rasterio.enums import Resampling
@@ -89,6 +90,19 @@ def cut_annotations(adir: Path, bounds, out_dir: Path) -> List[str]:
     return written
 
 
+def extract_alignment(alignment: List[dict], day: str, adir: Path, out_dir: Path) -> List[dict]:
+    """The rows of ``alignment.csv`` for the extract's features, with their feature id added: the ``fid`` column of
+    ``alignment.csv`` is the feature's row position in its layer (0-based), not its GeoPackage feature id."""
+    rows = []
+    for layer in sorted(out_dir.glob("*.gpkg")):
+        kept = set(pyogrio.read_dataframe(layer, read_geometry=False, fid_as_index=True).index)
+        position = {str(i): fid for i, fid in enumerate(pyogrio.read_dataframe(
+            adir / layer.name, read_geometry=False, fid_as_index=True).index)}
+        rows += [{**r, "feature_id": int(position[r["fid"]])} for r in alignment
+                 if r["date"] == day and r["layer"] == layer.stem and position.get(r["fid"]) in kept]
+    return rows
+
+
 def cut_photos(photo_dir: Path, lonlat_box, out_dir: Path, n: int = 3) -> List[str]:
     """``n`` photos taken over the box, downscaled, EXIF kept."""
     from data_acquisition.readers import photos
@@ -135,9 +149,7 @@ def main() -> None:
             entry[kind] = f"surveys/{day}/{tif.name}"
         entry["annotations"] = cut_annotations(site / "annotations" / day, bounds, out / "annotations")
         entry["photos"] = cut_photos(site / "surveys" / day / "photos", lonlat, out / "photos")
-        names = {Path(a).stem for a in entry["annotations"]}
-        entry["alignment"] = [r for r in alignment if r["date"] == day and r["layer"] in names
-                              and r["kind"] == "chunk" and r["image"] == Path(entry["chunk"]).name]
+        entry["alignment"] = extract_alignment(alignment, day, site / "annotations" / day, out / "annotations")
         record["dates"][day] = entry
     (args.out / "extract.json").write_text(json.dumps(record, indent=1))
     size = sum(p.stat().st_size for p in args.out.rglob("*") if p.is_file())

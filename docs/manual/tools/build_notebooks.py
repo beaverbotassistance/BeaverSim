@@ -221,7 +221,7 @@ print("5 US survey feet =", 5 * 1200 / 3937, "m  (5 international feet = 1.524 m
         Exercise("**5. Two PROJ versions.** Take the first vertex of a dam in the extract (the dams are MultiPolygons: "
                  "`geometry.iloc[0].geoms[0].exterior.coords[0]`). Transform it to EPSG:4326 with `pyproj` and with "
                  "`rasterio.warp.transform`, first using the CRS written in the file, then using "
-                 "`+proj=eqc +lat_ts=-52.28859923 +datum=WGS84 +units=m`. Which pairs agree and which are 25 km apart? "
+                 "`+proj=eqc +lat_ts=-52.28859923 +datum=WGS84 +units=m`. Which pairs agree and which are 30 km apart? "
                  "Why does the file in the extract not show the problem?",
                  '''path = EXTRACT / "2018-07-26/annotations/dams.gpkg"
 dams = pyogrio.read_dataframe(path)
@@ -239,7 +239,7 @@ for name, crs in (("CRS in the file", in_file), ("ellipsoid string", ellipsoid))
     b = transform(rasterio.crs.CRS.from_user_input(crs), "EPSG:4326", [x], [y])
     print(f"{name:17s} pyproj {a[0]:.4f}, {a[1]:.4f}   rasterio {b[0][0]:.4f}, {b[1][0]:.4f}")
 # The file's CRS spells the sphere out (+R=6378137), so both PROJ versions agree. The plain ellipsoid string
-# is read with the spherical formula by PROJ 9.5 and with the ellipsoidal one by PROJ 9.8: 25 km apart.'''),
+# is read with the spherical formula by PROJ 9.5 and with the ellipsoidal one by PROJ 9.8: 30 km apart.'''),
         Exercise("**6. Find it in the code.** Which function writes the WKT2 of a raster into its STAC item when there "
                  "is no EPSG code? Which flag does `curate` raise for a raster whose CRS differs "
                  "from the site's, and in "
@@ -965,7 +965,111 @@ for fn, needle in ((curate.curate_item, '!= "auto"'), (build.main, "build_report
             print(f"{inspect.getsourcefile(fn)}:{n}: {line.strip()}")"""),
     ])
 
-CHAPTERS = [CH00, CH01, CH02, CH03, CH04, CH05, CH06, CH07, CH08, CH09, CH10]
+CH11 = Chapter(
+    "11_field_data", "11. Field data: from a field drive to beaver_dataset",
+    "Exercises of [chapter 11](../11_field_data.md). Run the setup cell first. They use the Montana extract and the "
+    "Rumney layout file; none needs the drive.",
+    """import copy, inspect, json
+import geopandas as gpd
+import pyproj, rasterio
+from pyproj import CRS, Geod
+from rasterio.crs import CRS as RasterioCRS
+from rasterio.warp import transform
+from data_acquisition.sources import field, field_alignment
+
+LAYOUT = field.load_layout("rumney_ranch")
+META = json.loads((EXTRACT / "extract.json").read_text())""",
+    [
+        Exercise("**1. The layout file.** For 26 July 2018, list where the orthomosaics and the annotation layers go. "
+                 "Find, in the extract's `extract.json`, which of them the extract was cut from.",
+                 """day = "2018-07-26"
+...  # your code here (LAYOUT["orthomosaics"], LAYOUT["annotations"], META["dates"][day])""",
+                 """day = "2018-07-26"
+orthos = [e for e in LAYOUT["orthomosaics"] if e.get("to", "").startswith(f"surveys/{day}/")]
+layers = [e for e in LAYOUT["annotations"] if e.get("to", "").startswith(f"annotations/{day}/")]
+print(len(orthos), "orthomosaics,", len(layers), "annotation layers")
+for e in layers:
+    print(f"  {e['source']} / {e['layer']} -> {e['to']} ({e['features']} features)")
+for kind in ("chunk", "full_tile"):
+    target = META["dates"][day][kind]
+    source = next(e["source"] for e in orthos if e["to"] == target)
+    print(f"{kind}: {target}  <-  {LAYOUT['base']}{source}")"""),
+        Exercise("**2. Names.** Check five names against the naming policy with `field.ORTHO_NAME` and "
+                 "`field.LAYER_NAME`, three that follow it and two that do not. Then check a copy of the layout with "
+                 "one bad name using `field.check_layout`.",
+                 """names = ["surveys/2018-07-26/orthomosaic_part-4.tif",
+         "surveys/2018-07-26/orthomosaic_part-4_chunk-3.tif",
+         "annotations/2018-07-26/dams_points.gpkg",
+         "surveys/26July2018/orthomosaic_part-4.tif",
+         "annotations/2018-07-26/beaver_dams.gpkg"]
+...  # your code here""",
+                 """names = ["surveys/2018-07-26/orthomosaic_part-4.tif",
+         "surveys/2018-07-26/orthomosaic_part-4_chunk-3.tif",
+         "annotations/2018-07-26/dams_points.gpkg",
+         "surveys/26July2018/orthomosaic_part-4.tif",
+         "annotations/2018-07-26/beaver_dams.gpkg"]
+for name in names:
+    rule = field.ORTHO_NAME if name.startswith("surveys/") else field.LAYER_NAME
+    print(f"{'ok ' if rule.match(name) else 'BAD'} {name}")
+# The date must be ISO (YYYY-MM-DD), and a layer must start with a known feature (field.FEATURES).
+broken = copy.deepcopy(LAYOUT)
+broken["annotations"][0]["to"] = "annotations/2018-07-26/beaver_dams.gpkg"
+broken["orthomosaics"][1]["to"] = broken["orthomosaics"][0]["to"]
+print(*field.check_layout(broken), sep="\\n")"""),
+        Exercise("**3. A CRS correction.** Apply the layout's `crs_corrections` to the ARC zone's ESRI definition "
+                 "(`ESRI:102432`) with `field.corrected_crs`. What does the result say about the sphere? Then place the "
+                 "centre of the extract's box with the declared and the corrected CRS, under the PROJ of pyproj and "
+                 "that of rasterio.",
+                 """esri = CRS.from_user_input("ESRI:102432")
+...  # your code here""",
+                 """esri = CRS.from_user_input("ESRI:102432")
+fixed = field.corrected_crs(esri.to_wkt(), LAYOUT["crs_corrections"])
+print(fixed[:420], "...")
+# ELLIPSOID["unknown",6378137,0]: an inverse flattening of 0 means a sphere of radius 6378137 m, and the method is
+# "Equidistant Cylindrical (Spherical)", as ArcGIS evaluates the ARC zones.
+b = META["box"]["bounds"]
+x, y = (b[0] + b[2]) / 2, (b[1] + b[3]) / 2
+print("PROJ: pyproj", pyproj.proj_version_str, "| rasterio", rasterio.__proj_version__)
+places = {}
+for name, wkt in (("declared", esri.to_wkt()), ("corrected", fixed)):
+    places[name, "pyproj"] = pyproj.Transformer.from_crs(CRS.from_wkt(wkt), "EPSG:4326", always_xy=True).transform(x, y)
+    lon, lat = transform(RasterioCRS.from_wkt(wkt), "EPSG:4326", [x], [y])
+    places[name, "rasterio"] = (lon[0], lat[0])
+reference = places["corrected", "pyproj"]
+for key, (lon, lat) in places.items():
+    km = Geod(ellps="WGS84").inv(reference[0], reference[1], lon, lat)[2] / 1000
+    print(f"{key[0]:9s} {key[1]:8s} {lat:.5f} {lon:.5f}  {km:5.1f} km from the corrected place")
+# Only the declared CRS under the newer PROJ (9.8, ellipsoidal Equidistant Cylindrical) lands about 30 km away
+# (25 km north, 17 km east)."""),
+        Exercise("**4. Alignment.** Measure the best-fit shift of the extract's dam (26 July and 6 August) on the chunk "
+                 "and on the full tile with `field_alignment.best_shift`, and compare with the full-resolution rows in "
+                 "`extract.json`. Which image was it drawn on?",
+                 """day = "2018-07-26"
+dams = gpd.read_file(EXTRACT / day / "annotations/dams.gpkg", fid_as_index=True)
+...  # your code here (reproject each outline to the image's CRS first)""",
+                 """for day in ("2018-07-26", "2018-08-06"):
+    dams = gpd.read_file(EXTRACT / day / "annotations/dams.gpkg", fid_as_index=True)
+    drive = {(r["feature_id"], r["kind"]): r["shift_m"] for r in META["dates"][day]["alignment"]}
+    for kind, label in (("chunk", "chunk"), ("full_tile", "full tile")):
+        tif = EXTRACT / day / f"orthomosaic_{kind}.tif"
+        with rasterio.open(tif) as r:
+            outlines = dams.to_crs(r.crs.to_wkt())
+        for fid, geom in outlines.geometry.items():
+            east, north = field_alignment.best_shift(tif, geom)
+            print(f"{day} feature {fid} {label:9s}: {east:+.2f} m east, {north:+.2f} m north "
+                  f"(at 1.3 cm on the drive: {drive.get((fid, label))} m)")
+# 26 July: the chunk fits within a pixel, the full tile needs about 0.6 m: drawn on the chunk.
+# 6 August: both fit within ~0.15 m here, so one outline cannot tell; that date's medians (0.21 m on the chunks,
+# 0.53 m on the full tiles) can. Single values are noisy: read medians."""),
+        Exercise("**5. Find it in the code.** Which function plans the actions, which carries them out, and which "
+                 "removes files a previous build left?",
+                 """...  # your code here (inspect)""",
+                 """for fn in (field.plan, field.execute, field.prune):
+    print(f"{fn.__name__}  {inspect.getsourcefile(fn)}:{inspect.getsourcelines(fn)[1]}")
+    print("   ", inspect.getdoc(fn).splitlines()[0])"""),
+    ])
+
+CHAPTERS = [CH00, CH01, CH02, CH03, CH04, CH05, CH06, CH07, CH08, CH09, CH10, CH11]
 
 
 def notebook(chapter: Chapter, solutions: bool) -> nbformat.NotebookNode:

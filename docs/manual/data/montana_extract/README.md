@@ -18,7 +18,7 @@ of every file.
   orthomosaic_full_tile.tif   the same area from the full tile, with its own (earlier) georeferencing
   annotations/<layer>.gpkg    the features of each annotation layer of that date that touch the box
   photos/DJI_*.JPG            three photos taken over the box
-extract.json                  the box, the source of every file, and the alignment rows of the clipped outlines
+extract.json                  the box, the source of every file, and the alignment rows of the extract's outlines (`feature_id`: the GeoPackage id; `fid`: the row position `alignment.csv` uses)
 ```
 
 ## What was changed from the originals
