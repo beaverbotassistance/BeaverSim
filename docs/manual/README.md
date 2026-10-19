@@ -52,9 +52,9 @@ those are later milestones, and the chapters that will cover them are marked as 
 | 18 | [Testing a change](18_testing.md) | draft, for review |
 | 19 | [Extending the pipeline](19_extending.md) | draft, for review |
 | | **Appendices** | |
-| A | [Glossary](A_glossary.md) | outline |
-| B | [Troubleshooting](B_troubleshooting.md) | outline |
-| C | [Conventions](C_conventions.md) | outline |
+| A | [Glossary](A_glossary.md) | draft, for review |
+| B | [Troubleshooting](B_troubleshooting.md) | draft, for review |
+| C | [Conventions](C_conventions.md) | draft, for review |
 
 ## Related documents
 

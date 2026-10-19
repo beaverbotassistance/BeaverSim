@@ -135,8 +135,9 @@ ellipsoidal method (EPSG:1028)"). Since then the same description is evaluated o
 Rumney layer moves about **30 km north-east** (25 km north and 17 km east).
 
 In our own environment both behaviours coexist: pyproj ships PROJ 9.5.1 and puts a Rumney dam at
-48.9245° N, 113.1391° W; rasterio and GDAL ship PROJ 9.8.1 and put the same coordinates at 49.1495° N,
-112.9018° W. Which is right? ArcGIS itself wrote latitude and longitude columns into some layers: with the
+48.9245° N, 113.1391° W; rasterio ships its own GDAL with PROJ 9.8.1 and puts the same coordinates at
+49.1495° N, 112.9018° W. (A third PROJ, 9.4.0, comes with Ubuntu's GDAL command-line tools, `ogr2ogr` and
+`ogrinfo`: three versions on one machine is normal, which is why the pipeline checks positions under more than one.) Which is right? ArcGIS itself wrote latitude and longitude columns into some layers: with the
 sphere they agree to 0.19 m, with the ellipsoid they are 30 km off.
 
 **How the pipeline handles it:** the correction is data, not code. The layout file of the site declares it,

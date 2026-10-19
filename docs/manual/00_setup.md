@@ -92,7 +92,7 @@ repaired ([appendix B](B_troubleshooting.md)).
 **The course does not need the drive.** It uses:
 
 - the **sample data root**, generated in a second (next section);
-- the **Montana extract**, a 3.7 MB piece of Rumney Ranch committed with the course
+- the **Montana extract**, a 4 MB piece of Rumney Ranch committed with the course
   ([`docs/manual/data/montana_extract/`](data/montana_extract/README.md));
 - one small open dataset that you download in chapter 8.
 
@@ -110,6 +110,8 @@ export BEAVER_SITES=output/manual/sample_root/sites.yaml
 The pipeline normally reads the registry of real sites, [`data_acquisition/sites.yaml`](../../data_acquisition/sites.yaml).
 The environment variable `BEAVER_SITES` points it to another file for as long as the terminal is open, so the
 course never touches the real registry ([`summary.load_sites`](../../data_acquisition/catalog/summary.py)).
+Unset it (`unset BEAVER_SITES`) before running the pipeline's tests: they make their own registry but do not
+override the variable ([chapter 18](18_testing.md)).
 
 The notebooks do all this themselves: their first cell finds the repository, makes the sample data root if
 it is missing, and sets `BEAVER_SITES`.
