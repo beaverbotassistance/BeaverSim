@@ -115,3 +115,9 @@ together. Each entry: what was found, the evidence, and a suggestion. Newest las
     `item.datetime` is set; an item dated to a month or with a start and end (e.g. "March 2019" at 66° N) is never
     flagged, though its whole period may lie in the snow months. Suggestion: flag when every month of the item's
     period is a snow month (and say "possibly" when only some are).
+22. **`http.stated_md5` misses Google's combined hash header.** It accepts an `x-goog-hash` value only if it starts
+    with `md5=`; Google documents three response forms, `crc32c=…`, `md5=…` and `crc32c=…,md5=…` in one header
+    ([XML API headers](https://cloud.google.com/storage/docs/xml-api/reference-headers)). For the combined form
+    the MD5 is not read (tested with a hand-built header). Often harmless, as a GCS object's plain ETag is its MD5
+    and is read next, but not for composite objects, whose ETag is not. Suggestion: split the header's values on
+    commas before matching `md5=`.

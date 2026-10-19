@@ -1526,7 +1526,99 @@ test_no_overviews(Path(tempfile.mkdtemp()))
 print("test passed")"""),
     ])
 
-CHAPTERS = [CH00, CH01, CH02, CH03, CH04, CH05, CH06, CH07, CH08, CH09, CH10, CH11, CH12, CH13, CH14, CH15]
+CH16 = Chapter(
+    "16_sources", "16. Sources: downloads and checksums",
+    "Exercises of [chapter 16](../16_sources.md). Run the setup cell first. Everything here runs offline.",
+    """import base64, csv, http.client, inspect, os, tempfile
+from data_acquisition.sources import checksums, dataset_folder, downloads, zenodo
+from data_acquisition.sources import http as web
+
+SCRATCH = Path(tempfile.mkdtemp())
+source = SCRATCH / "published" / "data.bin"            # the "repository's" copy of a file, served as file://
+source.parent.mkdir()
+source.write_bytes(os.urandom(12 * 1024 * 1024 + 123))
+print(source, source.stat().st_size, "bytes")""",
+    [
+        Exercise("**1. The contract in the model client.** Print `zenodo.py` and find, for each point of the contract, "
+                 "the line that does it.",
+                 """print(inspect.getsource(zenodo))""",
+                 """lines = inspect.getsource(zenodo).splitlines()
+contract = {"options": "add_argument", "--list prints, downloads nothing": "downloads.listing",
+            "record saved unchanged": "metadata.json\\").write_text", "dataset folder": "dataset_folder(",
+            "fetch": "http.fetch", "verify, read-only, log row": "downloads.finish(",
+            "existing file only verified again": "if not path.exists()", "log merged": "downloads.log("}
+for point, needle in contract.items():
+    n = next(i for i, line in enumerate(lines, 1) if needle in line)
+    print(f"{point:36s} line {n:3d}: {lines[n - 1].strip()}")
+# Nothing dataset-specific: no DOI, file name or site appears in the client."""),
+        Exercise("**2. Folders.** Name the folders of `10.5281/zenodo.1`, `https://doi.org/10.18739/A2CZ3253W`, "
+                 "`hs:abc123` and a CKAN package id.",
+                 """...  # your code here (dataset_folder(root, repository, identifier))""",
+                 """for repository, identifier in (("zenodo", "10.5281/zenodo.1"),
+                               ("arcticdata", "https://doi.org/10.18739/A2CZ3253W"),
+                               ("hydroshare", "hs:abc123"),
+                               ("open_canada", "b44984f7-9ba6-45aa-b25b-a6dc596afea5")):
+    print(f"{identifier:42s} -> {dataset_folder(Path('<root>'), repository, identifier)}")"""),
+        Exercise("**3. Checksums.** Compute the file's MD5 and SHA-256; make its multipart ETag with 5 MiB parts and "
+                 "check it; check an ETag made with 7 MiB parts. Why is the answer None and not False?",
+                 """...  # your code here (checksums.digest, checksums._etag, checksums.check)""",
+                 """md5 = checksums.digest(source, "md5")
+print("md5   ", md5)
+print("sha256", checksums.digest(source, "sha256"))
+etag5 = checksums._etag(source, 5 * 1024 * 1024)
+etag7 = checksums._etag(source, 7 * 1024 * 1024)
+print("5 MiB parts:", etag5, checksums.check(source, "etag", etag5))
+print("7 MiB parts:", etag7, checksums.check(source, "etag", etag7))
+print("a wrong md5:", checksums.check(source, "md5", "0" * 32))
+# 7 MiB is not a part size of common upload tools, so no part size tried reproduces the ETag: the file may well
+# be right, so the check is undecided (None) and the next one is tried. A plain digest is always decided."""),
+        Exercise("**4. Served MD5s.** Build response headers with `Content-MD5`, with `x-goog-hash`, and with a "
+                 "multipart `ETag`; what does `http.stated_md5` return for each?",
+                 """headers = http.client.HTTPMessage()
+...  # your code here (base64 of the raw 16-byte digest)""",
+                 """raw = bytes.fromhex(md5)
+for name, value in (("Content-MD5", base64.b64encode(raw).decode()),
+                    ("x-goog-hash", "md5=" + base64.b64encode(raw).decode()),
+                    ("x-goog-hash", "crc32c=n03x6A==,md5=" + base64.b64encode(raw).decode()),
+                    ("ETag", f'"{md5}"'),
+                    ("ETag", f'"{etag5}"')):
+    headers = http.client.HTTPMessage()
+    headers[name] = value
+    print(f"{name:12s} {value[:44]:44s} -> {web.stated_md5(headers)}")
+# A multipart ETag is not the file's MD5, so it is not taken as one (None). Google's combined form
+# "crc32c=...,md5=..." (documented by Google) is missed: finding 22 in docs/dataset/course_findings.md."""),
+        Exercise("**5. Download, resume, finish.** Leave a stale `.part` of the file in a scratch root, fetch it from "
+                 "its `file://` link, finish it against its MD5, log it, and read the log row. Then finish a copy "
+                 "against a wrong MD5: what happens to the file?",
+                 """root = SCRATCH / "root"
+dest = dataset_folder(root, "example", "10.5555/example") / "data.bin"
+...  # your code here (web.fetch, downloads.finish, downloads.log)""",
+                 """root = SCRATCH / "root"
+dest = dataset_folder(root, "example", "10.5555/example") / "data.bin"
+dest.parent.mkdir(parents=True)
+dest.with_name("data.bin.part").write_bytes(source.read_bytes()[:1000])   # an interrupted earlier attempt
+web.fetch(source.as_uri(), dest, source.stat().st_size, retries=False)
+print("complete:", checksums.digest(dest, "md5") == md5, "| .part left:", dest.with_name("data.bin.part").exists())
+record = {"title": "An example dataset", "licence": "CC0-1.0"}
+row = downloads.finish(dest, root, source.as_uri(), ("md5", md5), source="example", identifier="doi:10.5555/example",
+                       record=record)
+downloads.log(root / "downloads.csv", [row])
+print(next(csv.DictReader(open(root / "downloads.csv"))))
+print("permissions:", oct(dest.stat().st_mode & 0o777))
+# A file:// link answers no range request, so fetch started again from the beginning (the .part was rewritten).
+
+copy = dest.with_name("copy.bin")
+copy.write_bytes(dest.read_bytes())
+try:
+    downloads.finish(copy, root, source.as_uri(), ("md5", "0" * 32), source="example", identifier=None,
+                     record=record)
+except IOError as e:
+    print("refused:", e)
+print("the bad file is still there:", copy.exists(), oct(copy.stat().st_mode & 0o777))
+# Refused, but left in place and writable (finding 9): delete it before downloading again."""),
+    ])
+
+CHAPTERS = [CH00, CH01, CH02, CH03, CH04, CH05, CH06, CH07, CH08, CH09, CH10, CH11, CH12, CH13, CH14, CH15, CH16]
 
 
 def notebook(chapter: Chapter, solutions: bool) -> nbformat.NotebookNode:
