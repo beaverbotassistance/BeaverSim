@@ -1265,7 +1265,113 @@ print((out.stdout + out.stderr).strip().splitlines()[-1])
 # edge case enters the suite before its fix (chapter 18)."""),
     ])
 
-CHAPTERS = [CH00, CH01, CH02, CH03, CH04, CH05, CH06, CH07, CH08, CH09, CH10, CH11, CH12, CH13]
+CH14 = Chapter(
+    "14_builder", "14. The builder",
+    "Exercises of [chapter 14](../14_builder.md). Run the setup cell first.",
+    """import copy, datetime, inspect, json, shutil, tempfile
+import geopandas as gpd
+import yaml
+from shapely.geometry import Point
+from data_acquisition.catalog import build
+from data_acquisition.catalog import summary as summaries
+from data_acquisition.readers import RECORDS, geotiff
+
+REFERENCE = yaml.safe_load((ROOT / "docs/manual/solutions/training_pond.yaml").read_text())
+
+
+def load(s):
+    path = Path(tempfile.mkdtemp()) / "summary.yaml"
+    path.write_text(yaml.safe_dump(copy.deepcopy(s), sort_keys=False))
+    return summaries.load(str(path))""",
+    [
+        Exercise("**1. Trace one entry.** Take the DTM entry of the reference summary: resolve it with its group, "
+                 "compute its time and its item id, then build it with `build.data_item` and print where each value "
+                 "came from.",
+                 """s = load(REFERENCE)
+group = s["groups"][0]
+entry = next(f for f in group["files"] if f["path"] == "dem_2022.asc")
+...  # your code here (summaries.resolve, summaries.epoch, build.data_item)""",
+                 """s = load(REFERENCE)
+group = s["groups"][0]
+entry = next(f for f in group["files"] if f["path"] == "dem_2022.asc")
+f = summaries.resolve(group, entry)
+print("resolved:", {k: f[k] for k in ("site", "product", "date", "date_precision", "crs", "positioning", "notes")})
+start, end, label = summaries.epoch(f)
+print("time:", start, end, "| id:", f"{f['site']}_{label}_{f['product']}")
+record = RECORDS[group["record"]["format"]]["read"]((DATASET / group["record"]["path"]).read_text())
+item = build.data_item(s, f, DATASET / f["path"], f"repo/doi_10.5555_training.pond/{f['path']}", group, record, {})
+for key in ("beaver:site", "beaver:positioning", "beaver:licence"):
+    print(key, "<-", item.properties["beaver:origin"].get(key.split(":")[1]))
+print("provenance:", json.dumps(item.properties["beaver:provenance"], indent=1, default=str)[:600])
+for q in item.properties["beaver:quality"]:
+    print("flag:", q)"""),
+        Exercise("**2. Dates.** Compute `summary.epoch` for a day, a month, a year, a range and an `unknown` date; and "
+                 "`build._period` for a record whose dates are `['2001', '2024-06']`.",
+                 """...  # your code here""",
+                 """d = datetime.date
+for f in ({"date": d(2023, 7, 12)},
+          {"date": d(2022, 8, 1), "date_precision": "month"},
+          {"date": 2019, "date_precision": "year"},
+          {"start_date": d(2017, 9, 7), "end_date": d(2018, 9, 25)},
+          {"date_precision": "unknown", "start_date": d(2010, 1, 1), "end_date": d(2015, 12, 31)}):
+    print(f, "->", summaries.epoch(f))
+print(build._period(["2001", "2024-06"]))"""),
+        Exercise("**3. Bands.** Call `build._bands` for the sample's orthomosaic with no bands given, with the right "
+                 "ones, with three bands, and with the order reversed; then for a DSM.",
+                 """header = geotiff.info(DATASET / "ortho_2023-07-12.tif")
+...  # your code here (build._bands(product, wanted, header, entity=None))""",
+                 """header = geotiff.info(DATASET / "ortho_2023-07-12.tif")
+for wanted in (None, ["red", "green", "blue", "alpha"], ["red", "green", "blue"], ["alpha", "blue", "green", "red"]):
+    print(wanted, "->", build._bands("orthomosaic", wanted, header, None))
+print("dsm ->", build._bands("dsm", None, geotiff.info(DATASET / "dsm_2023-07-12.tif"), None))"""),
+        Exercise("**4. One item per layer.** In a scratch copy of the sample, write a GeoPackage with layers "
+                 "`dams_2021` and `dams_2023` (and one called `notes`), describe it (product `annotations`, variant "
+                 "`by_year`) with `layers: {pattern: '_(\\\\d{4})$', date_precision: year}`, and build. How many "
+                 "items, and what does the report say?",
+                 """scratch = Path(tempfile.mkdtemp()) / "root"
+shutil.copytree(SAMPLE, scratch, ignore=shutil.ignore_patterns("stac"))
+...  # your code here""",
+                 """scratch = Path(tempfile.mkdtemp()) / "root"
+shutil.copytree(SAMPLE, scratch, ignore=shutil.ignore_patterns("stac"))
+gpkg = scratch / "repo/doi_10.5555_training.pond/dams_by_year.gpkg"
+for name, n in (("dams_2021", 2), ("dams_2023", 3), ("notes", 1)):
+    points = [Point(368010 + i, 5420030) for i in range(n)]
+    gpd.GeoDataFrame({"id": range(n)}, geometry=points, crs="EPSG:32612").to_file(gpkg, layer=name)
+s2 = copy.deepcopy(REFERENCE)
+s2["groups"][0]["files"].append({"path": "dams_by_year.gpkg", "product": "annotations", "variant": "by_year",
+                                 "layers": {"pattern": r"_(\\d{4})$", "date_precision": "year"}})
+catalog, report = build.build(scratch, load(s2))
+print([i.id for i in catalog.get_items(recursive=True) if i.id.endswith("by_year")])
+print({k: v for k, v in report.items() if v})
+# Two items, one per year layer, each dated by its name; the layer "notes" does not match: unmatched_layers."""),
+        Exercise("**5. Attachments.** Give README.txt a date (`2023-07-12`) in a copy of the summary, then "
+                 "`attach_to: [chm]`. Where does it attach each time?",
+                 """...  # your code here""",
+                 """def attached(s):
+    catalog, report = build.build(SAMPLE, load(s))
+    with_readme = [i.id for i in catalog.get_items(recursive=True)
+                   if any(a.href.endswith("README.txt") for a in i.assets.values())]
+    return with_readme, report["unattached"]
+
+dated = copy.deepcopy(REFERENCE)
+dated["groups"][0]["files"][-1]["date"] = datetime.date(2023, 7, 12)
+print("dated:", attached(dated))
+chm = copy.deepcopy(REFERENCE)
+chm["groups"][0]["files"][-1]["attach_to"] = ["chm"]
+print("chm:", attached(chm))
+# With a date it attaches only to the items of that date; for the DTM (2022) it finds none and reports it
+# unattached. To a product no item has, it attaches nowhere."""),
+        Exercise("**6. Find it in the code.** Where is the item id made, and where is a collection's licence set to "
+                 "`various`?",
+                 """...  # your code here (inspect)""",
+                 """for fn, needle in ((build.data_item, "item_id = "), (build.build, '"various"')):
+    source, first = inspect.getsourcelines(fn)
+    for n, line in enumerate(source, first):
+        if needle in line:
+            print(f"{inspect.getsourcefile(fn)}:{n}: {line.strip()}")"""),
+    ])
+
+CHAPTERS = [CH00, CH01, CH02, CH03, CH04, CH05, CH06, CH07, CH08, CH09, CH10, CH11, CH12, CH13, CH14]
 
 
 def notebook(chapter: Chapter, solutions: bool) -> nbformat.NotebookNode:

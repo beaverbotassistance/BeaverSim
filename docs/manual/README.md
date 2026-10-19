@@ -45,7 +45,7 @@ those are later milestones, and the chapters that will cover them are marked as 
 | 12 | [Looking ahead: inspecting a dataset (milestone 2)](12_inspecting.md) | draft, for review (a preview; the full chapter waits for milestone 2) |
 | | **Part 3 – Inside the pipeline** | |
 | 13 | [Readers](13_readers.md) | draft, for review |
-| 14 | [The builder](14_builder.md) | outline |
+| 14 | [The builder](14_builder.md) | draft, for review |
 | 15 | [`curate` and the descriptors](15_curate.md) | outline |
 | 16 | [Sources: downloads and checksums](16_sources.md) | outline |
 | 17 | [The field step, inside](17_field_step_internals.md) | outline |
