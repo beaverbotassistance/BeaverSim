@@ -1069,7 +1069,106 @@ dams = gpd.read_file(EXTRACT / day / "annotations/dams.gpkg", fid_as_index=True)
     print("   ", inspect.getdoc(fn).splitlines()[0])"""),
     ])
 
-CHAPTERS = [CH00, CH01, CH02, CH03, CH04, CH05, CH06, CH07, CH08, CH09, CH10, CH11]
+CH12 = Chapter(
+    "12_inspecting", "12. Looking ahead: inspecting a dataset (milestone 2)",
+    "Exercises of [chapter 12](../12_inspecting.md): a preview of milestone 2, made only from what the catalogue "
+    "holds. Run the setup cell first.",
+    """import json
+import geopandas as gpd
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import pystac, rasterio
+from shapely.geometry import shape
+from data_acquisition.catalog import build, root, stac
+from data_acquisition.catalog import summary as summaries
+from data_acquisition.steps import curate
+
+
+def product(item):
+    \"\"\"The product of an item: the key of its data asset.\"\"\"
+    return next(k for k, a in item.assets.items() if "data" in (a.roles or []))""",
+    [
+        Exercise("**1. A table of items.** Build, curate and root the sample, open `<sample root>/stac/catalog.json` "
+                 "with pystac, and make one table row per item: id, product, kind, site, start and end of its time, "
+                 "date precision, number of flags.",
+                 """s = summaries.load(str(ROOT / "docs/manual/solutions/training_pond.yaml"))
+catalog, _ = build.build(SAMPLE, s)
+for item in catalog.get_items(recursive=True):
+    curate.curate_item(item, s)
+stac.save(catalog, SAMPLE / "stac/training_pond")
+root.build_root(SAMPLE / "stac")
+...  # your code here (pystac.Catalog.from_file, item.datetime, item.properties)""",
+                 """s = summaries.load(str(ROOT / "docs/manual/solutions/training_pond.yaml"))
+catalog, _ = build.build(SAMPLE, s)
+for item in catalog.get_items(recursive=True):
+    curate.curate_item(item, s)
+stac.save(catalog, SAMPLE / "stac/training_pond")
+root.build_root(SAMPLE / "stac")
+
+items = list(pystac.Catalog.from_file(str(SAMPLE / "stac/catalog.json")).get_items(recursive=True))
+rows = []
+for item in items:
+    p = item.properties
+    start = item.datetime or pystac.utils.str_to_datetime(p["start_datetime"])
+    end = item.datetime or pystac.utils.str_to_datetime(p["end_datetime"])
+    rows.append({"id": item.id, "product": product(item), "kind": p["beaver:kind"], "site": p["beaver:site"],
+                 "start": start, "end": end, "precision": p.get("beaver:date_precision"),
+                 "flags": len(p["beaver:quality"]), "geometry": shape(item.geometry)})
+table = pd.DataFrame(rows)
+table.drop(columns="geometry")"""),
+        Exercise("**2. Coverage.** Turn the table into a GeoDataFrame and plot the footprints in the site's UTM zone, "
+                 "coloured by product. What does each footprint cover, and why is the photos' one invisible?",
+                 """...  # your code here (gpd.GeoDataFrame(table, crs="EPSG:4326"), .to_crs, .plot)""",
+                 """frame = gpd.GeoDataFrame(table, crs="EPSG:4326").to_crs("EPSG:32612")
+ax = frame.plot(column="product", alpha=0.3, edgecolor="black", legend=True, figsize=(6, 6))
+ax.set_title("Training Pond: item footprints (UTM 12N)")
+plt.show()
+print(frame.assign(area_m2=frame.area.round())[["product", "area_m2"]])
+# The rasters cover their grid (20 m x 20 m), the annotations the extent of their features. The photos' footprint
+# is the outline of the camera positions, not the ground the photos show: these six were taken along one line, so
+# it is a sliver of almost no area (finding 17 in docs/dataset/course_findings.md)."""),
+        Exercise("**3. Timeline.** One row per product, a mark per item from its start to its end. Which item is an "
+                 "interval, and why?",
+                 """...  # your code here (plt.subplots, ax.plot or ax.barh)""",
+                 """fig, ax = plt.subplots(figsize=(8, 3))
+products = sorted(table["product"].unique())
+for _, r in table.iterrows():
+    y = products.index(r["product"])
+    ax.plot([r["start"], r["end"]], [y, y], lw=8, solid_capstyle="butt")
+    ax.plot([r["start"]], [y], marker="|", markersize=14, color="black")
+ax.set_yticks(range(len(products)), products)
+plt.show()
+print(table.loc[table["start"] != table["end"], ["id", "start", "end", "precision"]])
+# The DTM: the summary knows it only to the month (August 2022), so it covers the whole month."""),
+        Exercise("**4. Quick-look.** Without a stored quick-look, read the orthomosaic at about 200 pixels wide "
+                 "(`out_shape`) and show it next to the item's flags.",
+                 """item = next(i for i in items if product(i) == "orthomosaic")
+...  # your code here (rasterio.open(item.assets[...].get_absolute_href()), read(out_shape=...))""",
+                 """item = next(i for i in items if product(i) == "orthomosaic")
+with rasterio.open(item.assets["orthomosaic"].get_absolute_href()) as r:
+    width = 200
+    height = round(r.height * width / r.width)
+    rgb = r.read([1, 2, 3], out_shape=(3, height, width))
+plt.imshow(np.moveaxis(rgb, 0, -1))
+plt.title(item.id)
+plt.axis("off")
+plt.show()
+print(f"read {rgb.nbytes:,d} bytes instead of {r.width * r.height * 3:,d}")
+print("flags:", item.properties["beaver:quality"] or "none")"""),
+        Exercise("**5. What is missing.** By code: which items have a `thumbnail` asset, which have colonies, and what "
+                 "does `sites.json` say is still to decide?",
+                 """...  # your code here""",
+                 """print("thumbnails:", [i.id for i in items if any("thumbnail" in (a.roles or []) for a in i.assets.values())])
+print("with colonies:", [i.id for i in items if i.properties.get("beaver:colonies")])
+sites = json.loads((SAMPLE / "stac/sites.json").read_text())
+for site, entry in sites.items():
+    print(site, {k: entry[k] for k in ("colonies", "land_status", "governance")})
+# No quick-looks and no colonies: the browser must read files at a reduced size, and the colony views wait for the
+# registry's decisions (and define_aoi, milestone 5)."""),
+    ])
+
+CHAPTERS = [CH00, CH01, CH02, CH03, CH04, CH05, CH06, CH07, CH08, CH09, CH10, CH11, CH12]
 
 
 def notebook(chapter: Chapter, solutions: bool) -> nbformat.NotebookNode:

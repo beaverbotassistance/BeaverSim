@@ -88,3 +88,14 @@ together. Each entry: what was found, the evidence, and a suggestion. Newest las
     "about 30 km north-east" in both. The course now says 30 km.
 16. **`field.plan`'s docstring omits `georef` actions.** It says "``link`` and ``export`` actions", but `plan`
     also makes a `georef` action for each orthomosaic with an ArcGIS adjustment. Suggestion: name all three.
+17. **A photo folder's footprint is where the camera was, not what it saw.** `stac.photos_item` uses the convex hull
+    of the photos' GPS positions. For photos taken along one line (the course's sample: six photos, one line) that
+    hull is a sliver polygon of almost no area (0.0003 m²), invisible on a map; the envelope fallback only catches
+    exactly collinear points. Even for a full survey it understates the ground covered by about half a photo's
+    footprint on every side (at 60 m, a Phantom 4 Pro photo covers about 90 m × 60 m). This matters for
+    milestone 2's coverage map. Suggestion: buffer the hull by half the ground footprint, computed from the
+    height above take-off and the camera (chapter 3), or at least by a fixed distance, and record which in the item.
+18. **An item's product is not a property.** The product (orthomosaic, dsm, dams, ...) is recorded only as the key
+    of the item's `data` asset and inside the item id; a reader must find the asset with role `data` to get it
+    (the course's chapter 12 does). Milestone 2's timeline ("one row per product") will need it on every item.
+    Suggestion: also write it as `beaver:product`.
