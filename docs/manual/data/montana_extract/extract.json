@@ -19,7 +19,9 @@
  "dates": {
   "2018-07-26": {
    "chunk": "surveys/2018-07-26/orthomosaic_part-4_chunk-3.tif",
+   "chunk_arcgis": "surveys/2018-07-26/orthomosaic_part-4_chunk-3.arcgis.aux.xml",
    "full_tile": "surveys/2018-07-26/orthomosaic_part-4.tif",
+   "full_tile_arcgis": "surveys/2018-07-26/orthomosaic_part-4.arcgis.aux.xml",
    "annotations": [
     "dams.gpkg",
     "dams_points.gpkg"
@@ -58,7 +60,9 @@
   },
   "2018-08-06": {
    "chunk": "surveys/2018-08-06/orthomosaic_part-4_chunk-3.tif",
+   "chunk_arcgis": "surveys/2018-08-06/orthomosaic_part-4_chunk-3.arcgis.aux.xml",
    "full_tile": "surveys/2018-08-06/orthomosaic_part-4.tif",
+   "full_tile_arcgis": "surveys/2018-08-06/orthomosaic_part-4.arcgis.aux.xml",
    "annotations": [
     "canals_colony-b.gpkg",
     "dams.gpkg",

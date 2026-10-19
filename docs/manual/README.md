@@ -44,7 +44,7 @@ those are later milestones, and the chapters that will cover them are marked as 
 | 11 | [Field data: from a field drive to `beaver_dataset/`](11_field_data.md) | draft, for review |
 | 12 | [Looking ahead: inspecting a dataset (milestone 2)](12_inspecting.md) | draft, for review (a preview; the full chapter waits for milestone 2) |
 | | **Part 3 – Inside the pipeline** | |
-| 13 | [Readers](13_readers.md) | outline |
+| 13 | [Readers](13_readers.md) | draft, for review |
 | 14 | [The builder](14_builder.md) | outline |
 | 15 | [`curate` and the descriptors](15_curate.md) | outline |
 | 16 | [Sources: downloads and checksums](16_sources.md) | outline |

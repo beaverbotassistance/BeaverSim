@@ -99,3 +99,10 @@ together. Each entry: what was found, the evidence, and a suggestion. Newest las
     of the item's `data` asset and inside the item id; a reader must find the asset with role `data` to get it
     (the course's chapter 12 does). Milestone 2's timeline ("one row per product") will need it on every item.
     Suggestion: also write it as `beaver:product`.
+19. **Photo altitude ignores `GPSAltitudeRef`, and EXIF is read by two separate functions.** EXIF stores the
+    altitude as a positive number and a flag (`GPSAltitudeRef`, 1 = below sea level); `readers.photos.exif` and
+    `field_inventory.read_photo` both read the number alone, so a photo 400 m below sea level reads +400 m (tested
+    with a synthetic JPEG; harmless for our sites, all well above sea level). The two functions duplicate one job
+    (the inventory's uses PIL's private `_getexif`), against the rule that code is organised by data type, and no
+    test covers either (`tests/dataset/test_readers.py` has none for photos). Suggestion: one EXIF reader in
+    `readers/photos.py`, honouring the altitude flag, used by both, with a test.

@@ -16,6 +16,8 @@ of every file.
 <date>/
   orthomosaic_chunk.tif       the chunk the annotations were drawn on, with its ArcGIS georeferencing applied
   orthomosaic_full_tile.tif   the same area from the full tile, with its own (earlier) georeferencing
+  original_<kind>.arcgis.aux.xml  ArcGIS's georeferencing sidecar of the whole original chunk or tile, unchanged:
+                              its control points are in the original's coordinates, not the extract's
   annotations/<layer>.gpkg    the features of each annotation layer of that date that touch the box
   photos/DJI_*.JPG            three photos taken over the box
 extract.json                  the box, the source of every file, and the alignment rows of the extract's outlines (`feature_id`: the GeoPackage id; `fid`: the row position `alignment.csv` uses)
@@ -29,5 +31,7 @@ extract.json                  the box, the source of every file, and the alignme
   ([field naming](../../../dataset/field_naming.md)).
 - **Annotations:** the features of each layer that touch the box, copied whole and unchanged (geometry with
   Z and M, attributes) with `ogr2ogr`; their feature ids are those of `beaver_dataset`, which corrections refer to.
+- **ArcGIS sidecars:** copied unchanged from the original chunk and tile (`<name>.arcgis.aux.xml` in
+  `beaver_dataset`). They do not belong to the extract's files, and GDAL does not read them under these names.
 - **Photos:** downscaled to 800 pixels on the longest side; EXIF (camera, time, GPS) and DJI's XMP (height
   above take-off, gimbal and flight angles) kept.

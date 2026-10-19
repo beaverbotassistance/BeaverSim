@@ -1017,7 +1017,8 @@ broken["annotations"][0]["to"] = "annotations/2018-07-26/beaver_dams.gpkg"
 broken["orthomosaics"][1]["to"] = broken["orthomosaics"][0]["to"]
 print(*field.check_layout(broken), sep="\\n")"""),
         Exercise("**3. A CRS correction.** Apply the layout's `crs_corrections` to the ARC zone's ESRI definition "
-                 "(`ESRI:102432`) with `field.corrected_crs`. What does the result say about the sphere? Then place the "
+                 "(`ESRI:102432`) with `field.corrected_crs`. What does the result say about the sphere? "
+                 "Then place the "
                  "centre of the extract's box with the declared and the corrected CRS, under the PROJ of pyproj and "
                  "that of rasterio.",
                  """esri = CRS.from_user_input("ESRI:102432")
@@ -1041,7 +1042,8 @@ for key, (lon, lat) in places.items():
     print(f"{key[0]:9s} {key[1]:8s} {lat:.5f} {lon:.5f}  {km:5.1f} km from the corrected place")
 # Only the declared CRS under the newer PROJ (9.8, ellipsoidal Equidistant Cylindrical) lands about 30 km away
 # (25 km north, 17 km east)."""),
-        Exercise("**4. Alignment.** Measure the best-fit shift of the extract's dam (26 July and 6 August) on the chunk "
+        Exercise("**4. Alignment.** Measure the best-fit shift of the extract's dam (26 July and 6 August) "
+                 "on the chunk "
                  "and on the full tile with `field_alignment.best_shift`, and compare with the full-resolution rows in "
                  "`extract.json`. Which image was it drawn on?",
                  """day = "2018-07-26"
@@ -1159,7 +1161,11 @@ print("flags:", item.properties["beaver:quality"] or "none")"""),
         Exercise("**5. What is missing.** By code: which items have a `thumbnail` asset, which have colonies, and what "
                  "does `sites.json` say is still to decide?",
                  """...  # your code here""",
-                 """print("thumbnails:", [i.id for i in items if any("thumbnail" in (a.roles or []) for a in i.assets.values())])
+                 """def has_thumbnail(item):
+    return any("thumbnail" in (a.roles or []) for a in item.assets.values())
+
+
+print("thumbnails:", [i.id for i in items if has_thumbnail(i)])
 print("with colonies:", [i.id for i in items if i.properties.get("beaver:colonies")])
 sites = json.loads((SAMPLE / "stac/sites.json").read_text())
 for site, entry in sites.items():
@@ -1168,7 +1174,98 @@ for site, entry in sites.items():
 # registry's decisions (and define_aoi, milestone 5)."""),
     ])
 
-CHAPTERS = [CH00, CH01, CH02, CH03, CH04, CH05, CH06, CH07, CH08, CH09, CH10, CH11, CH12]
+CH13 = Chapter(
+    "13_readers", "13. Readers",
+    "Exercises of [chapter 13](../13_readers.md). Run the setup cell first.",
+    """import subprocess, tempfile, textwrap
+import numpy as np
+from data_acquisition.readers import RECORD_FILES, RECORDS, files, geotiff, photos, vector""",
+    [
+        Exercise("**1. Rasters.** Read the header of the sample's orthomosaic and of `dem_2022.asc` with "
+                 "`geotiff.info`. Which bands does each declare, and what does the grid lack? "
+                 "Is `README.txt` a raster?",
+                 """...  # your code here (geotiff.info, geotiff.declared_bands, geotiff.is_raster)""",
+                 """for name in ("ortho_2023-07-12.tif", "dem_2022.asc"):
+    h = geotiff.info(DATASET / name)
+    print(name, {k: h[k] for k in ("driver", "epsg", "has_crs", "count", "dtypes", "nodata", "colorinterp")})
+    print("   declared bands:", geotiff.declared_bands(h))
+print("README.txt is a raster:", geotiff.is_raster(DATASET / "README.txt"))
+# The orthomosaic declares red, green, blue, alpha. The grid declares nothing (one grey band) and has no CRS:
+# the summary must give it (crs_from_summary, chapter 10)."""),
+        Exercise("**2. Vectors.** Read the extract's `dams.gpkg` (26 July) with `vector.info`. Where did its vertical "
+                 "CRS go, and which geometry type is reported?",
+                 """...  # your code here""",
+                 """info = vector.info(EXTRACT / "2018-07-26/annotations/dams.gpkg")
+layer = info["layers"][0]
+print({k: layer[k] for k in ("name", "geometry_type", "features", "epsg", "vertical_crs")})
+print("horizontal CRS:", layer["crs"][:90], "...")
+# The compound CRS is split: the horizontal part is "crs", the vertical one (NAVD88, US survey feet) goes to
+# vertical_crs. The type is the one GDAL reads, without M (chapter 1)."""),
+        Exercise("**3. Records.** Read the sample's `metadata.xml` with the reader `RECORDS` gives for it. "
+                 "What does it "
+                 "say about each file's checksum?",
+                 """...  # your code here (RECORD_FILES, RECORDS[...]["read"])""",
+                 """fmt = RECORD_FILES["metadata.xml"]
+record = RECORDS[fmt]["read"]((DATASET / "metadata.xml").read_text())
+print(fmt, "|", record["title"], "|", record["licence"], "|", record["dates"])
+for name, e in record["entities"].items():
+    print(f"  {name:28s} {e['size']} bytes, checksum {e['checksum']}")"""),
+        Exercise("**4. ArcGIS sidecars.** Read the four `original_*.arcgis.aux.xml` of the extract with "
+                 "`geotiff.arcgis_adjustment`; fit a first-order polynomial through each one's control points and "
+                 "compute the residuals. How do the chunks and the full tiles compare?",
+                 """aux = EXTRACT / "2018-07-26/original_chunk.arcgis.aux.xml"
+x = geotiff.arcgis_adjustment(aux.read_text())
+...  # your code here (np.linalg.lstsq on [source, 1] -> target)""",
+                 """for aux in sorted(EXTRACT.glob("*/original_*.arcgis.aux.xml")):
+    x = geotiff.arcgis_adjustment(aux.read_text())
+    design = np.c_[x["source"], np.ones(len(x["source"]))]
+    coef = np.linalg.lstsq(design, x["target"], rcond=None)[0]
+    residuals = np.hypot(*(design @ coef - x["target"]).T)
+    print(f"{aux.parent.name} {aux.name:34s} {x['type']} order {x['order']}, {len(residuals):2d} points, "
+          f"rms {np.sqrt((residuals ** 2).mean()):.3f} m, max {residuals.max():.3f} m")
+# The chunks fit their few control points to a few centimetres; the full tiles miss theirs by 0.5-0.6 m on average
+# (up to 2 m): one affine cannot follow a whole tile's distortion. That is why the annotations, drawn on the chunks,
+# sit 0.5-1 m off on the full tiles (chapter 11). The rms is the one in georeference.csv on the drive: an affine
+# change of the source coordinates (to pixels, as the field step does) leaves an affine fit's residuals unchanged."""),
+        Exercise("**5. Companions.** Which files does `files.companions` give for `ortho.tif` and for `dams.shp`?",
+                 """...  # your code here""",
+                 """print(sorted(files.companions("ortho.tif")))
+print(sorted(files.companions("dams.shp")))
+print(files.inside_container("Dams.gdb/a00000001.gdbtable"))"""),
+        Exercise("**6. Test an edge case.** EXIF stores the altitude as a positive number with a flag "
+                 "(`GPSAltitudeRef`: "
+                 "1 = below sea level). Write a pytest test that makes a photo 400 m below sea level and checks that "
+                 "`photos.exif` reads -400 m. Run it in a scratch folder. What happens?",
+                 """scratch = Path(tempfile.mkdtemp())
+...  # write a test to scratch / "test_edge.py" (Pillow: Image.Exif, ExifTags.IFD.GPSInfo), run pytest on it""",
+                 """scratch = Path(tempfile.mkdtemp())
+test = textwrap.dedent('''
+    import pytest
+    from PIL import ExifTags, Image
+    from data_acquisition.readers import photos
+
+    @pytest.mark.xfail(strict=True, reason="GPSAltitudeRef is not read (course finding 19)")
+    def test_altitude_below_sea_level(tmp_path):
+        exif = Image.Exif()
+        exif[ExifTags.IFD.GPSInfo] = {
+            ExifTags.GPS.GPSLatitudeRef: "N", ExifTags.GPS.GPSLatitude: (31.0, 30.0, 0.0),
+            ExifTags.GPS.GPSLongitudeRef: "E", ExifTags.GPS.GPSLongitude: (35.0, 30.0, 0.0),
+            ExifTags.GPS.GPSAltitudeRef: b"\\\\x01", ExifTags.GPS.GPSAltitude: 400.0}
+        path = tmp_path / "below.jpg"
+        Image.new("RGB", (8, 8)).save(path, exif=exif)
+        assert photos.exif(path)["alt"] == -400.0
+''')
+(scratch / "test_edge.py").write_text(test)
+# -c: the repository's pytest.ini (it switches off plugins that do not work here), also for a test outside the repo
+command = [sys.executable, "-m", "pytest", "-q", "--color=no", "-c", str(ROOT / "pytest.ini"), "--rootdir", str(ROOT)]
+out = subprocess.run(command + [str(scratch / "test_edge.py")], cwd=ROOT, capture_output=True, text=True)
+print((out.stdout + out.stderr).strip().splitlines()[-1])
+# The reader returns +400: the assertion fails, so the test is marked xfail (strict: once the reader is fixed it
+# will fail loudly, a reminder to remove the mark). A test that documents a bug, with the bug logged, is how an
+# edge case enters the suite before its fix (chapter 18)."""),
+    ])
+
+CHAPTERS = [CH00, CH01, CH02, CH03, CH04, CH05, CH06, CH07, CH08, CH09, CH10, CH11, CH12, CH13]
 
 
 def notebook(chapter: Chapter, solutions: bool) -> nbformat.NotebookNode:

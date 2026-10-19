@@ -4,7 +4,8 @@
 
 For each date: the orthomosaic chunk the annotations were drawn on and the full tile, both cut to the box
 and resampled to 5 cm (JPEG-compressed GeoTIFF); the features of every annotation layer of that date that
-touch the box (unchanged: Z, M, attributes and feature ids); three photos taken over the box, downscaled
+touch the box (unchanged: Z, M, attributes and feature ids); ArcGIS's georeferencing sidecar of the
+original chunk, unchanged; three photos taken over the box, downscaled
 with their EXIF and XMP kept. The box is centred on the largest dam that lies on a chunk at both dates. A README
 records the sources and what was done to them. A few MB, committed under ``docs/manual/data/montana_extract/``.
 
@@ -13,6 +14,7 @@ records the sources and what was done to them. A few MB, committed under ``docs/
 import argparse
 import csv
 import json
+import shutil
 import subprocess
 import warnings
 from pathlib import Path
@@ -147,6 +149,10 @@ def main() -> None:
             tif = _image(site / "surveys" / day, bounds, chunk)
             cut_raster(tif, bounds, out / f"orthomosaic_{kind}.tif")
             entry[kind] = f"surveys/{day}/{tif.name}"
+            arcgis = tif.with_name(tif.stem + ".arcgis.aux.xml")     # ArcGIS's sidecar of the whole original
+            if arcgis.exists():
+                shutil.copyfile(arcgis, out / f"original_{kind}.arcgis.aux.xml")
+                entry[f"{kind}_arcgis"] = f"surveys/{day}/{arcgis.name}"
         entry["annotations"] = cut_annotations(site / "annotations" / day, bounds, out / "annotations")
         entry["photos"] = cut_photos(site / "surveys" / day / "photos", lonlat, out / "photos")
         entry["alignment"] = extract_alignment(alignment, day, site / "annotations" / day, out / "annotations")
