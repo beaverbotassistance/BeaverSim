@@ -124,6 +124,10 @@ Notebook: [`notebooks/15_curate.ipynb`](notebooks/15_curate.ipynb) (work in a co
    have no overviews (slow to display; milestone 2 will need quick-looks), apply it after `curate_item`, and test it
    with a small limit.
 
+6. **One check at a time.** `check_raster` and `check_vector` on their own, with the right site and with one in another UTM
+   zone; `check_vector` on the extract's dams; `verify` on the orthomosaic and the photos.
+7. **Reading the result.** `descriptors.get_field` and `descriptors.summary` after curating every item.
+
 ## Where this lives
 
 - [`data_acquisition/steps/curate.py`](../../data_acquisition/steps/curate.py): `curate`, `curate_item`, `check_raster`,

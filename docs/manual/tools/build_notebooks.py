@@ -1735,7 +1735,7 @@ import pystac, rasterio, yaml
 from rasterio.transform import from_origin
 from data_acquisition.catalog import build, descriptors, stac
 from data_acquisition.catalog import summary as summaries
-from data_acquisition.readers import geotiff
+from data_acquisition.readers import geotiff, vector
 from data_acquisition.steps import curate
 
 REFERENCE = yaml.safe_load((ROOT / "docs/manual/solutions/training_pond.yaml").read_text())
@@ -1879,6 +1879,57 @@ def test_no_overviews(tmp_path):
 
 test_no_overviews(Path(tempfile.mkdtemp()))
 print("test passed")"""),
+        Exercise("**6. One check at a time.** Call `curate.check_raster` on the DSM and `curate.check_vector` on the "
+                 "dams, first with the sample's site and then with a site in another UTM zone. Do the same for a "
+                 "vector item of the extract's dams. Then `curate.verify` on the orthomosaic and on the photos.",
+                 """site = s["sites"]["training_pond"]
+other_zone = {**site, "crs": "EPSG:32611"}
+fresh = {i.id.split("_")[-1]: i for i in build.build(SAMPLE, s)[0].get_items(recursive=True)}
+...  # your code here""",
+                 """site = s["sites"]["training_pond"]
+other_zone = {**site, "crs": "EPSG:32611"}
+fresh = {i.id.split("_")[-1]: i for i in build.build(SAMPLE, s)[0].get_items(recursive=True)}
+
+
+def automatic(item):
+    return [(q["flag"], q["detail"][:75]) for q in item.properties.get("beaver:quality", []) if q["source"] == "auto"]
+
+
+dsm = fresh["dsm"]
+curate.check_raster(dsm, "dsm", site)
+print("DSM, its site:  ", automatic(dsm))
+curate.check_raster(dsm, "dsm", other_zone)
+print("DSM, other zone:", automatic(dsm))
+dams = fresh["annotations"]
+curate.check_vector(dams, "annotations", site)
+print("dams, its site:  ", automatic(dams))
+curate.check_vector(dams, "annotations", other_zone)
+print("dams, other zone:", automatic(dams))
+
+path = EXTRACT / "2018-07-26/annotations/dams.gpkg"
+day = datetime.date(2018, 7, 26)
+real = stac.vector_item("rumney_dams", path, vector.info(path), day, day, "annotations", ["data"])
+curate.check_vector(real, "annotations", {"crs": "EPSG:32612"})
+print("Rumney's dams:", automatic(real))
+# The same problem, two names: crs_mismatch on a raster, crs_differs on a vector. The checks add flags and never clear
+# them: clearing the previous automatic flags is curate_item's job (exercise 3).
+
+ortho = fresh["orthomosaic"]
+curate.verify(ortho, "orthomosaic")
+print("verified:", ortho.properties["beaver:provenance"]["verified"].split(" ", 1)[1], automatic(ortho))
+flight = fresh["photos"]
+curate.verify(flight, "photos")
+print("photos:", automatic(flight))"""),
+        Exercise("**7. Reading the result.** Curate every item, then read fields with `descriptors.get_field`, and "
+                 "print `descriptors.summary`. Where have you seen those rows before?",
+                 """...  # your code here""",
+                 """for item in items.values():
+    curate.curate_item(item, s)
+ortho = items["orthomosaic"]
+print({field: descriptors.get_field(ortho, field) for field in ("site", "licence", "season", "colonies")})
+for row in descriptors.summary(list(items.values())):
+    print(row)
+# Those rows are curate_report.csv. The missing fields are the decisions only a person can enter in the registry."""),
     ])
 
 CH16 = Chapter(
