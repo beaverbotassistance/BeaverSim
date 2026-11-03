@@ -159,3 +159,10 @@ together. Each entry: what was found, the evidence, and a suggestion. Newest las
     code: inventory, plan, manifest, georeference fits and alignment identical; only one `excluded.csv` reason
     reworded since the build (commit f655273). Suggestion: move the legacy files and folders aside (e.g.
     `beaver_dataset_legacy/`, which exists) until the other sites get layout files; update `field_naming.md`.
+28. **The root catalogue stores its own location as an absolute path.** `catalog/root.py` (`build_root`) sets the
+    root catalogue's self href to the resolved path, so the `root` link of `<root>/stac/catalog.json` is absolute
+    (`/media/fedeoli/Seagate Portable Drive/open_datasets/stac/catalog.json`), unlike its `child` links and the
+    dataset catalogues, which are relative. On a copy of the drive mounted elsewhere, or under another user, that
+    link points to the old location until `python -m data_acquisition.catalog.root --root <root>` is run again.
+    Suggestion: save the root catalogue as self-contained, like `stac.save` does for the dataset catalogues, so
+    the whole `stac/` folder can move.
