@@ -764,7 +764,7 @@ for fn in (http.fetch, downloads.finish, downloads.log):
 CH09 = Chapter(
     "09_describing_a_dataset", "9. Describing a dataset: summaries and Claude",
     "Exercises of [chapter 9](../09_describing_a_dataset.md). Run the setup cell first.",
-    """import copy, datetime, difflib, json, tempfile
+    """import copy, datetime, difflib, json, shutil, tempfile
 import rasterio
 import yaml
 from data_acquisition.catalog import build, describe, evidence
@@ -975,7 +975,67 @@ print("by a person:", summaries.author(by_person))
 print([summaries.by_claude(who) for who in ("claude", "claude (claude-opus-5-5)", "Claudia Rossi", "Federico")])
 # `reviewed` wins: once a person has checked the summary, its values count as manual. by_claude only looks at
 # whether the name starts with lower-case "claude"."""),
-        Exercise("**11. (Optional) Draft with Claude.** Run the prompt in a Claude Code session on the sample. The "
+        Exercise("**11. Evidence in code.** In a scratch folder with a copy of the orthomosaic and a sidecar, what "
+                 "does `evidence.entries` list? On the sample's files, plus a broken `.tif` and an unknown `.bin`, "
+                 "what does `evidence.describe_file` return? Then run `evidence.gather` on the sample, and on a folder "
+                 "of 10 "
+                 "photos: why is that one entry, when the sample's 6 photos are six?",
+                 """scratch = Path(tempfile.mkdtemp())
+...  # your code here (evidence.entries, evidence.describe_file, evidence.gather, evidence.PHOTO_FOLDER)""",
+                 """scratch = Path(tempfile.mkdtemp())
+shutil.copyfile(DATASET / "ortho_2023-07-12.tif", scratch / "ortho.tif")
+(scratch / "ortho.tif.aux.xml").write_text("<PAMDataset/>")
+(scratch / "bad.tif").write_bytes(b"not a tiff")
+(scratch / "data.bin").write_bytes(b"1")
+print("entries:", [p.name for p in evidence.entries(scratch)])           # the sidecar is left out
+
+for name in ("ortho_2023-07-12.tif", "dams_2023-07-12.gpkg", "metadata.xml", "README.txt",
+             "photos_2023-07-12/100MEDIA/DJI_0001.JPG"):
+    print(f"{name:40s} keys: {list(evidence.describe_file(DATASET / name))}")
+print("a broken file:", str(evidence.describe_file(scratch / "bad.tif"))[:60], "...")     # an error is evidence too
+print("an unknown type:", evidence.describe_file(scratch / "data.bin"))
+# A single photo gets nothing: describe_file has no branch for it (finding 10 in course_findings.md).
+
+found = evidence.gather(SAMPLE, ["repo/*"])
+print(list(found), "|", [f["folder"] for f in found["folders"]], "|", len(found["folders"][0]["files"]), "entries")
+print("a pattern matching nothing:", evidence.gather(SAMPLE, ["nothing/*"])["folders"])
+
+photos_root = Path(tempfile.mkdtemp())
+folder = photos_root / "survey" / "100MEDIA"
+folder.mkdir(parents=True)
+originals = sorted((DATASET / "photos_2023-07-12/100MEDIA").glob("*.JPG"))
+for i in range(evidence.PHOTO_FOLDER):
+    shutil.copyfile(originals[i % len(originals)], folder / f"P{i:02d}.JPG")
+print(evidence.gather(photos_root, ["survey"])["folders"][0]["files"])
+# From PHOTO_FOLDER (10) photos up, a folder is one entry: count, size, first and last photo's EXIF. Thousands of
+# photos would otherwise fill the evidence; below that, each photo is listed, with nothing read from it."""),
+        Exercise("**12. The prompt and the check in code.** Print `describe.registry_lines()`. Write a prompt into a "
+                 "scratch folder with `describe.write_prompt`: which files appear, and what did it fill in? Then run "
+                 "`describe.check_summary` on the reference summary, on a copy that names a missing file and leaves "
+                 "the DSM out, and on one with an unknown product. What does it return each time?",
+                 """found = evidence.gather(SAMPLE, ["repo/*"])
+...  # your code here""",
+                 """found = evidence.gather(SAMPLE, ["repo/*"])
+print(describe.registry_lines())
+out = Path(tempfile.mkdtemp())
+prompt = describe.write_prompt(found, "training_pond", "dataone", [], out)
+print(sorted(p.name for p in out.iterdir()), "|", prompt.read_text().splitlines()[0])
+print("lists the site:", "`training_pond`" in prompt.read_text(), "| holds the rules:", "never" in prompt.read_text())
+
+reference = ROOT / "docs/manual/solutions/training_pond.yaml"
+print("returns", describe.check_summary(SAMPLE, str(reference)))
+raw = yaml.safe_load(reference.read_text())
+raw["groups"][0]["files"] = [f for f in raw["groups"][0]["files"] if f["path"] != "dsm_2023-07-12.tif"]
+raw["groups"][0]["files"].append({"path": "ghost.tif", "product": "chm", "date": datetime.date(2023, 7, 12)})
+path = Path(tempfile.mkdtemp()) / "summary.yaml"
+path.write_text(yaml.safe_dump(raw, sort_keys=False))
+print("returns", describe.check_summary(SAMPLE, str(path)))         # the build's: ghost.tif, the DSM, README -> dsm
+raw["groups"][0]["files"][0]["product"] = "ortho"
+path.write_text(yaml.safe_dump(raw, sort_keys=False))
+print("returns", describe.check_summary(SAMPLE, str(path))) # 1: load stops first, so the build never ran
+# It returns the number of problems, and the command exits with 1 when there are any. Careful when writing YAML
+# from Python: safe_dump writes an alias for an object used twice (one date on two files); anchors() refuses it."""),
+        Exercise("**13. (Optional) Draft with Claude.** Run the prompt in a Claude Code session on the sample. The "
                  "prompt writes into `data_acquisition/summaries/` and may add a site to "
                  "`data_acquisition/sites.yaml`: delete "
                  "the draft and undo any registry change afterwards (`git status`, `git restore`).",
@@ -984,7 +1044,7 @@ print(subprocess.run(["git", "status", "--short"], cwd=ROOT, capture_output=True
                  """# Done in a Claude Code session, not here. Afterwards, check what it changed:
 status = subprocess.run(["git", "status", "--short"], cwd=ROOT, capture_output=True, text=True).stdout
 print(status or "nothing changed")"""),
-        Exercise("**12. Find it in the code.** Where are the drafting rules, and which function decides what evidence "
+        Exercise("**14. Find it in the code.** Where are the drafting rules, and which function decides what evidence "
                  "a raster gets?",
                  """import inspect
 ...  # your code here""",

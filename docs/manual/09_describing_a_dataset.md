@@ -132,10 +132,24 @@ Three things that are easy to get wrong:
   fix it and run it again to see the file-level problems.
 - **`anchors` reads text** because once YAML is parsed, an alias has been expanded and nothing shows it was used.
 
+- **Writing YAML from Python can trip `anchors`.** `yaml.safe_dump` writes an alias for an object used twice (one
+  date object on two files), and the summary is then refused.
+
 `epoch` is the one to know best. A file's time is one of: a `date` (a day, or a month or year with
 `date_precision`), or a `start_date` and `end_date`; `unknown` precision needs both limits. A month or year becomes its
 first and last day, and the label (`2023-07-12`, `2022-08`, `2019`, `2017-09-07_2018-09-25`) goes into the item's id
 ([chapter 14](14_builder.md)).
+
+The commands of sections 2 and 3 are thin too. They call two more modules:
+
+| Function | Takes | Returns |
+|---|---|---|
+| `evidence.entries(folder)` | a folder | its files, a `.gdb` folder as one entry, sidecars left out |
+| `evidence.describe_file(path)` | one file | a `raster`, `vector`, `record` or `text` entry, or an `error`; `{}` for a type it does not read, such as a single photo |
+| `evidence.gather(root, patterns)` | a data root and folder globs | `{root, gathered, folders}`; a folder with `PHOTO_FOLDER` (10) photos or more becomes one entry |
+| `describe.registry_lines()` | nothing | the registry as text, one line per site, for the prompt |
+| `describe.write_prompt(evidence, dataset, source_kind, context, out_dir)` | the evidence and the session's details | writes `evidence.json` and `prompt.md`; returns the prompt's path |
+| `describe.check_summary(root, path)` | a data root and a summary file | prints the problems, returns their number: `load`'s stop the check at 1, otherwise each line of the build report counts |
 
 ## Case: Rumney Ranch, drafted twice
 
@@ -171,17 +185,21 @@ solutions in [`solutions/notebooks/09_describing_a_dataset.ipynb`](solutions/not
 9. **A layer's time.** `layer_epoch` with the pattern `_(\d{4})$` on four layer names, then by day and by month. When
    does it answer None?
 10. **Who wrote it.** `author` on the reference summary, reviewed, and by a person; `by_claude` on four names.
-11. **(Optional) Draft with Claude.** Run the prompt in a Claude Code session on the sample. The prompt writes into
+11. **Evidence in code.** `entries` with a sidecar present; `describe_file` on the sample's files, a broken `.tif` and an
+    unknown `.bin`; `gather` on the sample and on 10 photos. Why is that one entry?
+12. **The prompt and the check in code.** `registry_lines`, `write_prompt`, and `check_summary` on the reference summary, on
+    a copy with a missing file and an undescribed one, and on one with an unknown product. What does it return?
+13. **(Optional) Draft with Claude.** Run the prompt in a Claude Code session on the sample. The prompt writes into
    `data_acquisition/summaries/` and may add a site to `data_acquisition/sites.yaml`: delete the draft and undo any
    registry change afterwards (`git status`, `git restore`).
-12. **Find it in the code.** Where are the drafting rules, and which function decides what evidence a raster gets?
+14. **Find it in the code.** Where are the drafting rules, and which function decides what evidence a raster gets?
 
 ## Where this lives
 
 - [`data_acquisition/catalog/summary.py`](../../data_acquisition/catalog/summary.py): the schema (docstring) and the functions of section 5.
-- [`data_acquisition/catalog/evidence.py`](../../data_acquisition/catalog/evidence.py): `gather`, `describe_file`.
-- [`data_acquisition/catalog/describe.py`](../../data_acquisition/catalog/describe.py): `RULES`, `PROMPT`, `write_prompt`,
-  `check_summary`.
+- [`data_acquisition/catalog/evidence.py`](../../data_acquisition/catalog/evidence.py): `entries`, `describe_file`, `gather`.
+- [`data_acquisition/catalog/describe.py`](../../data_acquisition/catalog/describe.py): `RULES`, `PROMPT`, `registry_lines`,
+  `write_prompt`, `check_summary`.
 - [`data_acquisition/summaries/`](../../data_acquisition/summaries/): every reviewed summary, to learn from.
 - [`docs/dataset/describing_a_dataset.md`](../dataset/describing_a_dataset.md): the how-to.
 
