@@ -15,19 +15,20 @@ from nbformat.v4 import new_code_cell, new_markdown_cell, new_notebook
 
 MANUAL = Path(__file__).resolve().parents[1]
 
-SETUP = '''# Setup: find the repository root, make the sample data root if needed, use the sample's site registry
+SETUP = '''# Setup: run this cell first, in every notebook
 import os, subprocess, sys
 from pathlib import Path
 
+# find the repository: from this folder upwards, the first one holding data_acquisition/
 ROOT = next(p for p in [Path.cwd(), *Path.cwd().parents] if (p / "data_acquisition").is_dir())
-sys.path.insert(0, str(ROOT))
-SAMPLE = ROOT / "output/manual/sample_root"
-if not SAMPLE.exists():
+sys.path.insert(0, str(ROOT))                  # so that Python can import the pipeline
+SAMPLE = ROOT / "output/manual/sample_root"    # the course's invented dataset
+if not SAMPLE.exists():                        # generated once, with this same Python
     subprocess.run([sys.executable, str(ROOT / "docs/manual/tools/make_sample.py"), "--out", str(SAMPLE)], check=True)
-DATASET = SAMPLE / "repo/doi_10.5555_training.pond"
-EXTRACT = ROOT / "docs/manual/data/montana_extract"
-os.environ["BEAVER_SITES"] = str(SAMPLE / "sites.yaml")
-import warnings; warnings.simplefilter("ignore")
+DATASET = SAMPLE / "repo/doi_10.5555_training.pond"    # the sample's dataset folder
+EXTRACT = ROOT / "docs/manual/data/montana_extract"    # a real piece of Rumney Ranch
+os.environ["BEAVER_SITES"] = str(SAMPLE / "sites.yaml")    # use the sample's site registry, not the real one
+import warnings; warnings.simplefilter("ignore")           # hide warnings; remove this line when debugging
 print("repository:", ROOT); print("sample data root:", SAMPLE)'''
 
 
@@ -49,8 +50,7 @@ class Chapter(NamedTuple):
 CH00 = Chapter(
     "00_setup", "0. Setup: environment, drives, sample data",
     "Exercises of [chapter 0](../00_setup.md). Run the setup cell first: it makes the sample data root.",
-    '''import subprocess
-from data_acquisition.catalog import summary as summaries''',
+    '''from data_acquisition.catalog import summary as summaries''',
     [
         Exercise("**1.** List the files of the sample data root with their sizes. Which file is the largest, and why?",
                  '''...  # your code here (Path.rglob, stat().st_size)''',
@@ -88,7 +88,7 @@ os.environ["BEAVER_SITES"] = saved'''),
 CH01 = Chapter(
     "01_geospatial_data", "1. Geospatial data: rasters, vectors, formats",
     "Exercises of [chapter 1](../01_geospatial_data.md). Run the setup cell first.",
-    '''import subprocess, json
+    '''import json
 import matplotlib.pyplot as plt
 import numpy as np
 import pyogrio
@@ -612,7 +612,7 @@ CH07 = Chapter(
     "07_pipeline_at_a_glance", "7. The pipeline at a glance",
     "Exercises of [chapter 7](../07_pipeline_at_a_glance.md). Run the setup cell first. The stages are run as "
     "shell commands, as you would in a terminal; `run` prints the command and the end of its output.",
-    """import csv, json, subprocess
+    """import csv, json
 
 SUMMARY = ROOT / "docs/manual/solutions/training_pond.yaml"
 STAC = SAMPLE / "stac"
@@ -684,7 +684,7 @@ CH08 = Chapter(
     "Exercises of [chapter 8](../08_open_datasets.md). Run the setup cell first. **These exercises download from the "
     "Arctic Data Center**: an internet connection is needed. They use their own data root and the real site "
     "registry, because the Baldwin Peninsula is a real site.",
-    """import csv, shutil, stat, subprocess
+    """import csv, shutil, stat
 os.environ.pop("BEAVER_SITES", None)         # the real site registry
 OPEN = ROOT / "output/manual/open_root"
 DOI = "doi:10.18739/A2CZ3253W"
@@ -758,7 +758,7 @@ for fn in (http.fetch, downloads.finish, downloads.log):
 CH09 = Chapter(
     "09_describing_a_dataset", "9. Describing a dataset: summaries and Claude",
     "Exercises of [chapter 9](../09_describing_a_dataset.md). Run the setup cell first.",
-    """import copy, datetime, difflib, json, subprocess, tempfile
+    """import copy, datetime, difflib, json, tempfile
 import rasterio
 import yaml
 from data_acquisition.catalog import build, describe, evidence
@@ -1177,7 +1177,7 @@ for site, entry in sites.items():
 CH13 = Chapter(
     "13_readers", "13. Readers",
     "Exercises of [chapter 13](../13_readers.md). Run the setup cell first.",
-    """import subprocess, tempfile, textwrap
+    """import tempfile, textwrap
 import numpy as np
 from data_acquisition.readers import RECORD_FILES, RECORDS, files, geotiff, photos, vector""",
     [
@@ -1374,7 +1374,7 @@ print("chm:", attached(chm))
 CH15 = Chapter(
     "15_curate", "15. curate and the descriptors",
     "Exercises of [chapter 15](../15_curate.md). Run the setup cell first.",
-    """import copy, datetime, os, shutil, tempfile
+    """import copy, datetime, shutil, tempfile
 import numpy as np
 import pystac, rasterio, yaml
 from rasterio.transform import from_origin
@@ -1529,7 +1529,7 @@ print("test passed")"""),
 CH16 = Chapter(
     "16_sources", "16. Sources: downloads and checksums",
     "Exercises of [chapter 16](../16_sources.md). Run the setup cell first. Everything here runs offline.",
-    """import base64, csv, http.client, inspect, os, tempfile
+    """import base64, csv, http.client, inspect, tempfile
 from data_acquisition.sources import checksums, dataset_folder, downloads, zenodo
 from data_acquisition.sources import http as web
 
@@ -1622,7 +1622,7 @@ CH17 = Chapter(
     "17_field_step_internals", "17. The field step, inside",
     "Exercises of [chapter 17](../17_field_step_internals.md). Run the setup cell first. They build a miniature "
     "drive in a scratch folder from the Montana extract; the real drive is not needed.",
-    """import csv, json, os, shutil, stat, tempfile
+    """import csv, json, shutil, stat, tempfile
 import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
@@ -1763,7 +1763,7 @@ plt.show()
 CH18 = Chapter(
     "18_testing", "18. Testing a change",
     "Exercises of [chapter 18](../18_testing.md). Run the setup cell first.",
-    """import collections, copy, json, subprocess, tempfile, textwrap
+    """import collections, copy, json, tempfile, textwrap
 import yaml
 from data_acquisition.catalog import build
 from data_acquisition.catalog import summary as summaries
@@ -1866,7 +1866,7 @@ CH19 = Chapter(
     "19_extending", "19. Extending the pipeline",
     "Exercises of [chapter 19](../19_extending.md). Run the setup cell first. The pipeline is changed only inside "
     "this session, and the changes are undone; no file of the pipeline is edited.",
-    """import copy, datetime, shutil, subprocess, tempfile, textwrap
+    """import copy, datetime, shutil, tempfile, textwrap
 import yaml
 from data_acquisition.catalog import build
 from data_acquisition.catalog import summary as summaries
