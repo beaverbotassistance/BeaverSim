@@ -2,7 +2,7 @@
 
 One YAML file per dataset, under ``data_acquisition/summaries/``. Everything source- or
 site-specific (file naming, which report belongs to which product, band names a repository got
-wrong) is written here, so the builder and readers stay generic. Layout::
+wrong) is written here, so the builder and readers stay generic. Layout:
 
     schema: 1
     dataset, title, [doi]                    doi: the dataset as a whole (e.g. a collection of the groups)
