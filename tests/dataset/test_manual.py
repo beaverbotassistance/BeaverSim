@@ -6,6 +6,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+import nbformat
 import pystac
 import pytest
 
@@ -49,6 +50,32 @@ def test_sandbox_patch_clears_and_restores_pythonpath(tmp_path: Path):
     assert out == ["[empty]", "[/somewhere/else]"]
 
 
+def test_notebook_builder_keeps_cells_written_by_hand(tmp_path: Path):
+    tool = _load_tool("build_notebooks")
+    chapter = tool.Chapter("99_test", "Test", "Intro.", "import json", [tool.Exercise("**1.**", "...", "print(1)")])
+    assert tool.write_all([chapter], tmp_path) == (2, [])
+    assert tool.write_all([chapter], tmp_path) == (2, [])               # generated cells: free to rewrite
+    path = tmp_path / "notebooks" / "99_test.ipynb"
+    nb = nbformat.read(path, as_version=4)
+    nb.metadata["kernelspec"]["display_name"] = "an editor's name"      # only metadata changed: not an edit
+    nbformat.write(nb, path)
+    assert tool.write_all([chapter], tmp_path) == (2, [])
+    nb = nbformat.read(path, as_version=4)
+    nb.cells[-1].source = "my own answer"
+    nbformat.write(nb, path)
+    assert tool.write_all([chapter], tmp_path) == (0, [path])
+    assert nbformat.read(path, as_version=4).cells[-1].source == "my own answer"
+    assert tool.write_all([chapter], tmp_path, force=True) == (2, [])
+    assert nbformat.read(path, as_version=4).cells[-1].source == "..."
+
+
+def test_coverage_report_finds_the_exercised_functions():
+    report = _load_tool("exercise_coverage").coverage()
+    summary = report["catalog/summary.py"]
+    assert summary["missing"] == [] and len(summary["used"]) == 11
+    assert "file_name" in report["readers/ckan.py"]["missing"]
+
+
 def test_reference_summary_builds_the_sample(tmp_path: Path, monkeypatch):
     _make_sample(tmp_path)
     monkeypatch.setenv("BEAVER_SITES", str(tmp_path / "sites.yaml"))
@@ -73,7 +100,6 @@ def test_reference_summary_builds_the_sample(tmp_path: Path, monkeypatch):
 def test_solution_notebooks_run(tmp_path: Path):
     """Every solution notebook runs to the end with the pipeline as it is (they make the sample root if needed).
     Notebooks that download (``needs_network``) run only with ``BEAVER_COURSE_NETWORK=1``."""
-    import nbformat
     from nbclient import NotebookClient
     for path in sorted((MANUAL / "solutions" / "notebooks").glob("*.ipynb")):
         nb = nbformat.read(path, as_version=4)

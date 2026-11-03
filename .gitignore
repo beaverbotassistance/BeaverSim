@@ -6,6 +6,7 @@ output/
 docs/*
 !docs/dataset/
 !docs/manual/
+docs/manual/solutions/solutions_*/
 resources/images/
 resources/doc
 core.*

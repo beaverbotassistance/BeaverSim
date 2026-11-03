@@ -98,7 +98,7 @@ git checkout dev_dataset
 python3.12 -m venv beaversim_venv
 source beaversim_venv/bin/activate
 pip install -r requirements.txt -r requirements-dev.txt
-python -m pytest -q tests/dataset          # should end with "76 passed"
+python -m pytest -q tests/dataset          # should end with "78 passed"
 ```
 
 Run every command below from the `BeaverSim` folder, with the environment active (`source

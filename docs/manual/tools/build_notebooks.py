@@ -3,12 +3,18 @@
 solution (``docs/manual/solutions/notebooks/``), from one definition here, so the two never drift apart.
 
 Each exercise is a prompt (Markdown), a starter cell (exercise notebook) and a solution cell (solution
-notebook). Work in a copy of the exercise notebook: running this script rewrites both.
+notebook). Work in a copy of the exercise notebook, e.g. under ``docs/manual/solutions/solutions_<you>/``, which git
+ignores. Running this script rewrites both notebooks, but stops, writing nothing, if a notebook's cells were edited
+by hand since it was generated; ``--force`` overwrites them.
 
-    python docs/manual/tools/build_notebooks.py
+    python docs/manual/tools/build_notebooks.py [--force]
 """
+import argparse
+import hashlib
+import json
+import sys
 from pathlib import Path
-from typing import List, NamedTuple
+from typing import List, NamedTuple, Optional, Tuple
 
 import nbformat
 from nbformat.v4 import new_code_cell, new_markdown_cell, new_notebook
@@ -2090,17 +2096,53 @@ def notebook(chapter: Chapter, solutions: bool) -> nbformat.NotebookNode:
     for i, cell in enumerate(cells):
         cell["id"] = f"{chapter.name[:2]}-{i:02d}"          # stable ids: a rebuild changes nothing in git
     nb = new_notebook(cells=cells)
-    nb.metadata["beaver_course"] = {"needs_network": chapter.network}
+    nb.metadata["beaver_course"] = {"needs_network": chapter.network, "generated": cells_hash(nb)}
     nb.metadata["kernelspec"] = {"name": "python3", "display_name": "Python 3", "language": "python"}
     return nb
 
 
+def cells_hash(nb: nbformat.NotebookNode) -> str:
+    """Fingerprint of a notebook's cells (type and text): not changed by running it, or by an editor's metadata."""
+    cells = [[cell["cell_type"], cell["source"]] for cell in nb["cells"]]
+    return hashlib.sha256(json.dumps(cells).encode()).hexdigest()
+
+
+def edited(path: Path, new: nbformat.NotebookNode) -> bool:
+    """True if the notebook at ``path`` holds cells written by hand, which writing ``new`` would lose. A notebook
+    without a fingerprint (made before they existed) counts as edited only if its cells differ from the new ones."""
+    if not path.exists():
+        return False
+    old = nbformat.read(path, as_version=4)
+    if cells_hash(old) == cells_hash(new):
+        return False
+    stamp: Optional[str] = old.metadata.get("beaver_course", {}).get("generated")
+    return stamp != cells_hash(old)
+
+
+def write_all(chapters: List[Chapter], manual: Path, force: bool = False) -> Tuple[int, List[Path]]:
+    """Write every chapter's two notebooks under ``manual``; returns (written, refused). If any notebook was edited
+    by hand and ``force`` is false, nothing is written and those notebooks are the ones refused."""
+    planned = [(folder / f"{chapter.name}.ipynb", notebook(chapter, solutions)) for chapter in chapters
+               for solutions, folder in ((False, manual / "notebooks"), (True, manual / "solutions" / "notebooks"))]
+    refused = [path for path, nb in planned if edited(path, nb)]
+    if refused and not force:
+        return 0, refused
+    for path, nb in planned:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        nbformat.write(nb, path)
+    return len(planned), []
+
+
 def main() -> None:
-    for chapter in CHAPTERS:
-        for solutions, folder in ((False, MANUAL / "notebooks"), (True, MANUAL / "solutions" / "notebooks")):
-            folder.mkdir(parents=True, exist_ok=True)
-            nbformat.write(notebook(chapter, solutions), folder / f"{chapter.name}.ipynb")
-    print(f"{len(CHAPTERS)} chapters -> {MANUAL / 'notebooks'}, {MANUAL / 'solutions' / 'notebooks'}")
+    parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    parser.add_argument("--force", action="store_true", help="overwrite notebooks edited by hand")
+    args = parser.parse_args()
+    written, refused = write_all(CHAPTERS, MANUAL, args.force)
+    if refused:
+        print("Nothing written: these notebooks were edited by hand. Move your work to a copy, or use --force:")
+        print("\n".join(f"  {path.relative_to(MANUAL)}" for path in refused))
+        sys.exit(1)
+    print(f"{len(CHAPTERS)} chapters, {written} notebooks -> {MANUAL / 'notebooks'}, {MANUAL / 'solutions/notebooks'}")
 
 
 if __name__ == "__main__":
