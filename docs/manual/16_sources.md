@@ -81,9 +81,25 @@ version downloaded**: `doi_<doi>` for a DOI (in any of its spellings: `doi:10.x/
 other than letters, digits, `.`, `_` and `-` become `_`. For Zenodo, a concept DOI (all versions) resolves to the
 latest version, whose DOI names the folder.
 
+## 5. Trying it without the network
+
+Exercises 6 to 10 run against a **fake repository**: a small web server the notebook starts on your own machine, which
+serves records and files from a dictionary. The clients do not know the difference, so you can follow a whole download
+offline. The clients' addresses (`zenodo.RECORD`, `pangaea.FILES`, ...) are module constants, which is what makes this
+possible; `http.https` is replaced for those runs, because the server speaks plain HTTP.
+
+| Module | Functions | What to remember |
+|---|---|---|
+| `http` | `get`, `https`, `served`, `retry` | temporary errors wait and try again; a 404 fails at once |
+| `checksums` | `parse`, `digest`, `check` | `parse` recognises an ETag by its form, whatever the record calls it |
+| `downloads` | `verify`, `finish`, `read_only`, `listing`, `log`, `read_log` | one log row per path: downloading again replaces it |
+| `archives` | `extract`, `verify_member` | extracting again only checks; a changed file is refused, never overwritten |
+| clients | `record_of`, `download`; HydroShare's `list_files`, CKAN's `package_id` | same contract, different ways of speaking to the repository |
+| [`intake.py`](../../data_acquisition/intake.py) | `write_prompt` | it tells Claude to stop and wait for approval before downloading |
+
 ## Exercises
 
-These run offline: they use local files (`file://` links) and headers built by hand.
+These run offline: they use local files (`file://` links), headers built by hand, and a fake repository (section 5).
 
 Notebook: [`notebooks/16_sources.ipynb`](notebooks/16_sources.ipynb) (work in a copy); solutions in
 [`solutions/notebooks/16_sources.ipynb`](solutions/notebooks/16_sources.ipynb).
@@ -99,6 +115,16 @@ Notebook: [`notebooks/16_sources.ipynb`](notebooks/16_sources.ipynb) (work in a 
 5. **Download, resume, finish.** Leave a stale `.part` of the file in a scratch root, fetch it from its `file://`
    link, finish it against its MD5, log it, and read the log row. Then finish a copy against a wrong MD5: what
    happens to the file (finding 9 in [`course_findings.md`](../dataset/course_findings.md))?
+
+6. **The HTTP helpers.** `web.get`, `web.served` with and without a stated MD5, `web.https`; `web.retry` on a function that
+   fails twice; `web.get` on a page that does not exist.
+7. **Verifying and logging.** `checksums.parse`; `downloads.verify` four ways; `read_only`; `listing`, with a filter and
+   with checks; the same path logged twice, read with `read_log`.
+8. **Archives.** `archives.extract` and `verify_member`, again, and after changing a file; a file that is not a member,
+   and one that is not a zip.
+9. **Five clients, one contract.** `record_of` and `download` for Zenodo, DataONE, HydroShare, PANGAEA and CKAN against the
+   fake repository. What is the same, and what does each add?
+10. **Intake.** `intake.write_prompt` for one link and for two records. Where does it tell Claude to stop?
 
 ## Where this lives
 

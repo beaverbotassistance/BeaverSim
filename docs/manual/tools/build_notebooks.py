@@ -1935,15 +1935,76 @@ for row in descriptors.summary(list(items.values())):
 CH16 = Chapter(
     "16_sources", "16. Sources: downloads and checksums",
     "Exercises of [chapter 16](../16_sources.md). Run the setup cell first. Everything here runs offline.",
-    """import base64, csv, http.client, inspect, tempfile
-from data_acquisition.sources import checksums, dataset_folder, downloads, zenodo
+    """import base64, csv, hashlib, http.client, http.server, inspect, io, json, tempfile, threading, zipfile
+from data_acquisition import intake
+from data_acquisition.sources import (archives, checksums, ckan, dataone, dataset_folder, downloads, hydroshare,
+                                      pangaea, zenodo)
 from data_acquisition.sources import http as web
 
 SCRATCH = Path(tempfile.mkdtemp())
 source = SCRATCH / "published" / "data.bin"            # the "repository's" copy of a file, served as file://
 source.parent.mkdir()
 source.write_bytes(os.urandom(12 * 1024 * 1024 + 123))
-print(source, source.stat().st_size, "bytes")""",
+print(source, source.stat().st_size, "bytes")
+
+# A fake repository on this machine, from exercise 6 on: ROUTES maps a path to the bytes it serves.
+ROUTES, STATES_MD5 = {}, set()
+
+
+class Repository(http.server.BaseHTTPRequestHandler):
+    def respond(self, body=True):
+        path = self.path.split("?")[0]
+        if path not in ROUTES:
+            return self.send_error(404)
+        self.send_response(200)
+        self.send_header("Content-Length", str(len(ROUTES[path])))
+        if path in STATES_MD5:
+            self.send_header("Content-MD5", base64.b64encode(hashlib.md5(ROUTES[path]).digest()).decode())
+        self.end_headers()
+        if body:
+            self.wfile.write(ROUTES[path])
+
+    def do_GET(self):
+        self.respond()
+
+    def do_HEAD(self):
+        self.respond(body=False)
+
+    def log_message(self, *args):
+        pass
+
+
+server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Repository)
+threading.Thread(target=server.serve_forever, daemon=True).start()
+BASE = f"http://127.0.0.1:{server.server_address[1]}"
+DATA = b"some bytes\\n" * 100
+DATA_MD5 = hashlib.md5(DATA).hexdigest()
+RESOURCE = "f" * 32
+pack = io.BytesIO()
+with zipfile.ZipFile(pack, "w") as z:
+    z.writestr("inner/a.txt", "hello\\n")
+EML = (f'<eml:eml xmlns:eml="x" packageId="doi:10.5555/one"><dataset><title>From DataONE</title>'
+       f'<otherEntity><entityName>ortho.txt</entityName><physical><size>{len(DATA)}</size>'
+       f'<authentication method="MD5">{DATA_MD5}</authentication><distribution><online><url>{BASE}/f/ortho.txt</url>'
+       f'</online></distribution></physical></otherEntity></dataset></eml:eml>')
+TAB = ("/* DATA DESCRIPTION:\\nCitation:\\tRossi, A (2021): From PANGAEA [dataset]. PANGAEA, "
+       "https://doi.org/10.1594/PANGAEA.9\\nLicense:\\tCC (CC-BY-4.0)\\n*/\\n"
+       "Binary\\tBinary (Hash)\\tBinary (MIME type)\\tBinary (Size)\\n"
+       f"ortho.txt\\t{DATA_MD5}\\ttext/plain\\t1 kBytes\\n")
+REPOSITORY_RECORDS = {
+    "/f/ortho.txt": DATA, "/f/data/contents/ortho.txt": DATA, "/pf/9/ortho.txt": DATA, "/c/pack.zip": pack.getvalue(),
+    "/api/records/2": json.dumps({
+        "doi": "10.5281/zenodo.2", "metadata": {"title": "From Zenodo", "creators": []},
+        "files": [{"key": "ortho.txt", "size": len(DATA), "id": "1", "checksum": f"md5:{DATA_MD5}",
+                   "links": {"self": f"{BASE}/f/ortho.txt"}}]}).encode(),
+    "/d1/object/doi%3A10.5555%2Fone": EML.encode(),
+    f"/hsapi2/resource/{RESOURCE}/json/": json.dumps({"title": "From HydroShare", "rights": {}}).encode(),
+    f"/hsapi/resource/{RESOURCE}/files/": json.dumps({"next": None, "results": [
+        {"url": f"{BASE}/f/data/contents/ortho.txt", "size": len(DATA), "checksum": DATA_MD5}]}).encode(),
+    "/p/10.1594/PANGAEA.9": TAB.encode(),
+    "/ck/package_show": json.dumps({"result": {"id": "pkg-1", "title": "From CKAN", "resources": [
+        {"id": "r1", "format": "ZIP", "url": f"{BASE}/c/pack.zip", "size": str(len(pack.getvalue())),
+         "hash": hashlib.md5(pack.getvalue()).hexdigest()}]}}).encode()}""",
     [
         Exercise("**1. The contract in the model client.** Print `zenodo.py` and find, for each point of the contract, "
                  "the line that does it.",
@@ -2022,6 +2083,155 @@ except IOError as e:
     print("refused:", e)
 print("the bad file is still there:", copy.exists(), oct(copy.stat().st_mode & 0o777))
 # Refused, but left in place and writable (finding 9): delete it before downloading again."""),
+        Exercise("**6. The HTTP helpers.** The setup of this notebook runs a small fake repository on your own machine "
+                 "(`BASE`, `ROUTES`). Fetch a file with `web.get`, ask `web.served` for it with and without a stated "
+                 "MD5, and try `web.https`. Then call `web.retry` on a function that fails twice, and `web.get` on a "
+                 "page that does not exist.",
+                 """ROUTES["/data.txt"] = DATA
+...  # your code here (set web.WAITS = (0, 0) first, or the retries wait for minutes)""",
+                 """ROUTES["/data.txt"] = DATA
+print(web.get(BASE + "/data.txt")[:10], "|", web.https("http://x/y"), "|", web.https("https://x/y"))
+print("no MD5 stated:", web.served(BASE + "/data.txt"))
+STATES_MD5.add("/data.txt")
+print("with Content-MD5:", web.served(BASE + "/data.txt"))
+STATES_MD5.discard("/data.txt")
+
+web.WAITS = (0, 0)         # only here: the real waits are 10, 30, 60, 120 and 300 s
+attempts = []
+
+
+def flaky():
+    attempts.append(1)
+    if len(attempts) < 3:
+        raise ConnectionError("dropped")
+    return "worked"
+
+
+print(web.retry(flaky), "after", len(attempts), "attempts")
+try:
+    web.get(BASE + "/nothing")
+except Exception as e:
+    print(type(e).__name__, e)    # at once: a 404 will not get better by waiting"""),
+        Exercise("**7. Verifying and logging.** Normalise a few checksums with `checksums.parse`. Then run "
+                 "`downloads.verify` with a record's MD5, with a multipart ETag it cannot decide (the server stating "
+                 "an MD5), with nothing and a silent server, and with `size_only`. Make a file read-only with "
+                 "`downloads.read_only`. Print a record with `downloads.listing`, with a filter and with checks. "
+                 "Finally, log the same path twice and read it with `downloads.read_log`.",
+                 """scratch = Path(tempfile.mkdtemp())
+path = scratch / "data.txt"
+path.write_bytes(DATA)
+...  # your code here""",
+                 """scratch = Path(tempfile.mkdtemp())
+path = scratch / "data.txt"
+path.write_bytes(DATA)
+print(checksums.parse("MD5", '"ABC"'), checksums.parse("SHA-256", "CD"))
+print(checksums.parse("md5", '"' + "AB" * 16 + '-3"'))
+# Lower case, no quotes; a value of the form <hex>-<parts> is a multipart ETag, whatever the record calls it.
+
+ROUTES["/stated.txt"] = ROUTES["/silent.txt"] = DATA
+STATES_MD5.add("/stated.txt")
+print(downloads.verify(path, BASE + "/stated.txt", ("md5", DATA_MD5)))
+print(downloads.verify(path, BASE + "/stated.txt", ("s3etag", "0" * 32 + "-7")))
+try:
+    downloads.verify(path, BASE + "/silent.txt", None)
+except IOError as e:
+    print("refused:", e)
+print(downloads.verify(path, BASE + "/silent.txt", None, size_only=True))
+downloads.read_only(path)
+print("permissions:", oct(path.stat().st_mode & 0o777))
+
+record = {"package_id": "doi:10.5555/x", "title": "A dataset", "licence": "CC0-1.0", "rights": "", "entities": {
+    "data.txt": {"url": BASE + "/stated.txt", "size": len(DATA), "checksum": None},
+    "note.txt": {"url": BASE + "/silent.txt", "size": 5, "checksum": ("md5", "ab" * 16)}}}
+downloads.listing(record)
+downloads.listing(record, "note")
+real_https, web.https = web.https, lambda url: url       # the fake repository has no https
+try:
+    downloads.listing(record, checks=True)
+finally:
+    web.https = real_https
+# 0.000 GB for small files: finding 8 in course_findings.md.
+
+log = scratch / "downloads.csv"
+downloads.log(log, [{"path": "a/b.txt", "file": "first"}])
+downloads.log(log, [{"path": "a/b.txt", "file": "second"}, {"path": "c.txt", "file": "c.txt"}])
+rows = downloads.read_log(log)
+print(list(rows), rows["a/b.txt"]["file"], "| no log yet:", downloads.read_log(scratch / "none.csv"))
+# One row per path: a second download replaces the row, it does not add one."""),
+        Exercise("**8. Archives.** Make a zip, extract it with `archives.extract`, and check a member with "
+                 "`archives.verify_member`. Extract again; then change an extracted file and do both once more. What "
+                 "if a file is not a member, or not a zip?",
+                 """scratch = Path(tempfile.mkdtemp())
+...  # your code here (zipfile.ZipFile(path, "w").writestr(name, text))""",
+                 """scratch = Path(tempfile.mkdtemp())
+bundle = scratch / "bundle.zip"
+with zipfile.ZipFile(bundle, "w") as z:
+    z.writestr("inner/a.txt", "hello\\n")
+    z.writestr("b.txt", "world\\n")
+extracted = archives.extract(bundle)
+print([p.relative_to(scratch).as_posix() for p in extracted], oct(extracted[0].stat().st_mode & 0o777))
+print("member matches:", archives.verify_member(bundle, extracted[0]), "| again:", len(archives.extract(bundle)))
+
+extracted[0].chmod(0o644)
+extracted[0].write_text("changed\\n")
+print("after a change:", archives.verify_member(bundle, extracted[0]))
+try:
+    archives.extract(bundle)
+except IOError as e:
+    print("refused:", str(e).rsplit("/", 1)[-1])       # never overwritten
+other = scratch / "other.txt"
+other.write_text("x")
+for call, argument in ((lambda p: archives.verify_member(bundle, p), other), (archives.extract, other)):
+    try:
+        call(argument)
+    except (KeyError, ValueError) as e:
+        print(type(e).__name__, str(e).rsplit("/", 1)[-1])"""),
+        Exercise("**9. Five clients, one contract.** Point each client at the fake repository, and run its `record_of` "
+                 "and `download` into a scratch root (Zenodo, DataONE, HydroShare, PANGAEA, CKAN). What is the same in "
+                 "each, and what does each add? Try `ckan.package_id` and `hydroshare.list_files`.",
+                 """root = Path(tempfile.mkdtemp())
+...  # your code here: REPOSITORY_RECORDS below the setup fills ROUTES; set zenodo.RECORD and so on""",
+                 """root = Path(tempfile.mkdtemp())
+ROUTES.update(REPOSITORY_RECORDS)
+real_https, web.https = web.https, lambda url: url       # the fake repository has no https
+
+zenodo.RECORD = BASE + "/api/records/{id}"               # these addresses are constants: pointed here for this run
+print("Zenodo:", zenodo.record_of("10.5281/zenodo.2")[1]["title"])
+print(zenodo.download(root, "10.5281/zenodo.2")[0]["verified_by"])
+
+print("DataONE:", dataone.record_of(BASE + "/d1", "doi:10.5555/one")[1]["title"])     # the address is an argument
+print(dataone.download(BASE + "/d1", root, "arcticdata/doi_10.5555_one", "doi:10.5555/one")[0]["path"])
+
+hydroshare.METADATA = BASE + "/hsapi2/resource/{id}/json/"
+hydroshare.FILES = BASE + "/hsapi/resource/{id}/files/"
+print("HydroShare:", hydroshare.record_of(RESOURCE)[1]["title"])        # two endpoints saved in one file
+hydroshare.list_files("hs:" + RESOURCE)
+print(hydroshare.download(root, "hs:" + RESOURCE)[0]["path"])           # no DOI: the folder is id_hs_...
+
+pangaea.RECORD, pangaea.FILES = BASE + "/p/{doi}", BASE + "/pf/{id}/{name}"
+print("PANGAEA:", pangaea.record_of("doi:10.1594/PANGAEA.9")[1]["title"])
+print(pangaea.download(root, "doi:10.1594/PANGAEA.9")[0]["path"])
+
+print("CKAN:", ckan.package_id("https://open.canada.ca/data/en/dataset/abc-1?x=1"), ckan.package_id("abc-1"))
+print(ckan.record_of(BASE + "/ck", "pkg-1")[1]["title"])
+print(ckan.download(BASE + "/ck", root, "portal", "pkg-1")[0]["path"])  # a zip is also extracted, CRC-32 checked
+
+web.https = real_https
+for path in sorted(p.relative_to(root).as_posix() for p in root.rglob("*") if p.is_file()):
+    print(" ", path)
+# The same in all: record saved next to the files, dataset_folder (except DataONE, whose caller names it), fetch,
+# finish. What differs is only how the repository is spoken to. That is why a new standard is one small module."""),
+        Exercise("**10. Intake.** Write an intake prompt with `intake.write_prompt` for one link and for two records "
+                 "forming one dataset. Where does it tell Claude to stop and wait?",
+                 """out = Path(tempfile.mkdtemp())
+...  # your code here""",
+                 """out = Path(tempfile.mkdtemp())
+prompt = intake.write_prompt("https://doi.org/10.5281/zenodo.7493152", Path("<root>"), "zenodo_example", out)
+text = prompt.read_text()
+print(prompt.name, "|", text.splitlines()[0])
+print(next(line for line in text.splitlines() if "wait for the user" in line.lower()))
+two = intake.write_prompt(["https://a.example", "https://b.example"], Path("<root>"), "two", out).read_text()
+print(next(line for line in two.splitlines() if "records that together" in line))"""),
     ])
 
 CH17 = Chapter(
