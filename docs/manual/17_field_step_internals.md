@@ -103,6 +103,30 @@ blurry image, or low contrast flatten the true peak, and a long feature (a dam) 
 than along it. The measurement is right on average, so read the **median**
 over many outlines per date and image kind; and look at the outlines (`--sheet`).
 
+## 6. The inventory and the audit, in code
+
+[`field_inventory.py`](../../data_acquisition/sources/field_inventory.py) turns hand-made names and files into rows.
+Its functions come in two groups:
+
+| Function | Takes | Returns |
+|---|---|---|
+| `parse_date(text, default_year=None)` | a folder or layer name | an ISO date; `Jul04` only with a default year; None if unsure or impossible |
+| `season_of`, `site_of`, `survey_date_of` | a path from the drive's root | the season, the site slug (from `SITES`), the date in the flight folder |
+| `site_km(lat, lon, site)` | a GPS position | the distance to a site's centre, to catch photos filed under the wrong site |
+| `colony_of`, `feature_kind_of` | a layer name | the colony label, the kind of feature; None if unknown |
+| `walk(root)`, `find_geodatabases(root)` | the drive | every file of the season folders (no Metashape caches, no `.gdb` internals); the geodatabases |
+| `read_photo(path)`, `read_photos(...)` | photos | camera, time, position, size; `read_photos` reuses `exif_cache.csv`, and rewrites it with **only the photos it was given** |
+| `photo_rows`, `ortho_rows`, `annotation_rows` | the walked files | the rows of each role |
+| `build_inventory(root, out)` | the drive | all of them, sorted, written to the CSV |
+
+**The first photo seen is kept.** A copy is recognised by its capture time and size, and which one counts as the copy
+depends on the order the disk lists files (finding 29 in [`course_findings.md`](../dataset/course_findings.md)).
+
+[`field_audit.py`](../../data_acquisition/sources/field_audit.py) answers another question: which photos did the original
+Metashape projects use that are no longer on the drive? `project_photos(root)` reads the list inside each project's
+`frame.zip`, and `find_missing(root, exif_cache)` looks each one up by name and capture time, since `DJI_0139.JPG`
+repeats in every survey. A photo is `present`, `present (moved)` or `missing`.
+
 ## Exercises
 
 Notebook: [`notebooks/17_field_step_internals.ipynb`](notebooks/17_field_step_internals.ipynb) (work in a copy);
@@ -119,6 +143,15 @@ solutions in [`solutions/notebooks/17_field_step_internals.ipynb`](solutions/not
 5. **The score surface.** Recompute `best_shift`'s score for the extract's dam on every shift of the coarse grid, on
    the chunk and on the full tile, and plot the two surfaces. Where are the peaks, and why are they stretched?
 
+6. **Reading names.** `parse_date`, `season_of`, `site_of`, `survey_date_of`, `site_km`, `colony_of`, `feature_kind_of`.
+7. **Scanning a drive.** A small drive with a copy of a photo, a test flight, a `._` file, a broken `.tif` and a real File
+   Geodatabase: `walk`, `find_geodatabases`, `read_photo`, `build_inventory`. Which rows are excluded? What changes if the
+   files come in reverse order?
+8. **Exporting and georeferencing.** `field.source_path`; `field.export_layer` without a correction, with a wrong count and
+   with the correction; `field.georeference` on a raster with a known fit.
+9. **The alignment check, whole.** `field_alignment.check`, `summary` and `contact_sheet` on a small site folder.
+10. **The audit.** `field_audit.project_photos` and `find_missing` on a project listing a present, a moved and a lost photo.
+
 ## Where this lives
 
 - [`data_acquisition/sources/field.py`](../../data_acquisition/sources/field.py): `plan`, `_sidecars`, `execute`,
@@ -126,6 +159,8 @@ solutions in [`solutions/notebooks/17_field_step_internals.ipynb`](solutions/not
   `write_records`, `main`.
 - [`data_acquisition/sources/field_alignment.py`](../../data_acquisition/sources/field_alignment.py): `best_shift`,
   `check`, `summary`, `contact_sheet`, and the constants at the top.
+- [`data_acquisition/sources/field_inventory.py`](../../data_acquisition/sources/field_inventory.py),
+  [`field_audit.py`](../../data_acquisition/sources/field_audit.py): section 6.
 - [`tests/dataset/test_field.py`](../../tests/dataset/test_field.py),
   [`test_alignment.py`](../../tests/dataset/test_alignment.py): their tests (none covers `plan`, `execute` or
   `prune` yet).

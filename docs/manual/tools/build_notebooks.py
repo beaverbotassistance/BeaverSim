@@ -2238,16 +2238,18 @@ CH17 = Chapter(
     "17_field_step_internals", "17. The field step, inside",
     "Exercises of [chapter 17](../17_field_step_internals.md). Run the setup cell first. They build a miniature "
     "drive in a scratch folder from the Montana extract; the real drive is not needed.",
-    """import csv, json, shutil, stat, tempfile
+    """import csv, json, shutil, stat, tempfile, zipfile
 import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
 import rasterio
+from affine import Affine
 from pyproj import CRS
 from rasterio.windows import Window
 from scipy import ndimage
 from data_acquisition.readers import photos
-from data_acquisition.sources import field, field_alignment
+from data_acquisition.sources import field, field_alignment, field_audit, field_inventory
+from tests.dataset.test_field import ARC, CORRECTIONS, _aux
 %matplotlib inline
 # field_alignment switches matplotlib to a file-only backend when imported (finding 24): back to inline plots
 
@@ -2374,6 +2376,163 @@ plt.show()
 # surfaces are stretched north-south: the dam runs that way, and sliding an outline along its own length keeps much
 # of it on edges, so a shift along a feature is less well determined than across it. Where other edges lie near an
 # outline, such ridges become second peaks: why single values are noisy and medians are read."""),
+        Exercise("**6. Reading names.** The drive's meaning is in its folder and layer names. Try "
+                 "`field_inventory.parse_date` on `06May2018`, `05 June 2018`, `02Sept2019`, `31Feb2018`, "
+                 "`D26Jul2018_Dams_Rumney` and `Jul04` (with and without a default year). Take a photo's path through "
+                 "`season_of`, `site_of` and `survey_date_of`; measure it with `site_km`; and try `colony_of` and "
+                 "`feature_kind_of` on a few layer names.",
+                 """photo = "2018 Field Season/Drone Flights/Rumney Ranch/10. 26July2018/100MEDIA/DJI_0139.JPG"
+...  # your code here""",
+                 """for text in ("06May2018", "05 June 2018", "02Sept2019", "31Feb2018", "D26Jul2018_Dams_Rumney",
+             "Jul04"):
+    print(f"{text:24s}", field_inventory.parse_date(text), field_inventory.parse_date(text, default_year=2018))
+photo = "2018 Field Season/Drone Flights/Rumney Ranch/10. 26July2018/100MEDIA/DJI_0139.JPG"
+other = "2019 Field Season/Rumney/100MEDIA/DJI_0002.JPG"
+for path in (photo, other):
+    print(field_inventory.season_of(path), field_inventory.site_of(path), field_inventory.survey_date_of(path))
+print("km to Rumney:", round(field_inventory.site_km(48.9356, -113.1107, "rumney_ranch"), 1),
+      "| to Pilling:", round(field_inventory.site_km(48.9356, -113.1107, "pilling_ranch"), 1))
+for layer in ("D26Jul2018_Dams_Colony_A", "Colony4_trails", "Rumney_C_ponds", "Willow3_dams", "ColonyBoundaries2018",
+              "notes"):
+    print(f"{layer:26s} colony {field_inventory.colony_of(layer)}, kind {field_inventory.feature_kind_of(layer)}")
+# Parsers of hand-made names: None when unsure, never a guess. The 2019 folders name no date: EXIF gives it."""),
+        Exercise("**7. Scanning a drive.** Make a small drive named like the real one: photos, a copy of a photo, "
+                 "a photo in the `Yard` test folder, a `._` file as a Mac leaves, a good and a broken `.tif`, and a "
+                 "File "
+                 "Geodatabase made with `ogr2ogr`. Run `walk`, `find_geodatabases`, `read_photo`, then "
+                 "`build_inventory`, and read its rows. Which were excluded, and why? Then run `photo_rows` with the "
+                 "files in reverse order: what changes?",
+                 """drive = Path(tempfile.mkdtemp()) / "drive"
+flight = drive / "2018 Field Season/Drone Flights/Rumney Ranch/10. 26July2018"
+...  # your code here (the walk needs both season folders to exist)""",
+                 """drive = Path(tempfile.mkdtemp()) / "drive"
+flight = drive / "2018 Field Season/Drone Flights/Rumney Ranch/10. 26July2018"
+yard = drive / "2018 Field Season/Drone Flights/Yard/01June2018"
+for folder in (flight / "100MEDIA", flight / "101MEDIA", yard, drive / "2019 Field Season"):
+    folder.mkdir(parents=True)
+shots = sorted((DAY / "photos").glob("*.JPG"))
+for shot in shots:
+    shutil.copyfile(shot, flight / "100MEDIA" / shot.name)
+shutil.copyfile(shots[0], flight / "101MEDIA" / shots[0].name)        # the same photo, in another folder
+shutil.copyfile(shots[1], yard / shots[1].name)
+(flight / "100MEDIA" / "._DJI_0139.JPG").write_bytes(b"what a Mac leaves on other disks")
+shutil.copyfile(DAY / "orthomosaic_full_tile.tif", flight / "26July2018_4.tif")
+(flight / "broken.tif").write_bytes(b"not a tiff")
+gdb = drive / "2018 Field Season/Drone Flights/Rumney Ranch/Dams.gdb"
+subprocess.run(["ogr2ogr", "-f", "OpenFileGDB", str(gdb), str(DAY / "annotations/dams.gpkg"), "dams",
+                "-nln", "D26Jul2018_Dams_Rumney"], check=True, capture_output=True)
+
+files = list(field_inventory.walk(drive))
+print(sorted(entry.name for entry in files))                # the .gdb's own files are not walked
+print([path.name for path in field_inventory.find_geodatabases(drive)])
+print(field_inventory.read_photo(str(flight / "100MEDIA" / shots[0].name)))
+print(field_inventory.read_photo(str(flight / "100MEDIA" / "._DJI_0139.JPG")))
+
+table = Path(tempfile.mkdtemp()) / "field_inventory.csv"
+rows = field_inventory.build_inventory(drive, table)
+for r in rows:
+    folder, name = r["source_path"].rsplit("/", 2)[-2:]
+    print(f"{r['role']:16s} {str(r.get('site')):13s} {str(r.get('include')):6s} {folder:20s}{name:18s} "
+          f"{r.get('note', '')[:45]}")
+print(sorted(path.name for path in table.parent.iterdir()))        # exif_cache.csv: a second run reads no photo again
+# The ._ file is unreadable, has no camera, so it is not listed. The Yard photo is both a copy and a test flight (its
+# note lists both, cut here). A photo's date is its capture date, whatever folder it is in. The orthomosaic rows are
+# proposals: the layout file decides (chapter 11).
+
+for name, order in (("as listed", files), ("reversed", files[::-1])):
+    photos_found = field_inventory.photo_rows(drive, order)
+    kept = [r["source_path"].split("/")[-2] for r in photos_found
+            if r.get("include") and r["source_path"].endswith(shots[0].name)]
+    print(name, "keeps the copy in:", kept)
+# The first one seen is kept, so the result depends on the order the disk lists files (finding 29).
+print("orthomosaic rows:", len(field_inventory.ortho_rows(drive, files)))
+print("layer rows:", len(field_inventory.annotation_rows(drive, files)))"""),
+        Exercise("**8. Exporting and georeferencing.** `field.source_path` for a relative and a full source. Write a "
+                 "GeoPackage carrying the ARC zone as ESRI writes it, and export it with `field.export_layer`: without "
+                 "a correction, with a wrong feature count, and with the correction. What does each answer? Then apply "
+                 "an ArcGIS adjustment with `field.georeference` to a small raster with a known fit, and open it.",
+                 """layout = {"base": "2018 Field Season/Drone Flights/Rumney Ranch/"}
+work = Path(tempfile.mkdtemp())
+...  # your code here (ARC, CORRECTIONS and _aux come from tests/dataset/test_field.py)""",
+                 """layout = {"base": "2018 Field Season/Drone Flights/Rumney Ranch/"}
+print(field.source_path(layout, "Dams.gdb"), "|", field.source_path(layout, "2019 Field Season/Rumney/x.tif"))
+work = Path(tempfile.mkdtemp())
+esri = work / "esri.gpkg"
+subprocess.run(["ogr2ogr", "-f", "GPKG", str(esri), str(DAY / "annotations/dams.gpkg"), "dams", "-a_srs", ARC],
+               check=True, capture_output=True)
+print("no correction:", field.export_layer(esri, "dams", work / "plain.gpkg", [], 1))
+print("wrong count:  ", field.export_layer(esri, "dams", work / "count.gpkg", CORRECTIONS, 5))
+print("corrected:    ", field.export_layer(esri, "dams", work / "fixed.gpkg", CORRECTIONS, 1))
+fixed = field._layer_info(work / "fixed.gpkg", "fixed")
+print(fixed["crs"][:75], "...", fixed["features"], fixed["geometry"])
+# Without the correction the two PROJ versions disagree, and the check says so: this is the 30 km, caught on export.
+# None means no difference found. The M in MultiPolygonZM survived, because ogr2ogr, not geopandas, did the export.
+
+raw = Affine(1e-6, 0, -113.09, 0, -1e-6, 48.95)                     # the file's own, unadjusted position
+tile = work / "tile.tif"
+with rasterio.open(tile, "w", driver="GTiff", width=100, height=80, count=1, dtype="uint8", transform=raw) as d:
+    d.write(np.zeros((1, 80, 100), dtype="uint8"))
+adjustment = Affine(0.0125, 0.0001, -7700800.0, 0.0001, -0.0135, 5448900.0)       # pixel -> ARC zone, metres
+pixels = np.array([(5, 5), (90, 10), (50, 70), (10, 60), (80, 75)], dtype=float)
+sidecar = work / "original.tif.aux.xml"
+sidecar.write_text(_aux(np.array([raw @ tuple(q) for q in pixels]), np.array([adjustment @ tuple(q) for q in pixels])))
+with rasterio.open(tile) as r:
+    print("before:", [round(v, 6) for v in r.transform[:3]])
+print(field.georeference(tile, sidecar, work / "tile.tif.aux.xml", CORRECTIONS))
+with rasterio.open(tile) as r:
+    print("after: ", [round(v, 4) for v in r.transform[:6]], "|", r.crs.to_wkt()[:45], "...")
+# No pixel changed: GDAL reads the new .tif.aux.xml next to the file. These control points fit exactly: rms 0."""),
+        Exercise("**9. The alignment check, whole.** Lay out a small site folder (annotations and surveys) from the "
+                 "extract, run `field_alignment.check` and `field_alignment.summary`, and draw "
+                 "`field_alignment.contact_sheet`.",
+                 """site = Path(tempfile.mkdtemp()) / "site"
+...  # your code here (annotations/<date>/dams.gpkg, surveys/<date>/orthomosaic_part-4[_chunk-3].tif)""",
+                 """site = Path(tempfile.mkdtemp()) / "site"
+layers, survey = site / "annotations/2018-07-26", site / "surveys/2018-07-26"
+layers.mkdir(parents=True)
+survey.mkdir(parents=True)
+shutil.copyfile(DAY / "annotations/dams.gpkg", layers / "dams.gpkg")
+shutil.copyfile(DAY / "orthomosaic_chunk.tif", survey / "orthomosaic_part-4_chunk-3.tif")
+shutil.copyfile(DAY / "orthomosaic_full_tile.tif", survey / "orthomosaic_part-4.tif")
+results = field_alignment.check(site)
+for r in results:
+    print({k: r[k] for k in ("date", "layer", "fid", "kind", "shift_m", "fit_found")})
+print("\\n".join(field_alignment.summary(results)))
+sheet = site / "sheet.png"
+print(field_alignment.contact_sheet(site, sheet), "row")
+plt.figure(figsize=(8, 4))
+plt.imshow(plt.imread(sheet))
+plt.axis("off")
+plt.show()
+# fid is the row position in the layer, not the feature id (finding 14): this dam is feature 45. Left, the chunk; right,
+# the full tile. At this scale they look alike: 0.07 m against 0.63 m is what the measurement adds to the eye."""),
+        Exercise("**10. The audit.** Metashape projects list the photos they used. Add a small project to the drive of "
+                 "exercise 7, listing one photo where it is, one under an old Windows path, and one that no longer "
+                 "exists. What do `field_audit.project_photos` and `field_audit.find_missing` report?",
+                 """project = flight / "survey.files/0/0"
+...  # your code here (a frame.zip holding doc.xml; find_missing needs the exif_cache.csv of exercise 7)""",
+                 """project = flight / "survey.files/0/0"
+project.mkdir(parents=True)
+
+
+def exif_time(path):
+    return field_inventory.read_photo(str(path))["taken_at"].replace("-", ":", 2).replace("T", " ")
+
+
+listed = [(f"../../../100MEDIA/{shots[2].name}", exif_time(shots[2])),      # where it is
+          (f"E:/old/place/{shots[1].name}", exif_time(shots[1])),           # moved since
+          ("../../../100MEDIA/DJI_9999.JPG", "2018:07:26 09:00:00")]        # gone
+cameras = "".join(f'<camera id="{i}"><photo path="{path}"><meta><property name="Exif/DateTimeOriginal" value="{time}"/>'
+                  "</meta></photo></camera>" for i, (path, time) in enumerate(listed))
+with zipfile.ZipFile(project / "frame.zip", "w") as z:
+    z.writestr("doc.xml", f"<document>{cameras}</document>")
+for row in field_audit.project_photos(drive):
+    print(Path(row["project"]).name, "|", row["listed_path"], "|", row["taken_at"])
+for row in field_audit.find_missing(drive, table.with_name("exif_cache.csv")):
+    print(f"{row['photo']:24s} {row['taken_at']:20s} {row['status']:16s} {row['site']} {row['survey_folder_date']}")
+# A photo is matched by name and capture time, because DJI_0139.JPG repeats in every survey. A photo with a copy
+# (exercise 7) can read "present (moved)" though it is in place, as only one path is kept per name and time. This is
+# how docs/dataset/missing_photos.csv was made. It needs the cache from a full inventory of the drive."""),
     ])
 
 CH18 = Chapter(

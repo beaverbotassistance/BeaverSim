@@ -182,9 +182,13 @@ shasum -a 256 output/dataset/field_inventory.csv output/dataset/field/rumney_ran
 
 **If a fingerprint differs**, the first file that differs tells you where:
 
-- **`field_inventory.csv`**: your copy is not identical to ours. Compare the two inventories line by line (ask us
-  for ours). `._` files from a copy to a non-APFS disk show up here.
-- **`plan.csv` or `manifest.csv`** (with an identical inventory): the code differs; check `git status` and that you
+- **`field_inventory.csv`**: this does **not** by itself mean your copy differs. About 700 Rumney photos exist twice,
+  and which copy is kept depends on the order your disk lists files, which may differ on a Mac (this has not been
+  tried yet). The rows that change then say `duplicate of ...`, and `plan.csv`, `manifest.csv` and `excluded.csv` differ
+  too. Check the row and action counts first: if they match, the data are the same, with some photos under another
+  camera folder (e.g. `100MEDIA` instead of `106MEDIA`). If the counts differ, ask us for our inventory and compare
+  them; `._` files from a copy to a non-APFS disk show up here.
+- **`plan.csv` or `manifest.csv`** with an identical inventory: the code differs; check `git status` and that you
   are on `dev_dataset`.
 - **`georeference.csv` or `alignment.csv`** alone: these hold computed numbers; a different processor can change
   the last digit of a few values. Compare the values: differences of 0.001 m (`georeference.csv`) or one 0.05 m

@@ -59,7 +59,7 @@ Expected: install completes; the tests end with `78 passed`. Any failure: STOP.
 |---|---|---|---|
 | S1 inventory | `python -m data_acquisition.sources.field_inventory --root "$DRIVE"` | `output/dataset/field_inventory.csv`, `output/dataset/exif_cache.csv` (repository only) | `+ photos and video frames: 73763` and `inventory written: output/dataset/field_inventory.csv (73763 rows)`. Long-running (reads ~70,000 photo headers); do not interrupt |
 | S2 dry run | `python -m data_acquisition.sources.field --drive "$DRIVE" --site rumney_ranch --dry-run` | `output/dataset/field/rumney_ranch/plan.csv`, `.../excluded.csv` | `plan: {'link': 29087, 'georef': 283, 'export': 104}, excluded: 1783 -> output/dataset/field/rumney_ranch` |
-| V1 | `shasum -a 256 output/dataset/field_inventory.csv output/dataset/field/rumney_ranch/plan.csv` | | both match the reference table; if not, STOP before S3 (see Diagnosis) |
+| V1 | `shasum -a 256 output/dataset/field_inventory.csv output/dataset/field/rumney_ranch/plan.csv` | | both match the reference table. If not, check the counts in S1 and S2: if they match, it is probably the duplicate order (see Diagnosis), so report it and continue only if the user agrees; if they differ, STOP before S3 |
 | S3 build | `python -m data_acquisition.sources.field --drive "$DRIVE" --site rumney_ranch` | `$SITE_DIR` (links, exported GeoPackages, `.aux.xml` sidecars, records) | a `built: {...}` line with `'link': 29087` (or `'link (already there)'` on a rerun), `'georef': 283`, `'export': 104`; no `RuntimeError` |
 | S4 alignment (optional) | `python -m data_acquisition.sources.field_alignment --site-dir "$SITE_DIR"` | `$SITE_DIR/alignment.csv` | per-date medians, e.g. `2018-07-26 chunk    : median 0.11 m over 40 of 53 outlines` |
 | S5 catalogue | `python -m data_acquisition.catalog.build --root "$DRIVE/beaver_dataset" --summary montana_rumney_ranch` | `$DRIVE/beaver_dataset/stac/montana_rumney_ranch/` | `420 items -> ...`, and no `missing`/`undescribed`/`unsupported`/`unattached` lines |
@@ -93,7 +93,8 @@ Find the first differing file in this order: inventory → plan → manifest →
 
 | First difference | Meaning | Action |
 |---|---|---|
-| `field_inventory.csv` | the copy differs from the reference drive (missing, extra or changed files), or macOS created `._*` files (non-APFS copy) | count `find "$DRIVE/2018 Field Season" "$DRIVE/2019 Field Season" -name '._*' \| wc -l` (reference: 408 `._*.JPG` files, which are harmless). Report the difference to the user; ask them to obtain the reference inventory for a line diff. STOP |
+| `field_inventory.csv`, row counts equal | which copy of a duplicate photo is kept depends on the disk's listing order (`course_findings.md`, 29; untested on macOS): rows differ in `duplicate of ...`, and then so do the plan, manifest and `excluded.csv` | compare with the note column ignored; report it to the user. Do not treat it as a damaged copy, and do not change the code |
+| `field_inventory.csv`, row counts differ | the copy differs from the reference drive (missing, extra or changed files), or macOS created `._*` files (non-APFS copy) | count `find "$DRIVE/2018 Field Season" "$DRIVE/2019 Field Season" -name '._*' \| wc -l` (reference: 408 `._*.JPG` files, which are harmless). Report the difference to the user; ask them to obtain the reference inventory for a line diff. STOP |
 | `plan.csv` with identical inventory | code differs | check P8; STOP |
 | `manifest.csv` only | an unexpected action ordering or path; STOP | report |
 | `excluded.csv` only | reasons differ: compare the `reason` column with the reference; report | STOP |

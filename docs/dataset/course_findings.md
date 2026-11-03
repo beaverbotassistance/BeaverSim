@@ -168,3 +168,12 @@ together. Each entry: what was found, the evidence, and a suggestion. Newest las
     link points to the old location until `python -m data_acquisition.catalog.root --root <root>` is run again.
     Suggestion: save the root catalogue as self-contained, like `stac.save` does for the dataset catalogues, so
     the whole `stac/` folder can move.
+29. **Which copy of a duplicate photo is kept depends on the order the disk lists files.** `field_inventory.walk` uses
+    `os.scandir`, unsorted, and `photo_rows` keeps the first photo seen for each capture time and size. Reversing
+    the order in a test flips the choice. On our NTFS drive all 1,231 duplicates (694 at Rumney) lie in another folder
+    than their kept copy, always the one that sorts last (`106MEDIA` over `100MEDIA`). Another file system may
+    list them otherwise: the same data would then give another inventory, plan, manifest and `excluded.csv`, and
+    photos under other camera folders, so the reference hashes of `rumney_rebuild_guide.md` could differ with an
+    identical copy. Not tested on a Mac. Suggestion: `jpgs = sorted(..., key=path, reverse=True)` in `photo_rows`.
+    Keeping the last in sorted order should reproduce the current inventory exactly, since every kept copy already
+    sorts last, so the drive would not need rebuilding; to confirm with the regenerated inventory's hash.
