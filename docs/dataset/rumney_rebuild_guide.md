@@ -103,7 +103,7 @@ python -m pytest -q tests/dataset          # should end with "75 passed"
 
 Run every command below from the `BeaverSim` folder, with the environment active (`source
 beaversim_venv/bin/activate` in each new Terminal window). If `echo $BEAVER_SITES` prints anything, run
-`unset BEAVER_SITES` first.
+`unset BEAVER_SITES` first: that variable selects the course's sample registry instead of the real sites.
 
 Set the path of your copy once per Terminal window: the folder that contains `2018 Field Season` and
 `2019 Field Season`.
@@ -198,7 +198,6 @@ shasum -a 256 output/dataset/field_inventory.csv output/dataset/field/rumney_ran
 | an error when linking (e.g. `Operation not supported`) | the disk is exFAT (no hard links): use an APFS disk |
 | `ogr2ogr: command not found` | `brew install gdal`, then open a new Terminal |
 | `pip install` fails for `rasterio` | macOS too old for the pinned version (section 2), or not Python 3.12 |
-| tests fail with "site 'test_site' is not in data_acquisition/sites.yaml" | `unset BEAVER_SITES` |
 | the build stops with "exists but was not built from a layout file" | a `beaver_dataset/sites/rumney_ranch/` from elsewhere is in the way: move it aside |
 
 More in the course's troubleshooting appendix, [`docs/manual/B_troubleshooting.md`](../manual/B_troubleshooting.md).

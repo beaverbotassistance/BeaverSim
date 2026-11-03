@@ -11,10 +11,6 @@ Run pytest from the repository root, so [`pytest.ini`](../../pytest.ini) switche
 the repository, pass the settings explicitly: `python -m pytest -c pytest.ini --rootdir . <file>`
 ([chapter 18](18_testing.md)). If imports still fail, `env -u PYTHONPATH python -m pytest ...`.
 
-**23 tests fail with "site 'test_site' is not in data_acquisition/sites.yaml".**
-`BEAVER_SITES` is set in your terminal (chapter 0 sets it for the sample); the tests' registry does not override it.
-`unset BEAVER_SITES`, or open a new terminal (finding 26 in [`course_findings.md`](../dataset/course_findings.md)).
-
 **`ogr2ogr: command not found`** (the field step).
 The GDAL command-line tools are a system package: `sudo apt install gdal-bin` on Ubuntu, which needs
 administrator rights; on a lab machine, ask its administrator ([chapter 0](00_setup.md)).

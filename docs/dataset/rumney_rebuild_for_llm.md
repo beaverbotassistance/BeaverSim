@@ -39,7 +39,7 @@ On any STOP condition, stop and report to the user; do not improvise a workaroun
 | P6 | Python | `python3.12 --version` | `Python 3.12.x` | fix: `brew install python@3.12` |
 | P7 | GDAL tools | `ogr2ogr --version`; `ogrinfo --version` | GDAL ≥ 3.7 (needed for `ogrinfo -json`) | fix: `brew install gdal`, new shell |
 | P8 | repository | `git -C "$REPO" rev-parse --abbrev-ref HEAD`; `git -C "$REPO" status --porcelain` | `dev_dataset`; empty | STOP if modified files |
-| P9 | environment variable | `echo "${BEAVER_SITES:-unset}"` | `unset` | fix: `unset BEAVER_SITES` |
+| P9 | real site registry in use | `echo "${BEAVER_SITES:-unset}"` | `unset` | fix: `unset BEAVER_SITES` (it would select another registry, and the catalogue steps would fail or use the wrong sites) |
 
 ## Setup (once)
 
@@ -51,8 +51,7 @@ pip install -r requirements.txt -r requirements-dev.txt
 python -m pytest -q tests/dataset
 ```
 
-Expected: install completes; the tests end with `75 passed`. If tests fail with "site 'test_site' is not in
-data_acquisition/sites.yaml": `BEAVER_SITES` is set (P9). Any other failure: STOP.
+Expected: install completes; the tests end with `75 passed`. Any failure: STOP.
 
 ## Steps
 
@@ -73,7 +72,7 @@ deleted (known issue).
 
 ## Reference values
 
-Code: branch `dev_dataset` as of 2026-10-19 (no pipeline changes since commit `f655273`). Rows exclude the header.
+Code: branch `dev_dataset` as of 2026-10-19 (`data_acquisition/` unchanged since commit `f655273`, except that `summary.load_sites` honours `BEAVER_SITES`). Rows exclude the header.
 
 | File | Rows | SHA-256 |
 |---|---|---|
@@ -105,7 +104,6 @@ Find the first differing file in this order: inventory → plan → manifest →
 
 - `field_alignment` imports matplotlib with a file-only backend; plots in a notebook need `%matplotlib inline`.
 - The field step deletes any file in `$SITE_DIR` that it did not plan (keep user files elsewhere).
-- Tests fail if `BEAVER_SITES` is set.
 - The full list is in [`course_findings.md`](course_findings.md).
 
 ## Further reading for context

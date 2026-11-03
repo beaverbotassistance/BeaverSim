@@ -25,10 +25,6 @@ python -m pytest -q tests/dataset -k layers       # tests whose name contains "l
 [`pytest.ini`](../../pytest.ini) sets the test folder and switches off pytest plugins that ROS installs on this
 machine's Python path and that break pytest; run pytest from the repository root so it is read.
 
-**Unset `BEAVER_SITES` first** (`unset BEAVER_SITES`, or open a new terminal): the tests make their own site registry
-but do not override the environment variable, so with it set (as [chapter 0](00_setup.md) does for the sample) 23
-tests fail (finding 26 in [`course_findings.md`](../dataset/course_findings.md)).
-
 | File | Covers |
 |---|---|
 | `test_readers.py` (10) | rasters, ASCII grids, vectors, tables, HydroShare checksums, ArcGIS adjustments, GSD, a raster that cannot be placed |

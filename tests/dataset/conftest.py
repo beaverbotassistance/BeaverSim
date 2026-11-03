@@ -76,6 +76,7 @@ def registry(tmp_path: Path, monkeypatch) -> Path:
                     "  test_region: {name: Test region, crs: 'EPSG:32603', colonies: null, land_status: null,\n"
                     "                governance: null, level: region, contains: [test_site]}\n")
     monkeypatch.setattr(summaries, "SITES", path)
+    monkeypatch.delenv("BEAVER_SITES", raising=False)       # it would take precedence over SITES
     return path
 
 

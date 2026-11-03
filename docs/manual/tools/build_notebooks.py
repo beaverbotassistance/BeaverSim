@@ -1763,7 +1763,7 @@ plt.show()
 CH18 = Chapter(
     "18_testing", "18. Testing a change",
     "Exercises of [chapter 18](../18_testing.md). Run the setup cell first.",
-    """import collections, copy, json, os, subprocess, tempfile, textwrap
+    """import collections, copy, json, subprocess, tempfile, textwrap
 import yaml
 from data_acquisition.catalog import build
 from data_acquisition.catalog import summary as summaries
@@ -1774,10 +1774,7 @@ PYTEST = [sys.executable, "-m", "pytest", "-q", "--color=no", "-c", str(ROOT / "
 
 
 def run(args):
-    \"\"\"Run a command from the repository root, without BEAVER_SITES: the tests' registry fixture does not
-    override it (finding 26), so tests run with it set would read the sample's registry and fail.\"\"\"
-    env = {k: v for k, v in os.environ.items() if k != "BEAVER_SITES"}
-    out = subprocess.run(args, cwd=ROOT, capture_output=True, text=True, env=env)
+    out = subprocess.run(args, cwd=ROOT, capture_output=True, text=True)
     return (out.stdout + out.stderr).strip()""",
     [
         Exercise("**1. Run the suite.** Run all the dataset tests, then only those whose name contains `layers`. "
@@ -1869,7 +1866,7 @@ CH19 = Chapter(
     "19_extending", "19. Extending the pipeline",
     "Exercises of [chapter 19](../19_extending.md). Run the setup cell first. The pipeline is changed only inside "
     "this session, and the changes are undone; no file of the pipeline is edited.",
-    """import copy, datetime, os, shutil, subprocess, tempfile, textwrap
+    """import copy, datetime, shutil, subprocess, tempfile, textwrap
 import yaml
 from data_acquisition.catalog import build
 from data_acquisition.catalog import summary as summaries
@@ -1927,10 +1924,9 @@ print("undone:", "water_depth" not in summaries.PRODUCTS and "water_depth" not i
                                     {"path": "d.tif", "product": "water_depth", "date": "2023-07-12"}]}]}, {})
         assert not any("product must be" in p for p in problems)
 '''))
-env = {k: v for k, v in os.environ.items() if k != "BEAVER_SITES"}
 out = subprocess.run([sys.executable, "-m", "pytest", "-q", "--color=no", "-c", str(ROOT / "pytest.ini"),
                       "--rootdir", str(ROOT), str(scratch / "test_water_depth.py")],
-                     cwd=ROOT, capture_output=True, text=True, env=env)
+                     cwd=ROOT, capture_output=True, text=True)
 print((out.stdout + out.stderr).strip().splitlines()[-1])
 # In the real change, the two additions would be edits to summary.py and build.py, and the test would need no
 # monkeypatch; here it keeps the pipeline untouched."""),

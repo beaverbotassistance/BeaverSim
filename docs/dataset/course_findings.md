@@ -12,6 +12,13 @@ together. Each entry: what was found, the evidence, and a suggestion. Newest las
 - **`BEAVER_SITES`** environment variable added to `summary.load_sites`, so the course's sample root has its own
   site registry (commit e6651e2).
 
+## Fixed after the course was written
+
+- **26. The tests failed when `BEAVER_SITES` was set.** `summary.load_sites` prefers that variable to `summary.SITES`,
+  but the tests' `registry` fixture only patched `SITES`, so in a terminal with it set (the course's chapters 0 and 6
+  export it) 22 tests stopped with errors. Introduced with `BEAVER_SITES` itself (commit e6651e2). The fixture
+  now also removes the variable; all 75 tests pass with it set or unset.
+
 ## Open
 
 1. **Group dates are inherited by reports and metadata files.** A README listed in a group with a `date`
@@ -141,12 +148,7 @@ together. Each entry: what was found, the evidence, and a suggestion. Newest las
     (`--select E,F,W --line-length 120`), 22 remain: 13 ambiguous names `l` (E741), 8 lines of 121-123 characters
     (E501), a lambda assigned to a name (E731). Each person's own ruff settings change the result again. Suggestion: a `ruff.toml` with
     `line-length = 120` and the selected rules (excluding the legacy `data_acquisition/modules/`), and fix the 22.
-26. **The tests fail when `BEAVER_SITES` is set.** `summary.load_sites` prefers the `BEAVER_SITES` environment
-    variable to `summary.SITES`, but the tests' `registry` fixture (`tests/dataset/conftest.py`) only patches
-    `SITES`. In a terminal where `BEAVER_SITES` is set (the course's chapters 0 and 6 tell students to export it),
-    `python -m pytest tests/dataset` gives 1 failure and 22 errors ("site 'test_site' is not in
-    data_acquisition/sites.yaml"). Introduced with `BEAVER_SITES` itself (commit `e6651e2`, before the course's
-    no-pipeline-changes rule). Suggestion: `monkeypatch.delenv("BEAVER_SITES", raising=False)` in the fixture.
+26. Fixed: see "Fixed after the course was written" above.
 27. **`beaver_dataset/` still holds the output of the removed build tool, and `field_naming.md` is partly out of
     date.** On the drive, `beaver_dataset/README.md`, `manifest.csv` and `excluded.csv` (9 October) describe the
     old layout of `data_acquisition/dataset/build.py` (`raw/`, `reference/`, `products/`), removed in the code
