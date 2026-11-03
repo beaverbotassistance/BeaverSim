@@ -850,7 +850,126 @@ print("4. dams: draft product", files["dams_2023-07-12.gpkg"]["product"], "| met
 catalog = check(flawed)
 ortho = next(i for i in catalog.get_items(recursive=True) if i.id.endswith("orthomosaic"))
 print("the build flags the bands:", [q["flag"] for q in ortho.properties["beaver:quality"]])"""),
-        Exercise("**5. (Optional) Draft with Claude.** Run the prompt in a Claude Code session on the sample. The "
+        Exercise("**5. Load and check.** Load the reference summary with `summaries.load`: what is added to it? "
+                 "Then run `summaries.check` on the file as written and on the loaded summary, and on copies with a "
+                 "missing title, an unknown product and an unknown field. What does `check` expect?",
+                 """path = ROOT / "docs/manual/solutions/training_pond.yaml"
+...  # your code here (summaries.load, yaml.safe_load, summaries.check)""",
+                 """path = ROOT / "docs/manual/solutions/training_pond.yaml"
+s = summaries.load(str(path))                       # read, validated, and completed
+print("keys:", sorted(s))
+print("sites:", s["sites"]["training_pond"]["name"], "| path:", Path(s["_path"]).name)
+raw = yaml.safe_load(path.read_text())              # the file as written, nothing added
+print("check, as written:", summaries.check(raw))
+print("check, as loaded: ", summaries.check(s))
+# check expects the summary as written. load replaces `sites` with the registry's full entries, and a summary may
+# only give hints there, so check refuses the loaded one. load calls check itself, so it never needs repeating.
+
+no_title = copy.deepcopy(raw)
+del no_title["title"]
+print("no title:", summaries.check(no_title))      # only this: a missing top-level field stops the check early
+wrong = copy.deepcopy(raw)
+wrong["groups"][0]["files"][0]["product"] = "ortho"
+wrong["groups"][0]["files"][1]["colour"] = "red"
+for problem in summaries.check(wrong):
+    print("problem:", problem[:130])
+check(wrong)                                        # load turns the same problems into an error, and blocks"""),
+        Exercise("**6. The registry.** Read the sample's registry and the real one (`data_acquisition/sites.yaml`) "
+                 "with `summaries.load_sites`. How many sites does each have? Extract the `name` of every site of "
+                 "the real one as a list and as a dict by slug, and list its regions. Then break a copy of the "
+                 "sample's registry (a CRS without `EPSG:`, a `land_status` that is not null or an entry, a site "
+                 "`contains` one that does not exist) and run `check_sites`. Finally, which sites does the "
+                 "reference summary use (`used_sites`)?",
+                 """sample = summaries.load_sites()
+real = summaries.load_sites(ROOT / "data_acquisition/sites.yaml")
+...  # your code here""",
+                 """sample = summaries.load_sites()                     # BEAVER_SITES: the sample's registry
+real = summaries.load_sites(ROOT / "data_acquisition/sites.yaml")
+print(len(sample), "site in the sample's registry;", len(real), "in the real one")
+names = [site["name"] for site in real.values()]
+by_slug = {slug: site["name"] for slug, site in real.items()}
+regions = [slug for slug, site in real.items() if site.get("level") == "region"]
+print(names[:2], "...")
+print(by_slug["rumney_ranch"])
+print(len(regions), "regions:", regions)
+
+broken = copy.deepcopy(sample)
+broken["training_pond"]["crs"] = "32612"
+broken["training_pond"]["land_status"] = "private"
+broken["other"] = {"name": "Other", "crs": "EPSG:32612", "contains": ["nowhere"]}
+for problem in summaries.check_sites(broken):
+    print("problem:", problem)
+print("used by the reference summary:", summaries.used_sites(summaries.load(str(
+    ROOT / "docs/manual/solutions/training_pond.yaml"))))"""),
+        Exercise("**7. Anchors.** YAML lets you write a value once (`&name`) and reuse it (`*name`). Load a short "
+                 "text that does, and see what `yaml.safe_load` returns. Then run `summaries.anchors` on it, and on "
+                 "a text with `5 * 3 & more` in a note. Why must `anchors` look at the text, not the loaded "
+                 "dictionary?",
+                 """with_anchor = "base: &common\\n  platform: UAV\\nfile_a: *common\\n"
+...  # your code here""",
+                 """with_anchor = "base: &common\\n  platform: UAV\\nfile_a: *common\\n"
+print(yaml.safe_load(with_anchor))
+print(summaries.anchors(with_anchor))
+print(summaries.anchors("note: 5 * 3 & more\\nurl: http://x/*y\\n"))
+# The loaded dictionary has file_a's platform written out, as if the alias had never been there: once parsed,
+# nothing shows it was used. So the check reads the raw text. A note with * or & is not an alias: they must stand
+# alone after a space, colon, dash or bracket."""),
+        Exercise("**8. A file's time.** For every data file of the reference summary: `resolve` it with its group, "
+                 "compute `summaries.epoch`, and print the path, start, end and label. Then compute `epoch` for a "
+                 "day, a month, a year, a range and an unknown date, and make it fail five ways.",
+                 """s = summaries.load(str(ROOT / "docs/manual/solutions/training_pond.yaml"))
+group = s["groups"][0]
+...  # your code here""",
+                 """s = summaries.load(str(ROOT / "docs/manual/solutions/training_pond.yaml"))
+group = s["groups"][0]
+for entry in group["files"]:
+    if entry.get("product"):                          # reports and metadata have no time of their own
+        start, end, label = summaries.epoch(summaries.resolve(group, entry))
+        print(f"{entry['path']:28s} {start}  {end}  {label}")
+
+d = datetime.date
+for f in ({"date": d(2023, 7, 12)}, {"date": d(2022, 8, 1), "date_precision": "month"},
+          {"date": 2019, "date_precision": "year"}, {"start_date": d(2017, 9, 7), "end_date": d(2018, 9, 25)},
+          {"date_precision": "unknown", "start_date": d(2010, 1, 1), "end_date": d(2015, 12, 31)}):
+    print(f, "->", summaries.epoch(f))
+for f in ({}, {"date": "12 July"}, {"date": d(2023, 7, 1), "date_precision": "week"},
+          {"start_date": d(2020, 1, 1), "end_date": d(2019, 1, 1)}, {"date_precision": "unknown"}):
+    try:
+        summaries.epoch(f)
+    except ValueError as e:
+        print(f, "-> ValueError:", str(e)[:75])"""),
+        Exercise("**9. A layer's time.** A vector file can hold one layer per date, named by it. With "
+                 "`summaries.layer_epoch` and the pattern `_(\\d{4})$` (year), find the date of the layers "
+                 "`Dams_2010`, `Dams_2013_old`, `notes` and `Dams_0000`. Then date `D26Jul_2018-07-26` by day and "
+                 "`x_2023-07` by month, and try `x_2023-02-30`. When does it answer None?",
+                 """spec = {"pattern": r"_(\\d{4})$", "date_precision": "year"}
+...  # your code here""",
+                 """spec = {"pattern": r"_(\\d{4})$", "date_precision": "year"}
+for name in ("Dams_2010", "Dams_2013_old", "notes", "Dams_0000"):
+    print(f"{name:14s}", summaries.layer_epoch(name, spec))
+day = {"pattern": r"_(\\d{4}-\\d{2}-\\d{2})$", "date_precision": "day"}
+month = {"pattern": r"_(\\d{4}-\\d{2})$", "date_precision": "month"}
+print(summaries.layer_epoch("D26Jul_2018-07-26", day), summaries.layer_epoch("x_2023-07", month))
+print(summaries.layer_epoch("x_2023-02-30", day))
+# None when the pattern does not match (`notes`, and `Dams_2013_old` because the pattern ends at `$`), or when what it
+# captures is not a real date (year 0, 30 February). The builder reports those layers as unmatched_layers."""),
+        Exercise("**10. Who wrote it.** Call `summaries.author` on the reference summary. Then on copies with "
+                 "`reviewed` set, and with a person as author. What does `summaries.by_claude` say about "
+                 "`claude`, `claude (claude-opus-5-5)`, `Claudia Rossi` and `Federico`?",
+                 """s = summaries.load(str(ROOT / "docs/manual/solutions/training_pond.yaml"))
+...  # your code here""",
+                 """s = summaries.load(str(ROOT / "docs/manual/solutions/training_pond.yaml"))
+print("as written:", summaries.author(s))
+reviewed = copy.deepcopy(s)
+reviewed["reviewed"] = {"by": "Federico Oliva", "date": datetime.date(2026, 11, 3)}
+print("reviewed:  ", summaries.author(reviewed))
+by_person = copy.deepcopy(s)
+by_person["authored"] = {"by": "Federico Oliva", "date": datetime.date(2026, 10, 1)}
+print("by a person:", summaries.author(by_person))
+print([summaries.by_claude(who) for who in ("claude", "claude (claude-opus-5-5)", "Claudia Rossi", "Federico")])
+# `reviewed` wins: once a person has checked the summary, its values count as manual. by_claude only looks at
+# whether the name starts with lower-case "claude"."""),
+        Exercise("**11. (Optional) Draft with Claude.** Run the prompt in a Claude Code session on the sample. The "
                  "prompt writes into `data_acquisition/summaries/` and may add a site to "
                  "`data_acquisition/sites.yaml`: delete "
                  "the draft and undo any registry change afterwards (`git status`, `git restore`).",
@@ -859,7 +978,7 @@ print(subprocess.run(["git", "status", "--short"], cwd=ROOT, capture_output=True
                  """# Done in a Claude Code session, not here. Afterwards, check what it changed:
 status = subprocess.run(["git", "status", "--short"], cwd=ROOT, capture_output=True, text=True).stdout
 print(status or "nothing changed")"""),
-        Exercise("**6. Find it in the code.** Where are the drafting rules, and which function decides what evidence "
+        Exercise("**12. Find it in the code.** Where are the drafting rules, and which function decides what evidence "
                  "a raster gets?",
                  """import inspect
 ...  # your code here""",
@@ -1337,13 +1456,17 @@ gpkg = scratch / "repo/doi_10.5555_training.pond/dams_by_year.gpkg"
 for name, n in (("dams_2021", 2), ("dams_2023", 3), ("notes", 1)):
     points = [Point(368010 + i, 5420030) for i in range(n)]
     gpd.GeoDataFrame({"id": range(n)}, geometry=points, crs="EPSG:32612").to_file(gpkg, layer=name)
+spec = {"pattern": r"_(\\d{4})$", "date_precision": "year"}
+for name in ("dams_2021", "dams_2023", "notes"):
+    print(f"{name:10s} -> layer_epoch:", summaries.layer_epoch(name, spec))
 s2 = copy.deepcopy(REFERENCE)
 s2["groups"][0]["files"].append({"path": "dams_by_year.gpkg", "product": "annotations", "variant": "by_year",
                                  "layers": {"pattern": r"_(\\d{4})$", "date_precision": "year"}})
 catalog, report = build.build(scratch, load(s2))
 print([i.id for i in catalog.get_items(recursive=True) if i.id.endswith("by_year")])
 print({k: v for k, v in report.items() if v})
-# Two items, one per year layer, each dated by its name; the layer "notes" does not match: unmatched_layers."""),
+# Two items, one per year layer, each dated by its name (`layer_epoch`, chapter 9); the layer "notes" gives None, so
+# the build reports it as unmatched_layers."""),
         Exercise("**5. Attachments.** Give README.txt a date (`2023-07-12`) in a copy of the summary, then "
                  "`attach_to: [chm]`. Where does it attach each time?",
                  """...  # your code here""",

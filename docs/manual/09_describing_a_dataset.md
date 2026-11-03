@@ -12,6 +12,7 @@ drafting session, and above all the review.
 - What evidence code gathers, and what the drafting rules forbid
 - How to draft a summary with Claude Code, and check it
 - How to review a draft, and what review means in the catalogue
+- How to read, check and query a summary from Python (`catalog/summary.py`)
 
 ## 1. The summary
 
@@ -101,6 +102,41 @@ Then rename the file to `<slug>.yaml` and set `reviewed: {by: <your name>, date:
 catalogue labels the summary's values `manual` instead of `claude` ([chapter 6](06_what_the_pipeline_needs.md)).
 Only a person sets `reviewed`.
 
+## 5. The summary in code
+
+Everything above happens through commands, but the commands are thin: the rules live in
+[`catalog/summary.py`](../../data_acquisition/catalog/summary.py), which the builder, `curate` and the tests all use.
+Its functions, in the order you meet them:
+
+| Function | Takes | Returns |
+|---|---|---|
+| `load(name_or_path)` | a summary's name or path | the summary, **checked and completed** (below); raises `ValueError` listing every problem |
+| `load_sites(path=None)` | nothing, or a registry file | the site registry: `path`, else the file named by `BEAVER_SITES`, else `sites.yaml` ([chapter 5](05_data_governance.md)) |
+| `check_sites(sites)` | a registry | its problems: a name, an `EPSG:` CRS, manual fields null or `{value, by, date}`, a valid `level`, `contains` naming real sites |
+| `check(s, sites=None)` | a summary **as written**, and a registry | its problems (empty when valid) |
+| `anchors(text)` | the summary's raw text | an error if it uses YAML anchors or aliases (`&x`, `*x`): every value must be written where it applies |
+| `used_sites(s)` | a summary | the site slugs its data files use |
+| `resolve(group, file)` | a group and one of its file entries | the file's fields with the group's defaults filled in (notes add up, the group's first) |
+| `epoch(f)` | a resolved file entry | `(start, end, label)`: the dates it covers and the label used in item ids |
+| `layer_epoch(name, spec)` | a layer's name and the entry's `layers:` spec | the time fields for that layer, or None if the name does not match or the date is not real |
+| `author(s)` | a summary | `(source, who)`: `manual` and the reviewer when `reviewed` is set, else who wrote it |
+| `by_claude(by)` | an author name | True if it starts with `claude` |
+
+Three things that are easy to get wrong:
+
+- **`load` changes the summary.** It adds `_path`, and replaces `sites` with the registry's full entries for the sites
+  used, plus the summary's `hints`. That is why **`check` must be given the summary as written** (read the file with
+  `yaml.safe_load`), not a loaded one: a summary may only give hints, so `check` refuses the completed form. `load`
+  already calls `check`, so you rarely need it yourself.
+- **`check` returns early.** If a top-level field is missing (`title`, `authored`, ...) it reports only that;
+  fix it and run it again to see the file-level problems.
+- **`anchors` reads text** because once YAML is parsed, an alias has been expanded and nothing shows it was used.
+
+`epoch` is the one to know best. A file's time is one of: a `date` (a day, or a month or year with
+`date_precision`), or a `start_date` and `end_date`; `unknown` precision needs both limits. A month or year becomes its
+first and last day, and the label (`2023-07-12`, `2022-08`, `2019`, `2017-09-07_2018-09-25`) goes into the item's id
+([chapter 14](14_builder.md)).
+
 ## Case: Rumney Ranch, drafted twice
 
 The first Rumney draft was built on early evidence: it described a 25 km offset and tiles "really in EPSG:4326",
@@ -123,14 +159,26 @@ solutions in [`solutions/notebooks/09_describing_a_dataset.ipynb`](solutions/not
    make it pass the check; compare it with the reference summary.
 4. **Review a draft.** [`data/flawed_draft.yaml`](data/flawed_draft.yaml) passes the check but has four mistakes a
    reviewer should catch. Find them with the evidence.
-5. **(Optional) Draft with Claude.** Run the prompt in a Claude Code session on the sample. The prompt writes into
+5. **Load and check.** Load the reference summary: what does `load` add? Run `check` on the file as written and on the
+   loaded summary, and on copies with a missing title, an unknown product and an unknown field. What does `check`
+   expect?
+6. **The registry.** Read the sample's and the real registry. Extract every site's `name` as a list and as a dict by
+   slug, list the regions, break a copy of the sample's registry three ways and run `check_sites`; then `used_sites`.
+7. **Anchors.** Load a text with an anchor and an alias, and run `anchors` on it and on a note containing `5 * 3 & more`.
+   Why must `anchors` read the text?
+8. **A file's time.** `resolve` and `epoch` every data file of the reference summary; `epoch` for a day, month, year,
+   range and unknown date; and make it fail five ways.
+9. **A layer's time.** `layer_epoch` with the pattern `_(\d{4})$` on four layer names, then by day and by month. When
+   does it answer None?
+10. **Who wrote it.** `author` on the reference summary, reviewed, and by a person; `by_claude` on four names.
+11. **(Optional) Draft with Claude.** Run the prompt in a Claude Code session on the sample. The prompt writes into
    `data_acquisition/summaries/` and may add a site to `data_acquisition/sites.yaml`: delete the draft and undo any
    registry change afterwards (`git status`, `git restore`).
-6. **Find it in the code.** Where are the drafting rules, and which function decides what evidence a raster gets?
+12. **Find it in the code.** Where are the drafting rules, and which function decides what evidence a raster gets?
 
 ## Where this lives
 
-- [`data_acquisition/catalog/summary.py`](../../data_acquisition/catalog/summary.py): the schema (docstring), `check`, `load`.
+- [`data_acquisition/catalog/summary.py`](../../data_acquisition/catalog/summary.py): the schema (docstring) and the functions of section 5.
 - [`data_acquisition/catalog/evidence.py`](../../data_acquisition/catalog/evidence.py): `gather`, `describe_file`.
 - [`data_acquisition/catalog/describe.py`](../../data_acquisition/catalog/describe.py): `RULES`, `PROMPT`, `write_prompt`,
   `check_summary`.

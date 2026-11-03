@@ -103,7 +103,9 @@ Notebook: [`notebooks/14_builder.ipynb`](notebooks/14_builder.ipynb) (work in a 
    bands, and with the order reversed; then for a DSM.
 4. **One item per layer.** In a scratch copy of the sample, write a GeoPackage with layers `dams_2021` and `dams_2023`
    (and one called `notes`), describe it (product `annotations`, variant `by_year`) with
-   `layers: {pattern: '_(\d{4})$', date_precision: year}`, and build. How many items, and what does the report say?
+   `layers: {pattern: '_(\d{4})$', date_precision: year}`, and build. First date each layer name with
+   `summaries.layer_epoch` ([chapter 9](09_describing_a_dataset.md)): which gives None? Then: how many items, and
+   what does the report say?
 5. **Attachments.** Give README.txt a date (`2023-07-12`) in a copy of the summary, then `attach_to: [chm]`. Where
    does it attach each time?
 6. **Find it in the code.** Where is the item id made, and where is a collection's licence set to `various`?
