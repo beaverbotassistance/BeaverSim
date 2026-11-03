@@ -17,7 +17,7 @@ and how to use them for a change.
 [pytest](https://docs.pytest.org/en/stable/) runs everything in [`tests/dataset/`](../../tests/dataset/):
 
 ```
-python -m pytest -q tests/dataset                 # all of them (78, under a minute)
+python -m pytest -q tests/dataset                 # all of them (79, under a minute)
 python -m pytest -q tests/dataset/test_build.py   # one file
 python -m pytest -q tests/dataset -k layers       # tests whose name contains "layers"
 ```
@@ -32,7 +32,7 @@ machine's Python path and that break pytest; run pytest from the repository root
 | `test_evidence.py` (2) | a photo folder as one evidence entry, the photo reader |
 | `test_build.py` (10) | items and ids, reports, bands, CRS, tables, layers, archive provenance, descriptors, `curate` checks, seasons, STAC validation |
 | `test_downloads.py` (5), `test_checksums_archives.py` (6) | the order of checks, size-only, `finish` and the log, served MD5 headers; digests, multipart ETags, archives |
-| `test_field.py` (5), `test_alignment.py` (2) | layout checks, CRS corrections, `_same_place`, `georeference`; `best_shift` |
+| `test_field.py` (6), `test_alignment.py` (2) | layout checks, which duplicate is kept, CRS corrections, `_same_place`, `georeference`; `best_shift` |
 | `test_manual.py` (5) | the course: the sandbox patch, the notebook builder, the coverage report, the reference summary builds the sample, and every solution notebook runs |
 
 **Synthetic data.** No test needs the drive or a network. [`conftest.py`](../../tests/dataset/conftest.py) makes

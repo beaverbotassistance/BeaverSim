@@ -1,4 +1,5 @@
 """Field-drive source step: layout checks, CRS corrections, ArcGIS georeferencing applied as a sidecar."""
+import os
 from pathlib import Path
 
 import numpy as np
@@ -7,7 +8,7 @@ import rasterio
 from affine import Affine
 from pyproj import CRS
 
-from data_acquisition.sources import field
+from data_acquisition.sources import field, field_inventory
 
 ARC = ('PROJCS["WGS_1984_ARC_System_Zone_12",GEOGCS["GCS_WGS_1984",DATUM["D_WGS_1984",SPHEROID["WGS_1984",'
        '6378137.0,298.257223563]],PRIMEM["Greenwich",0.0],UNIT["Degree",0.0174532925199433]],'
@@ -15,6 +16,20 @@ ARC = ('PROJCS["WGS_1984_ARC_System_Zone_12",GEOGCS["GCS_WGS_1984",DATUM["D_WGS_
        'PARAMETER["Central_Meridian",0.0],PARAMETER["Standard_Parallel_1",-52.28859923],UNIT["Meter",1.0]]')
 SPHERE = "+proj=eqc +lat_ts=-52.28859923 +lat_0=0 +lon_0=0 +x_0=0 +y_0=0 +R=6378137 +units=m +no_defs"
 CORRECTIONS = [{"from": "WGS_1984_ARC_System_Zone_12", "to": SPHERE, "reason": "ArcGIS uses a sphere"}]
+
+
+def test_the_copy_kept_does_not_depend_on_the_listing_order(tmp_path: Path, monkeypatch):
+    for folder in ("100MEDIA", "106MEDIA"):
+        (tmp_path / folder).mkdir()
+        (tmp_path / folder / "DJI_0002.JPG").write_bytes(b"same size")
+    info = {"camera": "FC6310", "taken_at": "2019-09-03T10:00:00", "lat": 48.93, "lon": -113.12}
+    monkeypatch.setattr(field_inventory, "read_photos", lambda jpgs, *args: [info] * len(jpgs))
+    monkeypatch.setattr(field_inventory, "site_of", lambda rel: "rumney_ranch")
+    monkeypatch.setattr(field_inventory, "survey_date_of", lambda rel: None)
+    files = [e for folder in tmp_path.iterdir() for e in os.scandir(folder)]
+    for listed in (files, files[::-1]):
+        rows = field_inventory.photo_rows(tmp_path, listed)
+        assert [r["source_path"] for r in rows if r["include"]] == ["106MEDIA/DJI_0002.JPG"]
 
 
 def test_layout_names_and_targets():

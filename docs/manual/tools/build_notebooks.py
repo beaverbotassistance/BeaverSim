@@ -2401,7 +2401,7 @@ for layer in ("D26Jul2018_Dams_Colony_A", "Colony4_trails", "Rumney_C_ponds", "W
                  "File "
                  "Geodatabase made with `ogr2ogr`. Run `walk`, `find_geodatabases`, `read_photo`, then "
                  "`build_inventory`, and read its rows. Which were excluded, and why? Then run `photo_rows` with the "
-                 "files in reverse order: what changes?",
+                 "files in reverse order: does anything change?",
                  """drive = Path(tempfile.mkdtemp()) / "drive"
 flight = drive / "2018 Field Season/Drone Flights/Rumney Ranch/10. 26July2018"
 ...  # your code here (the walk needs both season folders to exist)""",
@@ -2444,7 +2444,7 @@ for name, order in (("as listed", files), ("reversed", files[::-1])):
     kept = [r["source_path"].split("/")[-2] for r in photos_found
             if r.get("include") and r["source_path"].endswith(shots[0].name)]
     print(name, "keeps the copy in:", kept)
-# The first one seen is kept, so the result depends on the order the disk lists files (finding 29).
+# Nothing changes: photo_rows sorts the photos first, so the copy that sorts last is kept on any disk (finding 29).
 print("orthomosaic rows:", len(field_inventory.ortho_rows(drive, files)))
 print("layer rows:", len(field_inventory.annotation_rows(drive, files)))"""),
         Exercise("**8. Exporting and georeferencing.** `field.source_path` for a relative and a full source. Write a "

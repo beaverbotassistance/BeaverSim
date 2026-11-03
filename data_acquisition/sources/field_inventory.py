@@ -229,7 +229,8 @@ def read_photos(jpgs: List[os.DirEntry], root: Path, cache: Optional[Path], work
 
 def photo_rows(root: Path, files: List[os.DirEntry], workers: int = 4,
                cache: Optional[Path] = None) -> List[Dict[str, object]]:
-    jpgs = [e for e in files if e.name.lower().endswith((".jpg", ".jpeg"))]
+    # of two copies of a photo the first seen is kept: in a fixed order, not the one the disk lists files in
+    jpgs = sorted((e for e in files if e.name.lower().endswith((".jpg", ".jpeg"))), key=lambda e: e.path, reverse=True)
     infos = read_photos(jpgs, root, cache, workers)
 
     rows, seen = [], {}

@@ -119,8 +119,8 @@ Its functions come in two groups:
 | `photo_rows`, `ortho_rows`, `annotation_rows` | the walked files | the rows of each role |
 | `build_inventory(root, out)` | the drive | all of them, sorted, written to the CSV |
 
-**The first photo seen is kept.** A copy is recognised by its capture time and size, and which one counts as the copy
-depends on the order the disk lists files (finding 29 in [`course_findings.md`](../dataset/course_findings.md)).
+**Of two copies, the one that sorts last is kept.** A copy is recognised by its capture time and size. `photo_rows` reads
+photos in reverse path order, so the choice is the same on any disk, whatever order it lists files in.
 
 [`field_audit.py`](../../data_acquisition/sources/field_audit.py) answers another question: which photos did the original
 Metashape projects use that are no longer on the drive? `project_photos(root)` reads the list inside each project's
@@ -145,8 +145,8 @@ solutions in [`solutions/notebooks/17_field_step_internals.ipynb`](solutions/not
 
 6. **Reading names.** `parse_date`, `season_of`, `site_of`, `survey_date_of`, `site_km`, `colony_of`, `feature_kind_of`.
 7. **Scanning a drive.** A small drive with a copy of a photo, a test flight, a `._` file, a broken `.tif` and a real File
-   Geodatabase: `walk`, `find_geodatabases`, `read_photo`, `build_inventory`. Which rows are excluded? What changes if the
-   files come in reverse order?
+   Geodatabase: `walk`, `find_geodatabases`, `read_photo`, `build_inventory`. Which rows are excluded? Does anything change
+   if the files come in reverse order?
 8. **Exporting and georeferencing.** `field.source_path`; `field.export_layer` without a correction, with a wrong count and
    with the correction; `field.georeference` on a raster with a known fit.
 9. **The alignment check, whole.** `field_alignment.check`, `summary` and `contact_sheet` on a small site folder.

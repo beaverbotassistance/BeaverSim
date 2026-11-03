@@ -27,7 +27,7 @@ orthomosaic and annotation layer (73,763 rows for the 2018-2019 seasons; Metasha
 not listed), with its role, site, survey date, whether to include it and why not, and, for photos, the EXIF
 camera, capture time and position. A photo is dated by its **capture time**, not by the folder it was filed in,
 and its GPS position overrides the folder's site when it lies more than 5 km from it and nearer another. Rules
-exclude some files here: copies (the same capture time and size as a photo already seen), photos without GPS,
+exclude some files here: copies (the same capture time and size as another photo; the one that sorts last is kept), photos without GPS,
 video frames (no EXIF), test flights and filming set-ups, unreadable orthomosaics. For photos and video frames
 these rules are final; for orthomosaics they are a proposal, and the layout file decides. A companion tool, [`sources/field_audit.py`](../../data_acquisition/sources/field_audit.py), lists photos
 that the original Metashape projects used but that are no longer on the drive
