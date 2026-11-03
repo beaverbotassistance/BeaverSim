@@ -51,7 +51,7 @@ pip install -r requirements.txt -r requirements-dev.txt
 python -m pytest -q tests/dataset
 ```
 
-Expected: install completes; the tests end with `75 passed`. Any failure: STOP.
+Expected: install completes; the tests end with `76 passed`. Any failure: STOP.
 
 ## Steps
 

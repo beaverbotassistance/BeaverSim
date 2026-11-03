@@ -11,6 +11,11 @@ Run pytest from the repository root, so [`pytest.ini`](../../pytest.ini) switche
 the repository, pass the settings explicitly: `python -m pytest -c pytest.ini --rootdir . <file>`
 ([chapter 18](18_testing.md)). If imports still fail, `env -u PYTHONPATH python -m pytest ...`.
 
+**`ImportError: cannot import name 'cli' from 'pip._internal.cli.main'`, or a library has an unexpected version.**
+In the lab's sandbox, `PYTHONPATH` points to `/opt/dua-venv`, whose packages replace the environment's. Run
+`unset PYTHONPATH`, then the sandbox steps of [chapter 0](00_setup.md) (`patch_sandbox_venv.py`). Check with
+`python -c "import pandas; print(pandas.__file__)"`: the path should be inside `beaversim_venv`.
+
 **`ogr2ogr: command not found`** (the field step).
 The GDAL command-line tools are a system package: `sudo apt install gdal-bin` on Ubuntu, which needs
 administrator rights; on a lab machine, ask its administrator ([chapter 0](00_setup.md)).

@@ -35,8 +35,18 @@ output/                everything generated locally (never committed)
 
 ## 2. The Python environment
 
-The pipeline is tested with Python 3.12. Create a [virtual environment](https://docs.python.org/3/library/venv.html)
-in the repository folder and install the libraries:
+The pipeline is tested with Python 3.12. You create a
+[virtual environment](https://docs.python.org/3/library/venv.html) in the repository folder and install the
+libraries into it. The steps depend on where you work, so first check:
+
+```
+ls -d /opt/dua-venv
+```
+
+**If it prints `/opt/dua-venv`, you are in the lab's sandbox**: follow the sandbox steps. If it says `No such file or
+directory` (your own computer, or a lab computer outside the sandbox), follow the standard steps.
+
+Standard:
 
 ```
 python3 -m venv beaversim_venv
@@ -44,15 +54,42 @@ source beaversim_venv/bin/activate
 pip install -r requirements.txt -r requirements-dev.txt
 ```
 
+Lab sandbox:
+
+```
+python3 -m venv beaversim_venv
+source beaversim_venv/bin/activate
+unset PYTHONPATH                                        # for this terminal, until the patch below is in place
+pip install -r requirements.txt -r requirements-dev.txt
+python docs/manual/tools/patch_sandbox_venv.py          # once: makes the environment ignore PYTHONPATH
+source beaversim_venv/bin/activate
+```
+
+**Why the sandbox differs.** Its terminals start with `PYTHONPATH` pointing to `/opt/dua-venv` and the system
+packages, and Python searches `PYTHONPATH` before the active environment
+([Python docs](https://docs.python.org/3/using/cmdline.html#envvar-PYTHONPATH)). Those packages would replace the
+environment's own: `pip` stops working (`cannot import name 'cli'`), and libraries silently have other versions.
+[`patch_sandbox_venv.py`](tools/patch_sandbox_venv.py) makes `activate` clear `PYTHONPATH`, `deactivate` put it back,
+and Jupyter notebooks start without it, so your other sandbox projects are not affected. It does nothing outside
+the sandbox. If you ever recreate the environment, run the sandbox steps again.
+
+To check the result anywhere (the first line should be empty in the sandbox, and the path should be inside your
+`beaversim_venv`):
+
+```
+echo "$PYTHONPATH"
+python -c "import pandas; print(pandas.__version__, pandas.__file__)"
+```
+
 [`requirements.txt`](../../requirements.txt) pins every library with its exact version (the geospatial
 ones are rasterio, pyogrio, geopandas, pyproj, shapely and pystac); [`requirements-dev.txt`](../../requirements-dev.txt)
 adds the tools to test and check the code (pytest, ruff). Always activate the environment before running
 anything: commands below assume it.
 
-**If ROS is installed on your machine** (some lab computers have it), it adds its own Python packages to the
+**If ROS is installed on your own machine**, outside the sandbox, it adds its own Python packages to the
 `PYTHONPATH` of every terminal, and some of them break pytest. The repository's
-[`pytest.ini`](../../pytest.ini) already disables the ROS pytest plugins; if imports still fail, run commands
-with `env -u PYTHONPATH ...`.
+[`pytest.ini`](../../pytest.ini) already disables the ROS pytest plugins; if imports still fail, run
+`python docs/manual/tools/patch_sandbox_venv.py --force` once: it protects the environment in the same way.
 
 ## 3. The GDAL command-line tools
 

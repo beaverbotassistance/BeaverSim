@@ -1,8 +1,13 @@
 """The course's sample data root and reference summary still work with the pipeline as it is."""
 import importlib.util
+import json
+import os
+import subprocess
+import sys
 from pathlib import Path
 
 import pystac
+import pytest
 
 from data_acquisition.catalog import build, descriptors, stac
 from data_acquisition.catalog import summary as summaries
@@ -16,6 +21,32 @@ def _make_sample(root: Path) -> None:
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     module.make(root)
+
+
+def _load_tool(name: str):
+    spec = importlib.util.spec_from_file_location(name, MANUAL / "tools" / f"{name}.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_sandbox_patch_clears_and_restores_pythonpath(tmp_path: Path):
+    tool = _load_tool("patch_sandbox_venv")
+    venv = tmp_path / "venv"
+    subprocess.run([sys.executable, "-m", "venv", "--without-pip", str(venv)], check=True)
+    with pytest.raises(ValueError, match="install the requirements first"):
+        tool.patch(venv)
+    kernel = venv / "share" / "jupyter" / "kernels" / "python3" / "kernel.json"
+    kernel.parent.mkdir(parents=True)
+    kernel.write_text('{"argv": ["python"], "language": "python"}')
+    assert len(tool.patch(venv)) == 2
+    assert tool.patch(venv) == []                                      # running it again changes nothing
+    assert json.loads(kernel.read_text())["env"] == {"PYTHONPATH": ""}
+    script = (f'source "{venv}/bin/activate"; echo "[${{PYTHONPATH:-empty}}]"; '
+              f'source "{venv}/bin/activate"; deactivate; echo "[$PYTHONPATH]"')
+    out = subprocess.run(["bash", "-c", script], env={**os.environ, "PYTHONPATH": "/somewhere/else"},
+                         capture_output=True, text=True, check=True).stdout.split()
+    assert out == ["[empty]", "[/somewhere/else]"]
 
 
 def test_reference_summary_builds_the_sample(tmp_path: Path, monkeypatch):
@@ -42,8 +73,6 @@ def test_reference_summary_builds_the_sample(tmp_path: Path, monkeypatch):
 def test_solution_notebooks_run(tmp_path: Path):
     """Every solution notebook runs to the end with the pipeline as it is (they make the sample root if needed).
     Notebooks that download (``needs_network``) run only with ``BEAVER_COURSE_NETWORK=1``."""
-    import os
-
     import nbformat
     from nbclient import NotebookClient
     for path in sorted((MANUAL / "solutions" / "notebooks").glob("*.ipynb")):

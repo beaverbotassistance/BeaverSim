@@ -17,7 +17,7 @@ and how to use them for a change.
 [pytest](https://docs.pytest.org/en/stable/) runs everything in [`tests/dataset/`](../../tests/dataset/):
 
 ```
-python -m pytest -q tests/dataset                 # all of them (75, about 30 s)
+python -m pytest -q tests/dataset                 # all of them (76, under a minute)
 python -m pytest -q tests/dataset/test_build.py   # one file
 python -m pytest -q tests/dataset -k layers       # tests whose name contains "layers"
 ```
@@ -33,7 +33,7 @@ machine's Python path and that break pytest; run pytest from the repository root
 | `test_build.py` (10) | items and ids, reports, bands, CRS, tables, layers, archive provenance, descriptors, `curate` checks, seasons, STAC validation |
 | `test_downloads.py` (5), `test_checksums_archives.py` (6) | the order of checks, size-only, `finish` and the log, served MD5 headers; digests, multipart ETags, archives |
 | `test_field.py` (5), `test_alignment.py` (2) | layout checks, CRS corrections, `_same_place`, `georeference`; `best_shift` |
-| `test_manual.py` (2) | the course: the reference summary builds the sample, and every solution notebook runs |
+| `test_manual.py` (3) | the course: the sandbox patch, the reference summary builds the sample, and every solution notebook runs |
 
 **Synthetic data.** No test needs the drive or a network. [`conftest.py`](../../tests/dataset/conftest.py) makes
 small files in a temporary folder through [fixtures](https://docs.pytest.org/en/stable/how-to/fixtures.html): `root`
