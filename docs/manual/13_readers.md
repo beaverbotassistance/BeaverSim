@@ -90,6 +90,14 @@ Notebook: [`notebooks/13_readers.ipynb`](notebooks/13_readers.ipynb) (work in a 
    (`GPSAltitudeRef`: 1 = below sea level). Write a pytest test that makes a photo 400 m below sea level and checks
    that `photos.exif` reads -400 m. Run it in a scratch folder. What happens?
 
+7. **One shape from five standards.** Read small records in the Zenodo, HydroShare, CKAN and PANGAEA formats. Which keys do
+   they share, which entity did CKAN skip, which size is approximate? Then `ckan.file_name`, `hydroshare.resource_id`
+   and `entity_bands`.
+8. **Tables.** `table.read`, `table.info` and `table.rows_info` on a CSV with coordinates and one without; a column that
+   does not exist.
+9. **The small helpers.** `geotiff.sample`, `geotiff.unapplied_georeference`, `files.is_companion`, `vector.is_vector`,
+   `photos.is_photo_folder`, `photos.info` and `vector.one_layer`.
+
 ## Where this lives
 
 - [`data_acquisition/readers/`](../../data_acquisition/readers/): one module per data type and per metadata standard;

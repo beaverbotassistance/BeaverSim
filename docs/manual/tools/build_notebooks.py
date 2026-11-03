@@ -1362,9 +1362,41 @@ for site, entry in sites.items():
 CH13 = Chapter(
     "13_readers", "13. Readers",
     "Exercises of [chapter 13](../13_readers.md). Run the setup cell first.",
-    """import tempfile, textwrap
+    """import json, shutil, tempfile, textwrap
+import geopandas as gpd
 import numpy as np
-from data_acquisition.readers import RECORD_FILES, RECORDS, files, geotiff, photos, vector""",
+from shapely.geometry import Point
+from data_acquisition.readers import (RECORD_FILES, RECORDS, ckan, entity_bands, files, geotiff, hydroshare, pangaea,
+                                      photos, table, vector, zenodo)
+
+READERS = {"zenodo": zenodo, "hydroshare": hydroshare, "ckan": ckan, "pangaea": pangaea}
+MD5 = "ab" * 16
+RECORD_TEXTS = {        # small records, in the form each repository serves them
+    "zenodo": json.dumps({
+        "doi": "10.5281/zenodo.2", "conceptdoi": "10.5281/zenodo.1",
+        "metadata": {"title": "A survey", "license": {"id": "cc-by-4.0"}, "creators": [{"name": "Rossi, Anna"}],
+                     "dates": [{"start": "2019-06-01", "end": "2019-06-30"}], "description": "<p>Flown in June.</p>"},
+        "files": [{"key": "ortho.tif", "size": 10, "id": "f1", "checksum": f"md5:{MD5}",
+                   "links": {"self": "https://zenodo.org/f/ortho.tif"}}]}),
+    "hydroshare": json.dumps({
+        "metadata": {"title": "Reach survey", "citation": "Doe (2020). https://doi.org/10.4211/hs.abc",
+                     "rights": {"url": "http://creativecommons.org/licenses/by/4.0/", "statement": "CC BY"},
+                     "creators": [{"name": "Anna Rossi"}], "abstract": "An abstract",
+                     "period_coverage": {"start": "2020-01-01", "end": "2020-12-31"},
+                     "spatial_coverage": {"type": "point", "east": -110.5, "north": 44.1}},
+        "files": [{"url": "https://x/data/contents/a.csv", "size": 1, "checksum": MD5.upper()},
+                  {"url": "https://x/data/contents/b.tif", "size": 2, "checksum": "cd" * 16 + "-2"}]}),
+    "ckan": json.dumps({"package": {"result": {
+        "id": "pkg-1", "title": "Dams", "license_id": "cc-by", "license_title": "CC BY", "notes": "Some notes",
+        "time_period_coverage_start": "0001-01-01", "time_period_coverage_end": "2004-12-07T00:00:00",
+        "spatial": json.dumps({"type": "Point", "coordinates": [-85.0, 50.0]}), "organization": {"title": "Ministry"},
+        "resources": [{"id": "r1", "format": "ZIP", "url": "https://x/my%20dams.zip", "size": "100", "hash": MD5},
+                      {"id": "r2", "format": "HTML", "url": "https://x/viewer"}]}}}),
+    "pangaea": ("/* DATA DESCRIPTION:\\nCitation:\\tRossi, A; Doe, J (2021): Clyst survey [dataset]. PANGAEA, "
+                "https://doi.org/10.1594/PANGAEA.1\\nLicense:\\tCreative Commons Attribution 4.0 (CC-BY-4.0)\\n*/\\n"
+                "Binary\\tBinary (Hash)\\tBinary (MIME type)\\tBinary (Size)\\n"
+                f"ortho.tif\\t{MD5.upper()}\\timage/tiff\\t1.9 kBytes\\nnote.txt\\t{MD5}\\ttext/plain\\t12 Bytes\\n"),
+}""",
     [
         Exercise("**1. Rasters.** Read the header of the sample's orthomosaic and of `dem_2022.asc` with "
                  "`geotiff.info`. Which bands does each declare, and what does the grid lack? "
@@ -1448,6 +1480,78 @@ print((out.stdout + out.stderr).strip().splitlines()[-1])
 # The reader returns +400: the assertion fails, so the test is marked xfail (strict: once the reader is fixed it
 # will fail loudly, a reminder to remove the mark). A test that documents a bug, with the bug logged, is how an
 # edge case enters the suite before its fix (chapter 18)."""),
+        Exercise("**7. One shape from five standards.** `RECORD_TEXTS` holds small records in the Zenodo, HydroShare, "
+                 "CKAN and PANGAEA formats. Read each with its reader: which keys do all share, and which entity did "
+                 "CKAN skip? Which size is only approximate? Then try `ckan.file_name`, `hydroshare.resource_id` and "
+                 "`readers.entity_bands`.",
+                 """...  # your code here (READERS[name].read(RECORD_TEXTS[name]))""",
+                 """records = {name: READERS[name].read(text) for name, text in RECORD_TEXTS.items()}
+for name, r in records.items():
+    print(name, {k: r[k] for k in ("package_id", "title", "licence", "creators", "dates", "bounds")})
+    print("   ", {f: (e["size"], e["checksum"], e.get("size_exact")) for f, e in r["entities"].items()})
+print("shared keys:", sorted(set.intersection(*(set(r) for r in records.values()))))
+# CKAN skipped the "viewer" link (format HTML: a web page, not a file) and unquoted my%20dams.zip. PANGAEA rounds
+# sizes ("1.9 kBytes"), so size_exact is False and the builder does not compare them. HydroShare gives an MD5 for one
+# file and a multipart ETag for the other: same record, two checksum forms.
+print(ckan.file_name("https://x/a%20b.zip?download=1"))
+print(hydroshare.resource_id("https://doi.org/10.4211/hs." + "f" * 32))
+print(entity_bands({"attributes": [{"name": "Red", "codes": []}, {"name": "NIR", "codes": []}]}))
+print(entity_bands({"attributes": [{"name": "Band type", "codes": [("1", "Green"), ("2", "Blue")]}]}))
+print(entity_bands({"attributes": [{"name": "elevation", "codes": []}]}))
+# entity_bands: attribute names, else the codes of the attribute; "elevation" names the values, not a band."""),
+        Exercise("**8. Tables.** Write a CSV with a title line, coordinates and a row without coordinates, and one "
+                 "without coordinates at all. What do `table.read`, `table.info` and `table.rows_info` say? What "
+                 "happens if the spec names a column that does not exist?",
+                 """scratch = Path(tempfile.mkdtemp())
+...  # your code here (spec = {"skip": 1, "x": "Easting", "y": "Northing"})""",
+                 """scratch = Path(tempfile.mkdtemp())
+(scratch / "gcps.csv").write_text("Surveyed points\\nGCP,Northing,Easting\\n"
+                                  "1,5420030,368010\\n2,5420031,368011\\n3,,\\n")
+(scratch / "reaches.csv").write_text("ReachID,value\\n1,0.5\\n2,1.2\\n")
+spec = {"skip": 1, "x": "Easting", "y": "Northing"}
+print("read:", table.read(scratch / "gcps.csv", spec).shape, "rows, columns")
+layer = table.info(scratch / "gcps.csv", spec, "EPSG:32612")["layers"][0]
+print({k: layer[k] for k in ("geometry_type", "features", "epsg", "bounds", "rows_without_coordinates")})
+rows = table.rows_info(scratch / "reaches.csv", {"skip": 0})
+print("no coordinates:", rows["features"], "rows,", rows["layers"][0]["fields"], "| spatial:", rows["spatial"])
+print("info gives the same:", table.info(scratch / "reaches.csv", {"skip": 0}, "EPSG:32612")["spatial"])
+try:
+    table.read(scratch / "gcps.csv", {"skip": 1, "x": "East", "y": "North"})
+except KeyError as e:
+    print("KeyError:", str(e)[:70])
+# The same shape as vector.info, so a table becomes a vector item. The CRS is an argument: tables rarely state one."""),
+        Exercise("**9. The small helpers.** `geotiff.sample` on the DSM, with two sizes. "
+                 "`geotiff.unapplied_georeference` on a copy of the extract's chunk, before and after putting its "
+                 "original ArcGIS sidecar next to it; "
+                 "is that sidecar a companion (`files.is_companion`)? `vector.is_vector` and `photos.is_photo_folder` "
+                 "on a few paths; `photos.info` on the sample's photos; `vector.one_layer` on a two-layer GeoPackage.",
+                 """scratch = Path(tempfile.mkdtemp())
+...  # your code here""",
+                 """scratch = Path(tempfile.mkdtemp())
+sampled = geotiff.sample(DATASET / "dsm_2023-07-12.tif")
+print(type(sampled).__name__, sampled.shape, "| masked:", int(sampled.mask.sum()), "| 10:",
+      geotiff.sample(DATASET / "dsm_2023-07-12.tif", size=10).shape)
+# The central window of every band, nodata masked: never more than 1024 x 1024, whatever the file's size.
+
+chunk = scratch / "chunk.tif"
+shutil.copyfile(EXTRACT / "2018-07-26/orthomosaic_chunk.tif", chunk)
+print("no sidecar:", geotiff.unapplied_georeference(chunk))
+sidecar = scratch / "chunk.tif.aux.xml"
+shutil.copyfile(EXTRACT / "2018-07-26/original_chunk.arcgis.aux.xml", sidecar)
+print("with it:   ", geotiff.unapplied_georeference(chunk))
+print("companion:", files.is_companion(sidecar), "| the raster itself:", files.is_companion(chunk))
+
+print("vector:", vector.is_vector(DATASET / "dams_2023-07-12.gpkg"), vector.is_vector(DATASET / "metadata.xml"))
+print("photos:", photos.is_photo_folder(DATASET / "photos_2023-07-12"), photos.is_photo_folder(scratch))
+print({k: v for k, v in photos.info(DATASET / "photos_2023-07-12").items() if k != "positions"})
+
+two = scratch / "two.gpkg"
+for name, n in (("a", 2), ("b", 3)):
+    gpd.GeoDataFrame({"id": range(n)}, geometry=[Point(368010 + i, 5420030) for i in range(n)],
+                     crs="EPSG:32612").to_file(two, layer=name)
+info = vector.info(two)
+one = vector.one_layer(info, "b")
+print(info["features"], "features in all;", one["features"], "in", [layer["name"] for layer in one["layers"]])"""),
     ])
 
 CH14 = Chapter(

@@ -1,4 +1,5 @@
 """The course's sample data root and reference summary still work with the pipeline as it is."""
+import ast
 import importlib.util
 import json
 import os
@@ -70,10 +71,16 @@ def test_notebook_builder_keeps_cells_written_by_hand(tmp_path: Path):
 
 
 def test_coverage_report_finds_the_exercised_functions():
-    report = _load_tool("exercise_coverage").coverage()
-    summary = report["catalog/summary.py"]
+    tool = _load_tool("exercise_coverage")
+    summary = tool.coverage()["catalog/summary.py"]
     assert summary["missing"] == [] and len(summary["used"]) == 11
-    assert "file_name" in report["readers/ckan.py"]["missing"]
+    code = ("from data_acquisition.catalog import summary as summaries\n"
+            "from data_acquisition.sources import dataset_folder\n"
+            "summaries.epoch({})\ndataset_folder(1, 2, 3)\nother.epoch()\n"
+            "run(['-m', 'data_acquisition.catalog.build'])\n")
+    used, commands = tool._calls(ast.parse(code))
+    assert used == {("catalog/summary.py", "epoch"), ("sources/__init__.py", "dataset_folder")}
+    assert commands == {"catalog/build.py"}
 
 
 def test_reference_summary_builds_the_sample(tmp_path: Path, monkeypatch):
