@@ -1561,9 +1561,9 @@ CH14 = Chapter(
 import geopandas as gpd
 import yaml
 from shapely.geometry import Point
-from data_acquisition.catalog import build
+from data_acquisition.catalog import build, stac
 from data_acquisition.catalog import summary as summaries
-from data_acquisition.readers import RECORDS, geotiff
+from data_acquisition.readers import RECORDS, geotiff, photos, vector
 
 REFERENCE = yaml.safe_load((ROOT / "docs/manual/solutions/training_pond.yaml").read_text())
 
@@ -1662,6 +1662,68 @@ print("chm:", attached(chm))
     for n, line in enumerate(source, first):
         if needle in line:
             print(f"{inspect.getsourcefile(fn)}:{n}: {line.strip()}")"""),
+        Exercise("**7. Places and sizes.** For the sample's orthomosaic and the extract's chunk: `stac.raster_crs`, "
+                 "`stac.footprint`, `stac.resolution_m`. Then `resolution_m` for a raster in degrees (a copy of the "
+                 "header with `epsg` 4326 and pixels of 0.000001°). What is `stac.lonlat_box` for a box in UTM? What "
+                 "does `stac.size_of` give for a file and for a folder? And `stac.multihash` for an MD5, a SHA-256 "
+                 "and a SHA-1?",
+                 """ortho = geotiff.info(DATASET / "ortho_2023-07-12.tif")
+chunk = geotiff.info(EXTRACT / "2018-07-26/orthomosaic_chunk.tif")
+...  # your code here""",
+                 """ortho = geotiff.info(DATASET / "ortho_2023-07-12.tif")
+chunk = geotiff.info(EXTRACT / "2018-07-26/orthomosaic_chunk.tif")
+for name, header in (("ortho", ortho), ("chunk", chunk)):
+    geometry, box = stac.footprint(header)
+    print(name, "| CRS:", stac.raster_crs(header)[:40], "| box:", [round(v, 5) for v in box],
+          "| pixel:", stac.resolution_m(header, box), "m")
+# The chunk's CRS has no EPSG code, so raster_crs gives its WKT, and everything else works the same.
+in_degrees = {**ortho, "epsg": 4326, "crs": "EPSG:4326", "resolution": (0.000001, 0.000001)}
+print("in degrees:", round(stac.resolution_m(in_degrees, [-113.1, 48.9, -113.0, 49.0]), 4), "m")
+# STAC's gsd is in metres. At 49 N a millionth of a degree is 0.111 m north-south and 0.073 m east-west: the finer.
+print("lonlat_box:", [round(v, 6) for v in stac.lonlat_box((368000, 5420000, 368020, 5420020), "EPSG:32612")[1]])
+print("size_of:", stac.size_of(DATASET / "README.txt"), stac.size_of(DATASET / "photos_2023-07-12"))
+print(stac.multihash("MD5", "AB" * 16)[:8], stac.multihash("sha-256", "cd" * 32)[:8])
+try:
+    stac.multihash("sha1", "ab" * 20)
+except KeyError as e:
+    print("sha1: KeyError", e)
+# STAC's file:checksum is a multihash, and only MD5 and SHA-256 are mapped: data_item checks MULTIHASH first, so a
+# record's SHA-1 stays in the provenance and the file is still verified against it (chapter 15)."""),
+        Exercise("**8. Items by hand.** Make items directly: `stac.raster_item` for the orthomosaic with one date and "
+                 "with a span; for the extract's chunk (no EPSG code); `stac.vector_item` for the dams; "
+                 "`stac.photos_item` for the photos. Which STAC fields does each write? Add the README with "
+                 "`stac.add_file_asset`, and find its path with `stac.asset_path`.",
+                 """day, month_end = datetime.date(2023, 7, 12), datetime.date(2023, 7, 31)
+ortho = geotiff.info(DATASET / "ortho_2023-07-12.tif")
+...  # your code here""",
+                 """day, month_end = datetime.date(2023, 7, 12), datetime.date(2023, 7, 31)
+path = DATASET / "ortho_2023-07-12.tif"
+ortho = geotiff.info(path)
+bands = [{"name": n, "common_name": n} for n in ("red", "green", "blue")] + [{"name": "alpha", "common_name": None}]
+one_day = stac.raster_item("one_day", path, ortho, day, day, "orthomosaic", ["data"], bands,
+                           checksum=stac.multihash("md5", "ab" * 16), title=path.name)
+p, asset = one_day.properties, one_day.assets["orthomosaic"]
+print("one day:", one_day.datetime, "| gsd", p["gsd"], "|", p["proj:code"], p["proj:shape"])
+print("  asset:", asset.media_type, asset.roles, sorted(asset.extra_fields))
+print("  ", asset.extra_fields["eo:bands"][3], asset.extra_fields["raster:bands"][0], asset.extra_fields["file:size"])
+span = stac.raster_item("span", path, ortho, day, month_end, "orthomosaic", ["data"], [])
+print("a span:", span.datetime, span.properties["start_datetime"], span.properties["end_datetime"])
+
+chunk_path = EXTRACT / "2018-07-26/orthomosaic_chunk.tif"
+chunk = stac.raster_item("chunk", chunk_path, geotiff.info(chunk_path), day, day, "orthomosaic", ["data"], [])
+print("no EPSG code:", chunk.properties.get("proj:code"), "|", chunk.properties["proj:wkt2"][:40], "...")
+
+dams_path = DATASET / "dams_2023-07-12.gpkg"
+dams = stac.vector_item("dams", dams_path, vector.info(dams_path), day, day, "annotations", ["data"])
+print("vector:", dams.properties["beaver:layers"], "|", dams.assets["annotations"].media_type)
+folder = DATASET / "photos_2023-07-12"
+flight = stac.photos_item("flight", folder, photos.info(folder), day, day, "photos", ["data"])
+print("photos:", flight.properties["beaver:photos"]["count"], "|", flight.geometry["type"],
+      "| no projection:", "proj:code" not in flight.properties)
+
+stac.add_file_asset(dams, "metadata", DATASET / "README.txt", ["metadata"], "README")
+print(dams.assets["metadata"].roles, "|", stac.asset_path(dams.assets["metadata"]).name)
+# build.data_item does just this, then adds the descriptors and flags. The item is only in memory until stac.save."""),
     ])
 
 CH15 = Chapter(

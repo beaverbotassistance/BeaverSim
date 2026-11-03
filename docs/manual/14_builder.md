@@ -89,6 +89,27 @@ licence: the items' licence when they all share one, else `various` (see finding
 **The report** has five lists: `missing`, `undescribed`, `unsupported`, `unattached`, `unmatched_layers`. `main`
 writes it as `build_report.json` next to the catalogue.
 
+## 5. `stac.py`: writing the items
+
+The per-type functions of `build.py` decide the values; [`catalog/stac.py`](../../data_acquisition/catalog/stac.py) writes
+them as STAC. It knows nothing about summaries:
+
+| Function | Takes | Does |
+|---|---|---|
+| `raster_crs(info)` | a raster's header | its EPSG code, or its WKT for a CRS without one |
+| `lonlat_box(bounds, crs)` | a box in any CRS | the longitude/latitude polygon and bounding box, with edges densified |
+| `footprint(info)` | a raster's header | `lonlat_box` of its bounds |
+| `resolution_m(info, bbox)` | a header and its box | the pixel size in metres; for a CRS in degrees, measured on the ellipsoid at the raster's centre |
+| `multihash(algorithm, hex)` | a checksum | the form STAC's `file:checksum` uses; only MD5 and SHA-256 are mapped |
+| `size_of(path)` | a file or a folder | its bytes (a `.gdb` is a folder) |
+| `raster_item`, `vector_item`, `photos_item` | a header, dates, a key, roles | an item with one asset. One day gives `datetime`; a span gives `start_datetime` and `end_datetime` |
+| `add_file_asset(item, key, path, roles)` | an item and a file | a further asset, with its size: how reports and records are attached |
+| `save(catalog, out_dir)`, `load(path)` | a catalogue | write it with relative links, read it back |
+| `asset_path(asset)`, `validate(catalog)` | an asset; a catalogue | its local path; schema errors (the first run needs the network, for the schemas) |
+
+A raster without an EPSG code gets `proj:code` null and `proj:wkt2`, as the Montana data does. A SHA-1 from a record
+has no multihash, so `file:checksum` stays empty and the checksum is kept in the provenance.
+
 ## Exercises
 
 Notebook: [`notebooks/14_builder.ipynb`](notebooks/14_builder.ipynb) (work in a copy); solutions in
@@ -110,6 +131,11 @@ Notebook: [`notebooks/14_builder.ipynb`](notebooks/14_builder.ipynb) (work in a 
    does it attach each time?
 6. **Find it in the code.** Where is the item id made, and where is a collection's licence set to `various`?
 
+7. **Places and sizes.** `raster_crs`, `footprint` and `resolution_m` on the orthomosaic and the extract's chunk, and for a
+   raster in degrees; `lonlat_box`; `size_of`; `multihash` for MD5, SHA-256 and SHA-1.
+8. **Items by hand.** `raster_item` with one date, with a span and without an EPSG code; `vector_item`; `photos_item`;
+   `add_file_asset`; `asset_path`.
+
 ## Where this lives
 
 - [`data_acquisition/catalog/build.py`](../../data_acquisition/catalog/build.py): `build`, `data_item`, `_raster_item`,
@@ -117,8 +143,7 @@ Notebook: [`notebooks/14_builder.ipynb`](notebooks/14_builder.ipynb) (work in a 
   `_undescribed`.
 - [`data_acquisition/catalog/summary.py`](../../data_acquisition/catalog/summary.py): `resolve`, `epoch`, `layer_epoch`,
   `author`.
-- [`data_acquisition/catalog/stac.py`](../../data_acquisition/catalog/stac.py): `raster_item`, `vector_item`,
-  `photos_item`, `add_file_asset`, `multihash`, `save`.
+- [`data_acquisition/catalog/stac.py`](../../data_acquisition/catalog/stac.py): the functions of section 5.
 - [`tests/dataset/test_build.py`](../../tests/dataset/test_build.py): the builder's tests.
 
 ## Sources
