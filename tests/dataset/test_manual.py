@@ -70,6 +70,13 @@ def test_notebook_builder_keeps_cells_written_by_hand(tmp_path: Path):
     assert nbformat.read(path, as_version=4).cells[-1].source == "..."
 
 
+def test_chapters_list_the_exercises_of_the_notebooks():
+    tool = _load_tool("build_notebooks")
+    for chapter in tool.CHAPTERS:
+        text = (MANUAL / f"{chapter.name}.md").read_text()
+        assert tool.exercise_list(chapter) in text, f"{chapter.name}: run docs/manual/tools/build_notebooks.py"
+
+
 def test_coverage_report_finds_the_exercised_functions():
     tool = _load_tool("exercise_coverage")
     summary = tool.coverage()["catalog/summary.py"]
